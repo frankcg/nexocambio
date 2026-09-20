@@ -1,0 +1,39 @@
+<header class="top">
+  <div class="wrap nav">
+    <a class="brand" routerLink="/" aria-label="NexoCambio, inicio">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect class="b" x="2" y="2" width="17" height="17" rx="5" />
+        <rect class="a" x="13" y="13" width="17" height="17" rx="5" />
+      </svg>
+      <span class="brand-t">NexoCambio</span>
+    </a>
+    <nav class="links" aria-label="Principal">
+      @for (enlace of enlaces(); track enlace.etiqueta) {
+        @if (enlace.fragmento) {
+          <a [routerLink]="['/']" [fragment]="enlace.fragmento">{{ enlace.etiqueta }}</a>
+        } @else {
+          <a [routerLink]="enlace.ruta" routerLinkActive #rla="routerLinkActive" [routerLinkActiveOptions]="{ exact: true }"
+             [attr.aria-current]="rla.isActive ? 'page' : null">{{ enlace.etiqueta }}</a>
+        }
+      }
+    </nav>
+    <div class="auth">
+      @if (auth.autenticado()) {
+        <span class="who" [title]="auth.cliente()?.correo">{{ primerNombre() }}</span>
+        <a class="btn btn-solid" routerLink="/">Nueva operación</a>
+        <button class="btn btn-ghost" type="button" (click)="salir()">Salir</button>
+      } @else {
+        <a class="btn btn-ghost" routerLink="/login">Iniciar sesión</a>
+        <a class="btn btn-solid" routerLink="/registro">Registrarse</a>
+      }
+    </div>
+  </div>
+  @if (auth.autenticado()) {
+    <nav class="wrap mobile-tabs" aria-label="Secciones">
+      @for (enlace of enlaces(); track enlace.etiqueta) {
+        <a [routerLink]="enlace.ruta" routerLinkActive #rlaMobile="routerLinkActive" [routerLinkActiveOptions]="{ exact: true }"
+           [attr.aria-current]="rlaMobile.isActive ? 'page' : null">{{ enlace.etiqueta }}</a>
+      }
+    </nav>
+  }
+</header>

@@ -1,0 +1,421 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  NexoCambio - MVP serverless (AWS Academy Learner Lab).
+  API Gateway (HTTP API) + 3 microservicios AWS Lambda (Python 3.12) + DynamoDB + S3 + CloudWatch.
+  Usa el rol pre-creado LabRole (en Learner Lab no se pueden crear roles IAM).
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedPattern: "^[a-z0-9]{2,8}$"
+    Description: Nombre del ambiente. Se usa como prefijo de los recursos (nexo-<stage>-...).
+  RoleName:
+    Type: String
+    Default: LabRole
+    Description: Rol IAM existente que asumirán las funciones Lambda (en AWS Academy es LabRole).
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: Secreto para firmar los tokens JWT (HS256). Generado por deploy.sh.
+  AdminKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Clave del back-office simulado (PATCH /operaciones/{id}/estado). Vacía = ruta deshabilitada.
+  AlertEmail:
+    Type: String
+    Default: ""
+    Description: Correo que recibirá las alarmas de CloudWatch (opcional).
+  ValidezCotizacionSeg:
+    Type: Number
+    Default: 300
+    MinValue: 60
+    MaxValue: 1800
+  UsarTasasEnVivo:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Consultar tasas públicas (FX y cripto). Con false se usan tasas referenciales.
+  CrearSitioWeb:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Crear el bucket S3 de sitio web estático para el frontend.
+
+Conditions:
+  ConCorreo: !Not [!Equals [!Ref AlertEmail, ""]]
+  ConSitioWeb: !Equals [!Ref CrearSitioWeb, "true"]
+
+Resources:
+  # =========================================================== DATOS (1 BD por microservicio)
+  TablaTasas:            # Microservicio Cotizaciones
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub nexo-${Stage}-tasas
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: moneda, AttributeType: S}]
+      KeySchema: [{AttributeName: moneda, KeyType: HASH}]
+
+  TablaCotizaciones:     # Microservicio Cotizaciones
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub nexo-${Stage}-cotizaciones
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: id_cotizacion, AttributeType: S}]
+      KeySchema: [{AttributeName: id_cotizacion, KeyType: HASH}]
+      TimeToLiveSpecification: {AttributeName: ttl, Enabled: true}
+
+  TablaClientes:         # Microservicio Clientes / Auth
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub nexo-${Stage}-clientes
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: pk, AttributeType: S}]
+      KeySchema: [{AttributeName: pk, KeyType: HASH}]
+
+  TablaOperaciones:      # Microservicio Operaciones
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub nexo-${Stage}-operaciones
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - {AttributeName: id_operacion, AttributeType: S}
+        - {AttributeName: id_cliente, AttributeType: S}
+        - {AttributeName: fecha_operacion, AttributeType: S}
+      KeySchema: [{AttributeName: id_operacion, KeyType: HASH}]
+      GlobalSecondaryIndexes:
+        - IndexName: cliente-fecha-index
+          KeySchema:
+            - {AttributeName: id_cliente, KeyType: HASH}
+            - {AttributeName: fecha_operacion, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
+
+  BucketComprobantes:    # Microservicio Operaciones (privado)
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub nexo-${Stage}-comprobantes-${AWS::AccountId}-${AWS::Region}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: {SSEAlgorithm: AES256}
+
+  BucketComprobantesPolitica:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BucketComprobantes
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: SoloHttps
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt BucketComprobantes.Arn
+              - !Sub "${BucketComprobantes.Arn}/*"
+            Condition: {Bool: {"aws:SecureTransport": "false"}}
+
+  # =========================================================== FRONTEND (sitio estático)
+  BucketWeb:
+    Type: AWS::S3::Bucket
+    Condition: ConSitioWeb
+    Properties:
+      BucketName: !Sub nexo-${Stage}-web-${AWS::AccountId}-${AWS::Region}
+      WebsiteConfiguration: {IndexDocument: index.html, ErrorDocument: index.html}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+
+  BucketWebPolitica:
+    Type: AWS::S3::BucketPolicy
+    Condition: ConSitioWeb
+    Properties:
+      Bucket: !Ref BucketWeb
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: LecturaPublicaDelSitio
+            Effect: Allow
+            Principal: "*"
+            Action: "s3:GetObject"
+            Resource: !Sub "${BucketWeb.Arn}/*"
+
+  # =========================================================== CÓMPUTO
+  CapaComun:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: !Sub nexo-${Stage}-common
+      Description: Utilidades compartidas (respuestas HTTP, JWT, hash de contraseñas, validaciones)
+      CompatibleRuntimes: [python3.12]
+      Content: layer
+
+  LogsCotizaciones:
+    Type: AWS::Logs::LogGroup
+    Properties: {LogGroupName: !Sub "/aws/lambda/nexo-${Stage}-cotizaciones", RetentionInDays: 14}
+  LogsClientes:
+    Type: AWS::Logs::LogGroup
+    Properties: {LogGroupName: !Sub "/aws/lambda/nexo-${Stage}-clientes", RetentionInDays: 14}
+  LogsOperaciones:
+    Type: AWS::Logs::LogGroup
+    Properties: {LogGroupName: !Sub "/aws/lambda/nexo-${Stage}-operaciones", RetentionInDays: 14}
+
+  FnCotizaciones:
+    Type: AWS::Lambda::Function
+    DependsOn: LogsCotizaciones
+    Properties:
+      FunctionName: !Sub nexo-${Stage}-cotizaciones
+      Description: Microservicio Cotizaciones
+      Runtime: python3.12
+      Handler: app.handler
+      Code: services/cotizaciones
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/${RoleName}
+      MemorySize: 256
+      Timeout: 15
+      Layers: [!Ref CapaComun]
+      Environment:
+        Variables:
+          TABLE_COTIZACIONES: !Ref TablaCotizaciones
+          TABLE_TASAS: !Ref TablaTasas
+          VALIDEZ_SEG: !Ref ValidezCotizacionSeg
+          USAR_TASAS_EN_VIVO: !Ref UsarTasasEnVivo
+
+  FnClientes:
+    Type: AWS::Lambda::Function
+    DependsOn: LogsClientes
+    Properties:
+      FunctionName: !Sub nexo-${Stage}-clientes
+      Description: Microservicio Clientes y Autenticación
+      Runtime: python3.12
+      Handler: app.handler
+      Code: services/clientes
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/${RoleName}
+      MemorySize: 512          # PBKDF2 consume CPU: más memoria = más CPU = login más rápido
+      Timeout: 15
+      Layers: [!Ref CapaComun]
+      Environment:
+        Variables:
+          TABLE_CLIENTES: !Ref TablaClientes
+          JWT_SECRET: !Ref JwtSecret
+          JWT_TTL_SEG: "7200"
+
+  FnOperaciones:
+    Type: AWS::Lambda::Function
+    DependsOn: LogsOperaciones
+    Properties:
+      FunctionName: !Sub nexo-${Stage}-operaciones
+      Description: Microservicio Operaciones
+      Runtime: python3.12
+      Handler: app.handler
+      Code: services/operaciones
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/${RoleName}
+      MemorySize: 512
+      Timeout: 20
+      Layers: [!Ref CapaComun]
+      Environment:
+        Variables:
+          TABLE_OPERACIONES: !Ref TablaOperaciones
+          BUCKET_COMPROBANTES: !Ref BucketComprobantes
+          FN_COTIZACIONES: !Ref FnCotizaciones
+          JWT_SECRET: !Ref JwtSecret
+          ADMIN_KEY: !Ref AdminKey
+          GRACIA_SEG: "600"
+
+  # =========================================================== API GATEWAY (HTTP API)
+  Api:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub nexo-${Stage}-api
+      Description: API pública de NexoCambio
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins: ["*"]
+        AllowMethods: [GET, POST, PATCH, OPTIONS]
+        AllowHeaders: [content-type, authorization, x-admin-key]
+        MaxAge: 3600
+
+  IntCotizaciones:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref Api
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt FnCotizaciones.Arn
+      PayloadFormatVersion: "2.0"
+  IntClientes:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref Api
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt FnClientes.Arn
+      PayloadFormatVersion: "2.0"
+  IntOperaciones:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref Api
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt FnOperaciones.Arn
+      PayloadFormatVersion: "2.0"
+
+  RutaCotizar:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "POST /cotizar", Target: !Sub "integrations/${IntCotizaciones}"}
+  RutaRegistro:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "POST /registro", Target: !Sub "integrations/${IntClientes}"}
+  RutaLogin:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "POST /login", Target: !Sub "integrations/${IntClientes}"}
+  RutaCliente:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "GET /clientes/{id_cliente}", Target: !Sub "integrations/${IntClientes}"}
+  RutaOperacionCrear:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "POST /operaciones", Target: !Sub "integrations/${IntOperaciones}"}
+  RutaOperacionListar:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "GET /operaciones", Target: !Sub "integrations/${IntOperaciones}"}
+  RutaOperacionDetalle:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "GET /operaciones/{id_operacion}", Target: !Sub "integrations/${IntOperaciones}"}
+  RutaComprobante:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "POST /operaciones/{id_operacion}/comprobante", Target: !Sub "integrations/${IntOperaciones}"}
+  RutaEstado:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "PATCH /operaciones/{id_operacion}/estado", Target: !Sub "integrations/${IntOperaciones}"}
+
+  Despliegue:
+    Type: AWS::ApiGatewayV2::Deployment
+    DependsOn: [RutaCotizar, RutaRegistro, RutaLogin, RutaCliente, RutaOperacionCrear, RutaOperacionListar,
+                RutaOperacionDetalle, RutaComprobante, RutaEstado]
+    Properties: {ApiId: !Ref Api}
+
+  EtapaV1:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref Api
+      StageName: v1
+      DeploymentId: !Ref Despliegue
+      DefaultRouteSettings:            # protección básica contra abuso
+        ThrottlingBurstLimit: 50
+        ThrottlingRateLimit: 25
+
+  PermisoApiCotizaciones:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FnCotizaciones
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*/*
+  PermisoApiClientes:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FnClientes
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*/*
+  PermisoApiOperaciones:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FnOperaciones
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*/*
+
+  # =========================================================== MONITOREO
+  TemaAlertas:
+    Type: AWS::SNS::Topic
+    Properties: {TopicName: !Sub "nexo-${Stage}-alertas"}
+
+  SuscripcionCorreo:
+    Type: AWS::SNS::Subscription
+    Condition: ConCorreo
+    Properties: {TopicArn: !Ref TemaAlertas, Protocol: email, Endpoint: !Ref AlertEmail}
+
+  AlarmaErroresCotizaciones:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub nexo-${Stage}-cotizaciones-errores
+      AlarmDescription: La Lambda de Cotizaciones registró errores
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{Name: FunctionName, Value: !Ref FnCotizaciones}]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref TemaAlertas]
+  AlarmaErroresClientes:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub nexo-${Stage}-clientes-errores
+      AlarmDescription: La Lambda de Clientes registró errores
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{Name: FunctionName, Value: !Ref FnClientes}]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref TemaAlertas]
+  AlarmaErroresOperaciones:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub nexo-${Stage}-operaciones-errores
+      AlarmDescription: La Lambda de Operaciones registró errores
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{Name: FunctionName, Value: !Ref FnOperaciones}]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref TemaAlertas]
+  AlarmaApi5xx:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub nexo-${Stage}-api-5xx
+      AlarmDescription: La API devolvió respuestas 5xx
+      Namespace: AWS/ApiGateway
+      MetricName: 5xx
+      Dimensions: [{Name: ApiId, Value: !Ref Api}]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref TemaAlertas]
+
+Outputs:
+  ApiUrl:
+    Description: URL base de la API (úsala en el frontend y en Postman)
+    Value: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com/v1
+  SitioWebUrl:
+    Condition: ConSitioWeb
+    Description: URL del sitio web estático (frontend)
+    Value: !GetAtt BucketWeb.WebsiteURL
+  BucketWeb:
+    Condition: ConSitioWeb
+    Value: !Ref BucketWeb
+  BucketComprobantes:
+    Value: !Ref BucketComprobantes
+  FuncionCotizaciones:
+    Value: !Ref FnCotizaciones
+  FuncionClientes:
+    Value: !Ref FnClientes
+  FuncionOperaciones:
+    Value: !Ref FnOperaciones

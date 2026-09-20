@@ -1,0 +1,910 @@
+{
+  "info": {
+    "name": "NexoCambio API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Ejecutar en orden (Runner). Configure baseUrl con la salida ApiUrl del despliegue, o http://localhost:8787 con el servidor local."
+  },
+  "item": [
+    {
+      "name": "1. Cotizaciones (público)",
+      "item": [
+        {
+          "name": "Cotizar - Casa de Cambio (PEN→USD)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Devuelve tasa y monto\", () => { pm.expect(j.tasa).to.be.above(0); pm.expect(j.monto_destino).to.be.above(0); });",
+                  "pm.collectionVariables.set(\"id_cotizacion_demo\", j.id_cotizacion);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cotizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cotizar"
+              ]
+            },
+            "description": "Calcula tasa y monto estimado. Vigencia 5 minutos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modalidad\": \"casa\",\n  \"moneda_origen\": \"PEN\",\n  \"moneda_destino\": \"USD\",\n  \"monto_origen\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cotizar - Cripto (PEN→USDT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cotizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cotizar"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modalidad\": \"cripto\",\n  \"moneda_origen\": \"PEN\",\n  \"moneda_destino\": \"USDT\",\n  \"monto_origen\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cotizar - error: monedas iguales",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cotizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cotizar"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modalidad\": \"casa\",\n  \"moneda_origen\": \"PEN\",\n  \"moneda_destino\": \"PEN\",\n  \"monto_origen\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cotizar - error: monto menor a US$ 10",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cotizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cotizar"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modalidad\": \"casa\",\n  \"moneda_origen\": \"PEN\",\n  \"moneda_destino\": \"USD\",\n  \"monto_origen\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Clientes y autenticación",
+      "item": [
+        {
+          "name": "Registro - persona natural",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const n = Date.now();",
+                  "pm.collectionVariables.set(\"correo\", \"cliente\" + n + \"@nexocambio.pe\");",
+                  "pm.collectionVariables.set(\"dni\", String(10000000 + Math.floor(Math.random() * 89999999)));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"id_cliente\", pm.response.json().id_cliente);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/registro",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registro"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_cliente\": \"persona\",\n  \"nombres\": \"Lucía\",\n  \"apellidos\": \"Ramírez Torres\",\n  \"tipo_documento\": \"DNI\",\n  \"numero_documento\": \"{{dni}}\",\n  \"fecha_nacimiento\": \"1994-05-10\",\n  \"telefono\": \"987654321\",\n  \"ocupacion\": \"Dependiente\",\n  \"pep\": false,\n  \"correo\": \"{{correo}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registro - error: correo duplicado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/registro",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registro"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_cliente\": \"persona\",\n  \"nombres\": \"Lucía\",\n  \"apellidos\": \"Ramírez Torres\",\n  \"tipo_documento\": \"DNI\",\n  \"numero_documento\": \"{{dni}}\",\n  \"fecha_nacimiento\": \"1994-05-10\",\n  \"telefono\": \"987654321\",\n  \"ocupacion\": \"Dependiente\",\n  \"pep\": false,\n  \"correo\": \"{{correo}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Devuelve JWT\", () => pm.expect(j.token.split(\".\")).to.have.length(3));",
+                  "pm.test(\"No expone el hash\", () => pm.expect(JSON.stringify(j)).to.not.include(\"password_hash\"));",
+                  "pm.collectionVariables.set(\"token\", j.token);",
+                  "pm.collectionVariables.set(\"id_cliente\", j.cliente.id_cliente);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correo}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login - error: contraseña incorrecta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correo}}\",\n  \"password\": \"Incorrecta99\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clientes/{{id_cliente}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clientes",
+                "{{id_cliente}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Consultar perfil - error: sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clientes/{{id_cliente}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clientes",
+                "{{id_cliente}}"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Operaciones (requiere login)",
+      "item": [
+        {
+          "name": "Paso 1 - Cotizar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"id_cotizacion\", pm.response.json().id_cotizacion);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cotizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cotizar"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modalidad\": \"casa\",\n  \"moneda_origen\": \"PEN\",\n  \"moneda_destino\": \"USD\",\n  \"monto_origen\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Paso 2 - Registrar operación",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Estado inicial\", () => pm.expect(j.estado).to.eql(\"Pendiente de comprobante\"));",
+                  "pm.collectionVariables.set(\"id_operacion\", j.id_operacion);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones"
+              ]
+            },
+            "description": "El servidor toma tasa y montos de la cotización; ignora los que envíe el cliente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_cotizacion\": \"{{id_cotizacion}}\",\n  \"origen\": {\n    \"tipo\": \"banco\",\n    \"banco\": \"BCP\"\n  },\n  \"destino\": {\n    \"tipo\": \"banco\",\n    \"banco\": \"Interbank\",\n    \"tipo_cuenta\": \"Ahorros\",\n    \"numero\": \"8983141592653\",\n    \"titular\": \"Lucía Ramírez Torres\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Paso 3 - Adjuntar comprobante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Queda pendiente de validación\", () => pm.expect(pm.response.json().estado).to.eql(\"Pendiente de validación\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/{{id_operacion}}/comprobante",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "{{id_operacion}}",
+                "comprobante"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre_archivo\": \"transferencia.png\",\n  \"content_type\": \"image/png\",\n  \"contenido_base64\": \"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==\",\n  \"numero_transferencia\": \"778899\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Paso 4 - Mis operaciones",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Lista con al menos 1\", () => pm.expect(pm.response.json().total).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Paso 5 - Detalle de operación",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Incluye URL temporal del comprobante\", () => pm.expect(pm.response.json().comprobante_url).to.include(\"https://\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/{{id_operacion}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "{{id_operacion}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Registrar operación - error: cotización ya usada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_cotizacion\": \"{{id_cotizacion}}\",\n  \"origen\": {\n    \"tipo\": \"banco\",\n    \"banco\": \"BCP\"\n  },\n  \"destino\": {\n    \"tipo\": \"banco\",\n    \"banco\": \"Interbank\",\n    \"tipo_cuenta\": \"Ahorros\",\n    \"numero\": \"8983141592653\",\n    \"titular\": \"Lucía Ramírez Torres\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Mis operaciones - error: sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Back-office simulado (x-admin-key)",
+      "item": [
+        {
+          "name": "Estado → En proceso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-admin-key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/{{id_operacion}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "{{id_operacion}}",
+                "estado"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"En proceso\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Estado → Procesada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-admin-key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/{{id_operacion}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "{{id_operacion}}",
+                "estado"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"Procesada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Estado - error: sin clave de back-office",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/{{id_operacion}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "{{id_operacion}}",
+                "estado"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"Rechazada\",\n  \"motivo_rechazo\": \"prueba\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8787"
+    },
+    {
+      "key": "password",
+      "value": "Clave1234"
+    },
+    {
+      "key": "adminKey",
+      "value": "admin-local"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "id_cliente",
+      "value": ""
+    },
+    {
+      "key": "id_cotizacion",
+      "value": ""
+    },
+    {
+      "key": "id_operacion",
+      "value": ""
+    },
+    {
+      "key": "correo",
+      "value": ""
+    },
+    {
+      "key": "dni",
+      "value": ""
+    }
+  ]
+}

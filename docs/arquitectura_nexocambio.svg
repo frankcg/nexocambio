@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980">
+<defs><marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#232F3E"/></marker></defs>
+<rect width="1600" height="980" fill="#F7F9FC"/>
+<text x="800.0" y="44" font-family="DejaVu Sans, Verdana, sans-serif" font-size="30" fill="#0E1B33" text-anchor="middle" font-weight="700">Arquitectura AWS del MVP — NexoCambio</text>
+<text x="800.0" y="72" font-family="DejaVu Sans, Verdana, sans-serif" font-size="15" fill="#4A5568" text-anchor="middle">Microservicios serverless · AWS Academy Learner Lab · Región us-east-1 (N. Virginia)</text>
+<rect x="190" y="98" width="1385" height="820" rx="14" fill="#fff" stroke="#232F3E" stroke-width="1.5" stroke-dasharray="2 0"/>
+<text x="206" y="121" font-family="DejaVu Sans, Verdana, sans-serif" font-size="13" fill="#232F3E" text-anchor="start" font-weight="700">AWS Cloud — us-east-1</text>
+<rect x="20" y="395" width="140" height="130" rx="12" fill="#fff" stroke="#232F3E" stroke-width="2"/>
+<circle cx="90" cy="435" r="17" fill="#232F3E"/><rect x="66" y="456" width="48" height="22" rx="10" fill="#232F3E"/>
+<text x="90" y="498" font-family="DejaVu Sans, Verdana, sans-serif" font-size="13" fill="#232F3E" text-anchor="middle" font-weight="700">Cliente web</text>
+<text x="90" y="514" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#4A5568" text-anchor="middle">desktop · móvil</text>
+<rect x="225" y="150" width="230" height="118" rx="10" fill="#fff" stroke="#3F8624" stroke-width="2"/>
+<rect x="235" y="160" width="42" height="42" rx="8" fill="#3F8624"/>
+<text x="256" y="189" font-family="DejaVu Sans, Verdana, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">S3</text>
+<text x="287" y="178" font-family="DejaVu Sans, Verdana, sans-serif" font-size="14" fill="#232F3E" text-anchor="start" font-weight="700">S3 — Sitio web</text>
+<text x="287" y="196" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">Frontend estático</text>
+<text x="287" y="212" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">(HTML/CSS/JS responsive)</text>
+<text x="287" y="228" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">Landing · cotizador · login</text>
+<text x="287" y="244" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">registro · mis operaciones</text>
+<rect x="225" y="385" width="230" height="130" rx="10" fill="#fff" stroke="#8C4FFF" stroke-width="2"/>
+<rect x="235" y="395" width="42" height="42" rx="8" fill="#8C4FFF"/>
+<text x="256" y="424" font-family="DejaVu Sans, Verdana, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">API</text>
+<text x="287" y="413" font-family="DejaVu Sans, Verdana, sans-serif" font-size="14" fill="#232F3E" text-anchor="start" font-weight="700">API Gateway</text>
+<text x="287" y="431" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">HTTP API · stage v1</text>
+<text x="287" y="447" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">CORS · throttling</text>
+<text x="287" y="463" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">9 rutas → 3 Lambdas</text>
+<path d="M112,395 L112,210 L225,210" fill="none" stroke="#232F3E" stroke-width="2" marker-end="url(#f)"/>
+<text x="150" y="200" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#232F3E" text-anchor="middle" font-style="italic">① HTTPS (HTML/JS)</text>
+<path d="M160,460 L225,450" fill="none" stroke="#232F3E" stroke-width="2" marker-end="url(#f)"/>
+<text x="192" y="548" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#232F3E" text-anchor="middle" font-style="italic">② HTTPS + JSON + JWT</text>
+<rect x="560" y="132" width="290" height="700" rx="12" fill="#FFF6EC" stroke="#ED7100" stroke-width="1.5" stroke-dasharray="7 5"/>
+<text x="575" y="154" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12.5" fill="#B45309" text-anchor="start" font-weight="700">Cómputo — AWS Lambda (Python 3.12)</text>
+<rect x="585" y="175" width="240" height="118" rx="10" fill="#fff" stroke="#ED7100" stroke-width="2"/>
+<rect x="595" y="185" width="42" height="42" rx="8" fill="#ED7100"/>
+<text x="616" y="214" font-family="DejaVu Sans, Verdana, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">λ</text>
+<text x="647" y="203" font-family="DejaVu Sans, Verdana, sans-serif" font-size="14" fill="#232F3E" text-anchor="start" font-weight="700">Cotizaciones</text>
+<text x="647" y="221" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">POST /cotizar</text>
+<text x="647" y="237" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">Tasa + monto + vigencia 5 min</text>
+<text x="647" y="253" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">Tasas en vivo con caché</text>
+<rect x="585" y="385" width="240" height="130" rx="10" fill="#fff" stroke="#ED7100" stroke-width="2"/>
+<rect x="595" y="395" width="42" height="42" rx="8" fill="#ED7100"/>
+<text x="616" y="424" font-family="DejaVu Sans, Verdana, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">λ</text>
+<text x="647" y="413" font-family="DejaVu Sans, Verdana, sans-serif" font-size="14" fill="#232F3E" text-anchor="start" font-weight="700">Operaciones</text>
+<text x="647" y="431" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">POST/GET /operaciones</text>
+<text x="647" y="447" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">POST …/comprobante</text>
+<text x="647" y="463" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">PATCH …/estado (back-office)</text>
+<rect x="585" y="600" width="240" height="118" rx="10" fill="#fff" stroke="#ED7100" stroke-width="2"/>
+<rect x="595" y="610" width="42" height="42" rx="8" fill="#ED7100"/>
+<text x="616" y="639" font-family="DejaVu Sans, Verdana, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">λ</text>
+<text x="647" y="628" font-family="DejaVu Sans, Verdana, sans-serif" font-size="14" fill="#232F3E" text-anchor="start" font-weight="700">Clientes / Auth</text>
+<text x="647" y="646" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">POST /registro · POST /login</text>
+<text x="647" y="662" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">GET /clientes/{id}</text>
+<text x="647" y="678" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">PBKDF2 + JWT HS256</text>
+<rect x="585" y="740" width="240" height="66" rx="8" fill="#fff" stroke="#ED7100" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="597" y="762" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#B45309" text-anchor="start" font-weight="700">Lambda Layer: nexo_common</text>
+<text x="597" y="780" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#4A5568" text-anchor="start">JWT · hash · validaciones · respuestas</text>
+<text x="597" y="796" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#4A5568" text-anchor="start">Rol de ejecución: LabRole (Learner Lab)</text>
+<path d="M455,450 L520,450 L520,234 L585,234" fill="none" stroke="#232F3E" stroke-width="2" marker-end="url(#f)"/>
+<text x="508" y="340" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#232F3E" text-anchor="middle" font-style="italic">③</text>
+<path d="M455,450 L585,450" fill="none" stroke="#232F3E" stroke-width="2" marker-end="url(#f)"/>
+<path d="M455,450 L520,450 L520,659 L585,659" fill="none" stroke="#232F3E" stroke-width="2" marker-end="url(#f)"/>
+<path d="M705,385 L705,293" fill="none" stroke="#B45309" stroke-width="2.2" marker-end="url(#f)"/>
+<text x="705" y="343" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#B45309" text-anchor="middle" font-style="italic">Lambda Invoke: obtener cotización</text>
+<rect x="985" y="150" width="250" height="60" rx="10" fill="#fff" stroke="#3B48CC" stroke-width="2"/>
+<rect x="995" y="160" width="42" height="42" rx="8" fill="#3B48CC"/>
+<text x="1016" y="189" font-family="DejaVu Sans, Verdana, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">DB</text>
+<text x="1047" y="178" font-family="DejaVu Sans, Verdana, sans-serif" font-size="13.5" fill="#232F3E" text-anchor="start" font-weight="700">nexo-tasas</text>
+<text x="1047" y="196" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">PK moneda</text>
+<rect x="985" y="222" width="250" height="76" rx="10" fill="#fff" stroke="#3B48CC" stroke-width="2"/>
+<rect x="995" y="232" width="42" height="42" rx="8" fill="#3B48CC"/>
+<text x="1016" y="261" font-family="DejaVu Sans, Verdana, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">DB</text>
+<text x="1047" y="250" font-family="DejaVu Sans, Verdana, sans-serif" font-size="13.5" fill="#232F3E" text-anchor="start" font-weight="700">nexo-cotizaciones</text>
+<text x="1047" y="268" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">PK id_cotizacion</text>
+<text x="1047" y="284" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">TTL: se auto-elimina</text>
+<rect x="985" y="372" width="250" height="76" rx="10" fill="#fff" stroke="#3B48CC" stroke-width="2"/>
+<rect x="995" y="382" width="42" height="42" rx="8" fill="#3B48CC"/>
+<text x="1016" y="411" font-family="DejaVu Sans, Verdana, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">DB</text>
+<text x="1047" y="400" font-family="DejaVu Sans, Verdana, sans-serif" font-size="13.5" fill="#232F3E" text-anchor="start" font-weight="700">nexo-operaciones</text>
+<text x="1047" y="418" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">PK id_operacion</text>
+<text x="1047" y="434" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">GSI cliente-fecha-index</text>
+<rect x="985" y="462" width="250" height="76" rx="10" fill="#fff" stroke="#3F8624" stroke-width="2"/>
+<rect x="995" y="472" width="42" height="42" rx="8" fill="#3F8624"/>
+<text x="1016" y="501" font-family="DejaVu Sans, Verdana, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">S3</text>
+<text x="1047" y="490" font-family="DejaVu Sans, Verdana, sans-serif" font-size="13.5" fill="#232F3E" text-anchor="start" font-weight="700">S3 comprobantes</text>
+<text x="1047" y="508" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">Privado · cifrado AES-256</text>
+<text x="1047" y="524" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">URL temporal firmada</text>
+<rect x="985" y="615" width="250" height="90" rx="10" fill="#fff" stroke="#3B48CC" stroke-width="2"/>
+<rect x="995" y="625" width="42" height="42" rx="8" fill="#3B48CC"/>
+<text x="1016" y="654" font-family="DejaVu Sans, Verdana, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">DB</text>
+<text x="1047" y="643" font-family="DejaVu Sans, Verdana, sans-serif" font-size="13.5" fill="#232F3E" text-anchor="start" font-weight="700">nexo-clientes</text>
+<text x="1047" y="661" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">pk = CLI# · EMAIL# · DOC#</text>
+<text x="1047" y="677" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">Unicidad por transacción</text>
+<path d="M825,215 L985,180" fill="none" stroke="#232F3E" stroke-width="2" marker-end="url(#f)"/>
+<path d="M825,250 L985,260" fill="none" stroke="#232F3E" stroke-width="2" marker-end="url(#f)"/>
+<path d="M825,420 L985,410" fill="none" stroke="#232F3E" stroke-width="2" marker-end="url(#f)"/>
+<path d="M825,480 L985,500" fill="none" stroke="#232F3E" stroke-width="2" marker-end="url(#f)"/>
+<path d="M825,660 L985,660" fill="none" stroke="#232F3E" stroke-width="2" marker-end="url(#f)"/>
+<text x="1110" y="138" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#3B48CC" text-anchor="middle" font-style="italic">BD del microservicio Cotizaciones</text>
+<text x="1110" y="360" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#3B48CC" text-anchor="middle" font-style="italic">BD y archivos del microservicio Operaciones</text>
+<text x="1110" y="603" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#3B48CC" text-anchor="middle" font-style="italic">BD del microservicio Clientes</text>
+<rect x="1290" y="150" width="265" height="118" rx="10" fill="#fff" stroke="#5B6B85" stroke-width="2" stroke-dasharray="6 5"/>
+<rect x="1300" y="160" width="42" height="42" rx="8" fill="#5B6B85"/>
+<text x="1321" y="189" font-family="DejaVu Sans, Verdana, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">↗</text>
+<text x="1352" y="178" font-family="DejaVu Sans, Verdana, sans-serif" font-size="14" fill="#232F3E" text-anchor="start" font-weight="700">APIs públicas de tasas</text>
+<text x="1352" y="196" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">FX (PEN/EUR) y cripto</text>
+<text x="1352" y="212" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">(BTC, ETH, USDT, USDC)</text>
+<text x="1352" y="228" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">Vía internet · 1 consulta/5 min</text>
+<path d="M705,175 L705,108 L1422,108 L1422,150" fill="none" stroke="#5B6B85" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#f)"/>
+<text x="1060" y="100" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#5B6B85" text-anchor="middle" font-style="italic">HTTPS (opcional; con caché en DynamoDB)</text>
+<rect x="985" y="760" width="250" height="100" rx="10" fill="#fff" stroke="#E7157B" stroke-width="2"/>
+<rect x="995" y="770" width="42" height="42" rx="8" fill="#E7157B"/>
+<text x="1016" y="799" font-family="DejaVu Sans, Verdana, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">CW</text>
+<text x="1047" y="788" font-family="DejaVu Sans, Verdana, sans-serif" font-size="13.5" fill="#232F3E" text-anchor="start" font-weight="700">CloudWatch</text>
+<text x="1047" y="806" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">Logs (14 días) · métricas</text>
+<text x="1047" y="822" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">Alarmas: errores Lambda</text>
+<text x="1047" y="838" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">y 5xx de la API</text>
+<rect x="1290" y="760" width="265" height="100" rx="10" fill="#fff" stroke="#E7157B" stroke-width="2"/>
+<rect x="1300" y="770" width="42" height="42" rx="8" fill="#E7157B"/>
+<text x="1321" y="799" font-family="DejaVu Sans, Verdana, sans-serif" font-size="18" fill="#fff" text-anchor="middle" font-weight="700">SNS</text>
+<text x="1352" y="788" font-family="DejaVu Sans, Verdana, sans-serif" font-size="13.5" fill="#232F3E" text-anchor="start" font-weight="700">SNS — alertas</text>
+<text x="1352" y="806" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">Notificación por correo</text>
+<text x="1352" y="822" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#4A5568" text-anchor="start">cuando salta una alarma</text>
+<path d="M825,790 L985,805" fill="none" stroke="#E7157B" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#f)"/>
+<path d="M1235,810 L1290,810" fill="none" stroke="#E7157B" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#f)"/>
+<path d="M340,515 L340,880 L985,880 L985,850" fill="none" stroke="#E7157B" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#f)"/>
+<text x="660" y="872" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#E7157B" text-anchor="middle" font-style="italic">métricas de la API</text>
+<rect x="1290" y="300" width="265" height="410" rx="10" fill="#F0F5FF" stroke="#3B48CC" stroke-width="1.2"/>
+<text x="1305" y="324" font-family="DejaVu Sans, Verdana, sans-serif" font-size="13.5" fill="#3B48CC" text-anchor="start" font-weight="700">Decisiones de diseño</text>
+<text x="1305" y="348" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">• Cada microservicio tiene su</text>
+<text x="1305" y="370" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">  propia base de datos.</text>
+<text x="1305" y="392" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">• Operaciones NO confía en la tasa</text>
+<text x="1305" y="414" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">  del navegador: la valida con</text>
+<text x="1305" y="436" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">  Cotizaciones (Lambda→Lambda).</text>
+<text x="1305" y="458" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">• Contraseñas con PBKDF2;</text>
+<text x="1305" y="480" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">  sesión con JWT (2 h).</text>
+<text x="1305" y="502" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">• Comprobantes: bucket privado,</text>
+<text x="1305" y="524" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">  validación de formato real y</text>
+<text x="1305" y="546" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">  enlaces temporales.</text>
+<text x="1305" y="568" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">• Pago por uso: sin servidores</text>
+<text x="1305" y="590" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">  encendidos 24×7.</text>
+<text x="1305" y="612" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">• Frontend en S3 (HTTP); con</text>
+<text x="1305" y="634" font-family="DejaVu Sans, Verdana, sans-serif" font-size="12" fill="#232F3E" text-anchor="start">  CloudFront se obtiene HTTPS.</text>
+<rect x="20" y="640" width="150" height="230" rx="10" fill="#fff" stroke="#8A94A6" stroke-width="1.4" stroke-dasharray="6 5"/>
+<text x="95" y="664" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#5B6B85" text-anchor="middle" font-weight="700">Opcional si el Lab</text>
+<text x="95" y="680" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11.5" fill="#5B6B85" text-anchor="middle" font-weight="700">lo habilita:</text>
+<text x="30" y="708" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#4A5568" text-anchor="start">CloudFront (HTTPS</text>
+<text x="30" y="725" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#4A5568" text-anchor="start">y caché del sitio)</text>
+<text x="30" y="742" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#4A5568" text-anchor="start"></text>
+<text x="30" y="759" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#4A5568" text-anchor="start">Cognito (usuarios</text>
+<text x="30" y="776" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#4A5568" text-anchor="start">en vez de JWT propio)</text>
+<text x="30" y="793" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#4A5568" text-anchor="start"></text>
+<text x="30" y="810" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#4A5568" text-anchor="start">EventBridge + SES</text>
+<text x="30" y="827" font-family="DejaVu Sans, Verdana, sans-serif" font-size="11" fill="#4A5568" text-anchor="start">(avisos de estado)</text>
+<text x="800.0" y="950" font-family="DejaVu Sans, Verdana, sans-serif" font-size="13" fill="#0E1B33" text-anchor="middle" font-weight="700">Flujo MVP: cotizar → registrarse / iniciar sesión → registrar operación → adjuntar comprobante → consultar estado</text>
+</svg>

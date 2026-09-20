@@ -1,0 +1,1868 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>NexoCambio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* ===== Identidad por modalidad: Casa de Cambio (azul) / Cripto (verde-oscuro) ===== */
+:root{
+  --ground:#F3F6FB; --surface:#FFFFFF; --surface-2:#E9EEF8;
+  --ink:#0E1B33; --muted:#56627E; --line:#D9E1EF;
+  --accent:#1F4FD8; --accent-ink:#FFFFFF; --accent-soft:#E3EAFD;
+  --glow:rgba(31,79,216,.16);
+  --ok:#138A52; --ok-soft:#DDF3E8; --warn:#A45708; --warn-soft:#FCEBD3;
+  --info:#1F4FD8; --info-soft:#E3EAFD; --bad:#C0352B; --bad-soft:#FBE3E1;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r:14px;
+  color-scheme:light;
+}
+:root[data-mode="cripto"]{
+  --ground:#07130F; --surface:#0D1F18; --surface-2:#132A21;
+  --ink:#E4F2EA; --muted:#8FAE9F; --line:#1E3A2E;
+  --accent:#2BD38A; --accent-ink:#04120C; --accent-soft:#12372A;
+  --glow:rgba(43,211,138,.18);
+  --ok:#2BD38A; --ok-soft:#12372A; --warn:#F2B64C; --warn-soft:#3A2E12;
+  --info:#7DB4FF; --info-soft:#152A45; --bad:#FF7A6E; --bad-soft:#3D1A17;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--ground); color:var(--ink); font-family:var(--f-body);
+  font-size:16px; line-height:1.55; padding-inline:16px;
+  transition:background-color .45s ease,color .45s ease;
+}
+.wrap{max-width:1160px; margin-inline:auto}
+a{color:inherit}
+button,input,select{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:6px}
+h1,h2,h3{font-family:var(--f-display); line-height:1.08; text-wrap:balance; margin:0; letter-spacing:-.02em}
+.mono{font-family:var(--f-mono); font-variant-numeric:tabular-nums}
+.eyebrow{font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+.muted{color:var(--muted)}
+
+/* ===== Header ===== */
+header.top{position:sticky; top:env(safe-area-inset-top,0px); z-index:10; background:color-mix(in srgb,var(--ground) 88%,transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); margin-inline:-16px; padding-inline:16px; transition:background-color .45s ease,border-color .45s ease}
+.nav{display:flex; align-items:center; gap:24px; padding-block:14px}
+.brand{display:flex; align-items:center; gap:10px; text-decoration:none; font-family:var(--f-display); font-weight:800; font-size:21px; letter-spacing:-.03em}
+.brand-mark{width:30px; height:30px; flex:none}
+.brand-mark .a{fill:var(--accent)} .brand-mark .b{fill:var(--ink)}
+.links{display:flex; gap:22px; margin-left:auto; font-weight:500; font-size:15px}
+.links a{text-decoration:none; color:var(--muted)} .links a:hover,.links a[aria-current="page"]{color:var(--ink)}
+.auth{display:flex; gap:8px; align-items:center}
+.who{font-size:14px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px}
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; border-radius:10px; padding:10px 16px; font-weight:600; font-size:15px; border:1px solid transparent; cursor:pointer; text-decoration:none; transition:transform .12s ease,background-color .3s,border-color .3s,color .3s; white-space:nowrap}
+.btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.5; cursor:not-allowed; transform:none}
+.btn-ghost{background:transparent; border-color:var(--line)} .btn-ghost:hover{border-color:var(--ink)}
+.btn-solid{background:var(--accent); color:var(--accent-ink)} .btn-solid:hover{filter:brightness(1.07)}
+.btn-link{background:none; border:0; padding:0; color:var(--accent); font-weight:600; cursor:pointer; text-decoration:underline; text-underline-offset:3px}
+@media (max-width:860px){.links{display:none} .auth{margin-left:auto} .who{display:none}}
+@media (max-width:560px){.auth .btn-solid[href="#/"]{display:none}}
+@media (max-width:420px){.auth .btn{padding:8px 11px; font-size:14px} .brand{font-size:19px} .nav{gap:12px}}
+.mobile-tabs{display:none}
+@media (max-width:860px){.mobile-tabs{display:flex; gap:6px; padding-bottom:10px; overflow-x:auto} .mobile-tabs a{font-size:14px; padding:6px 12px; border-radius:99px; text-decoration:none; color:var(--muted); border:1px solid var(--line); white-space:nowrap} .mobile-tabs a[aria-current="page"]{color:var(--accent-ink); background:var(--accent); border-color:var(--accent)}}
+
+/* ===== Hero ===== */
+.hero{display:grid; grid-template-columns:1.05fr .95fr; gap:56px; align-items:center; padding-block:56px 48px}
+.hero-copy{display:flex; flex-direction:column; gap:22px}
+.hero h1{font-size:clamp(38px,5.4vw,64px); font-weight:800}
+.hero h1 em{font-style:normal; color:var(--accent); transition:color .45s}
+.hero p.lead{font-size:18px; color:var(--muted); max-width:52ch; margin:0}
+.proof{display:flex; flex-wrap:wrap; gap:10px 22px; list-style:none; padding:0; margin:0; font-size:14px; color:var(--muted)}
+.proof li{display:flex; align-items:center; gap:8px}
+.proof svg{width:16px; height:16px; stroke:var(--accent); flex:none}
+@media (max-width:920px){.hero{grid-template-columns:1fr; gap:28px; padding-block:28px}}
+@media (max-width:560px){.proof{display:none} .hero p.lead{font-size:16px}}
+
+/* ===== Cotizador ===== */
+.quoter{background:var(--surface); border:1px solid var(--line); border-radius:22px; padding:22px; box-shadow:0 30px 60px -30px var(--glow),0 2px 0 var(--line); display:flex; flex-direction:column; gap:16px; transition:background-color .45s,border-color .45s,box-shadow .45s}
+@media (max-width:560px){.quoter{padding:16px}}
+.q-head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+.q-title{font-family:var(--f-display); font-weight:700; font-size:20px}
+.src{font-size:12px; font-weight:600; padding:4px 9px; border-radius:99px; background:var(--surface-2); color:var(--muted); display:inline-flex; align-items:center; gap:6px}
+.src::before{content:""; width:7px; height:7px; border-radius:50%; background:var(--warn)}
+.src.live::before{background:var(--ok)}
+.seg{position:relative; display:grid; grid-template-columns:1fr 1fr; background:var(--surface-2); border-radius:12px; padding:4px; transition:background-color .45s}
+.seg button{white-space:nowrap; position:relative; z-index:1; border:0; background:transparent; padding:10px 8px; font-weight:600; border-radius:9px; cursor:pointer; color:var(--muted); transition:color .3s}
+.seg button[aria-pressed="true"]{color:var(--accent-ink)}
+.seg .thumb{position:absolute; top:4px; bottom:4px; left:4px; width:calc(50% - 4px); border-radius:9px; background:var(--accent); transition:transform .35s cubic-bezier(.3,.7,.2,1),background-color .45s}
+:root[data-mode="cripto"] .seg .thumb{transform:translateX(100%)}
+.field{background:var(--ground); border:1px solid var(--line); border-radius:var(--r); padding:12px 14px; display:grid; grid-template-columns:1fr auto; gap:4px 12px; align-items:center; transition:border-color .2s,background-color .45s}
+.field:focus-within{border-color:var(--accent)}
+.field label{grid-column:1/-1; font-size:13px; color:var(--muted); font-weight:500}
+.field input{border:0; background:transparent; font-family:var(--f-mono); font-size:26px; font-weight:600; width:100%; min-width:0; outline:none; padding:0; font-variant-numeric:tabular-nums}
+.field input[readonly]{color:var(--accent); transition:color .45s}
+.field select,.inp.sel{appearance:none; background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2388939f' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") no-repeat right 12px center; padding-right:32px; cursor:pointer}
+.field select{border:1px solid var(--line); border-radius:10px; padding:8px 28px 8px 12px; font-weight:700; min-width:104px}
+.swap-row{display:flex; justify-content:center; margin-block:-24px; position:relative; z-index:2}
+.swap{width:38px; height:38px; border-radius:50%; border:1px solid var(--line); background:var(--surface); display:grid; place-items:center; cursor:pointer; transition:transform .3s,background-color .45s}
+.swap:hover{transform:rotate(180deg)}
+.swap svg{width:18px; height:18px; stroke:var(--ink)}
+.q-meta{display:grid; grid-template-columns:1fr auto; gap:6px 12px; font-size:14px; padding:4px 2px; margin:0}
+.q-meta dt{color:var(--muted); white-space:nowrap} .q-meta dd{margin:0; text-align:right; font-weight:600}
+.timer{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted)}
+.bar{flex:1; height:4px; border-radius:4px; background:var(--surface-2); overflow:hidden}
+.bar i{display:block; height:100%; width:100%; background:var(--accent); transform-origin:left; transition:transform 1s linear,background-color .45s}
+.timer.expired{color:var(--bad)} .timer.expired .bar i{background:var(--bad)}
+.q-err{font-size:13px; color:var(--bad); margin:0}
+.cta{width:100%; padding:14px; font-size:16px; border-radius:12px}
+.fine{font-size:12px; color:var(--muted); margin:0; text-align:center}
+
+/* ===== Ticker ===== */
+.ticker{border-block:1px solid var(--line); overflow:hidden; margin-inline:-16px; transition:border-color .45s}
+.ticker-track{display:flex; gap:40px; padding-block:12px; width:max-content; animation:slide 38s linear infinite; font-size:14px}
+.ticker-track span{display:inline-flex; gap:8px; white-space:nowrap; color:var(--muted)}
+.ticker-track b{color:var(--ink); font-weight:600}
+@keyframes slide{to{transform:translateX(-50%)}}
+
+/* ===== Secciones landing ===== */
+section.block{padding-block:72px; display:flex; flex-direction:column; gap:32px}
+.block h2{font-size:clamp(28px,3.4vw,40px)}
+.head{display:flex; flex-direction:column; gap:10px; max-width:60ch}
+.head p{color:var(--muted); margin:0}
+.steps{display:grid; grid-template-columns:repeat(3,1fr); gap:20px; list-style:none; padding:0; margin:0; counter-reset:s}
+.steps li{counter-increment:s; border-top:2px solid var(--ink); padding-top:18px; display:flex; flex-direction:column; gap:8px}
+.steps li::before{content:"Paso " counter(s); font-family:var(--f-mono); font-size:13px; color:var(--accent); font-weight:600}
+.steps h3{font-size:21px}
+.steps p{margin:0; color:var(--muted)}
+.modes{display:grid; grid-template-columns:1fr 1fr; gap:20px}
+.mode-card{border-radius:20px; padding:28px; display:flex; flex-direction:column; gap:14px}
+.mode-card.fx{background:#1F4FD8; color:#fff}
+.mode-card.cx{background:#07130F; color:#E4F2EA; border:1px solid #1E3A2E}
+.mode-card .chips{display:flex; flex-wrap:wrap; gap:8px}
+.mode-card .chips span{font-family:var(--f-mono); font-size:13px; padding:5px 10px; border-radius:8px; background:rgba(255,255,255,.12)}
+.mode-card.cx .chips span{background:#132A21; color:#2BD38A}
+.mode-card p{margin:0; opacity:.85}
+.mode-card button{align-self:flex-start; margin-top:auto}
+.mode-card.fx button{background:#fff; color:#1F4FD8}
+.mode-card.cx button{background:#2BD38A; color:#04120C}
+.trust{display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--line); border-radius:20px; background:var(--surface); transition:background-color .45s,border-color .45s}
+.trust div{padding:24px; display:flex; flex-direction:column; gap:8px}
+.trust div+div{border-left:1px solid var(--line)}
+.trust h3{font-size:18px}
+.trust p{margin:0; font-size:14px; color:var(--muted)}
+.trust svg{width:26px; height:26px; stroke:var(--accent)}
+@media (max-width:860px){.steps,.modes{grid-template-columns:1fr} .trust{grid-template-columns:1fr 1fr} .trust div:nth-child(3){border-left:0} .trust div:nth-child(n+3){border-top:1px solid var(--line)}}
+@media (max-width:480px){.trust{grid-template-columns:1fr} .trust div+div{border-left:0; border-top:1px solid var(--line)}}
+
+footer{border-top:1px solid var(--line); padding-block:40px; display:grid; grid-template-columns:2fr 1fr 1fr; gap:28px; font-size:14px; color:var(--muted)}
+footer h4{margin:0 0 10px; color:var(--ink); font-size:14px}
+footer ul{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:6px}
+footer .legal{grid-column:1/-1; font-size:12px; border-top:1px solid var(--line); padding-top:18px; margin:0}
+@media (max-width:700px){footer{grid-template-columns:1fr}}
+
+/* ===== Páginas de la app ===== */
+.page{padding-block:36px 72px; display:flex; flex-direction:column; gap:24px}
+.narrow{max-width:520px; width:100%; margin-inline:auto}
+.mid{max-width:780px; width:100%; margin-inline:auto}
+.page-head{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap}
+.page-head h1{font-size:clamp(28px,4vw,40px)}
+.page-head p{margin:6px 0 0; color:var(--muted)}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:28px; display:flex; flex-direction:column; gap:20px; transition:background-color .45s,border-color .45s}
+@media (max-width:560px){.panel{padding:20px 16px}}
+.panel h2{font-size:22px}
+.panel h3{font-size:17px}
+.back{align-self:flex-start; font-size:14px; color:var(--muted); text-decoration:none; display:inline-flex; gap:6px; align-items:center}
+.back:hover{color:var(--ink)}
+
+/* formularios */
+.fgrid{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+.fgrid .full{grid-column:1/-1}
+@media (max-width:560px){.fgrid{grid-template-columns:1fr}}
+.ff{display:flex; flex-direction:column; gap:6px; min-width:0}
+.ff > label{font-size:14px; font-weight:600}
+.inp{width:100%; background:var(--ground); border:1px solid var(--line); border-radius:10px; padding:12px 14px; font-size:16px; outline:none; transition:border-color .2s,background-color .45s}
+.inp:focus{border-color:var(--accent)}
+.inp[readonly]{color:var(--muted)}
+.ff small{font-size:13px; color:var(--muted)}
+.ff .msg{font-size:13px; color:var(--bad)}
+.ff.invalid .inp{border-color:var(--bad)}
+.pw{position:relative}
+.pw .inp{padding-right:72px}
+.pw button{position:absolute; right:8px; top:50%; transform:translateY(-50%); border:0; background:none; color:var(--accent); font-weight:600; font-size:13px; cursor:pointer; padding:6px}
+.check{display:flex; gap:10px; align-items:flex-start; font-size:14px; color:var(--muted)}
+.check input{margin-top:3px; accent-color:var(--accent); width:16px; height:16px; flex:none}
+.form-err{background:var(--bad-soft); color:var(--bad); border-radius:10px; padding:10px 14px; font-size:14px; margin:0}
+.form-note{background:var(--surface-2); border-radius:10px; padding:12px 14px; font-size:14px; margin:0; color:var(--muted)}
+.actions{display:flex; gap:10px; justify-content:space-between; flex-wrap:wrap}
+.actions .btn-solid{min-width:180px}
+@media (max-width:560px){.actions{flex-direction:column-reverse} .actions .btn{width:100%}}
+.alt{font-size:14px; color:var(--muted); text-align:center; margin:0}
+
+/* stepper */
+.stepper{display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:6px; list-style:none; padding:0; margin:0}
+.stepper li{display:flex; flex-direction:column; gap:8px; font-size:13px; color:var(--muted); min-width:0}
+.stepper li::before{content:""; height:4px; border-radius:4px; background:var(--surface-2)}
+.stepper li.done::before,.stepper li.now::before{background:var(--accent)}
+.stepper li.now{color:var(--ink); font-weight:600}
+.stepper span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+@media (max-width:480px){.stepper li:not(.now) span{display:none}}
+
+/* tarjetas de elección */
+.choices{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media (max-width:480px){.choices{grid-template-columns:1fr}}
+.choice{position:relative; display:flex; flex-direction:column; gap:6px; border:1.5px solid var(--line); border-radius:16px; padding:18px; cursor:pointer; background:var(--ground); transition:border-color .2s,background-color .2s}
+.choice input{position:absolute; opacity:0; pointer-events:none}
+.choice:has(input:checked){border-color:var(--accent); background:var(--accent-soft)}
+.choice:has(input:focus-visible){outline:2px solid var(--accent); outline-offset:2px}
+.choice svg{width:28px; height:28px; stroke:var(--accent)}
+.choice b{font-size:17px}
+.choice small{color:var(--muted); font-size:14px}
+
+/* resumen de cotización */
+.qsum{display:grid; grid-template-columns:1fr auto 1fr; gap:14px; align-items:center; background:var(--ground); border:1px solid var(--line); border-radius:16px; padding:18px}
+.qsum .side{display:flex; flex-direction:column; gap:2px; min-width:0}
+.qsum .side:last-child{text-align:right}
+.qsum small{color:var(--muted); font-size:13px}
+.qsum .amt{font-family:var(--f-mono); font-weight:600; font-size:clamp(18px,3vw,24px); overflow-wrap:anywhere}
+.qsum .arrow{width:22px; height:22px; stroke:var(--muted)}
+.kv{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px 16px; margin:0; font-size:15px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0; text-align:right; font-weight:600; overflow-wrap:anywhere; min-width:0}
+.kv .total{font-size:17px}
+.kv hr{grid-column:1/-1; border:0; border-top:1px solid var(--line); margin:4px 0}
+.copy{display:inline-flex; align-items:center; gap:8px}
+.copy button{border:1px solid var(--line); background:var(--surface); border-radius:8px; font-size:12px; padding:3px 8px; cursor:pointer; color:var(--muted); font-weight:600}
+.copy button:hover{color:var(--ink); border-color:var(--ink)}
+.transfer{border:1.5px dashed var(--accent); border-radius:16px; padding:18px; display:flex; flex-direction:column; gap:14px; background:var(--accent-soft)}
+.transfer .kv dd{font-family:var(--f-mono); font-size:14px}
+
+/* comprobante */
+.drop{border:1.5px dashed var(--line); border-radius:16px; padding:28px 18px; display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; cursor:pointer; background:var(--ground); transition:border-color .2s,background-color .2s}
+.drop:hover,.drop.over{border-color:var(--accent); background:var(--accent-soft)}
+.drop svg{width:34px; height:34px; stroke:var(--accent)}
+.drop b{font-size:16px}
+.drop small{color:var(--muted)}
+.file{display:flex; gap:14px; align-items:center; border:1px solid var(--line); border-radius:14px; padding:12px; background:var(--ground)}
+.file .thumb{width:64px; height:64px; border-radius:10px; object-fit:cover; background:var(--surface-2); display:grid; place-items:center; flex:none; font-family:var(--f-mono); font-size:12px; font-weight:600; color:var(--muted)}
+.file .meta{flex:1; min-width:0; display:flex; flex-direction:column}
+.file .meta b{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.file .meta small{color:var(--muted)}
+
+/* estados */
+.pill{display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; padding:4px 10px; border-radius:99px; white-space:nowrap}
+.pill::before{content:""; width:7px; height:7px; border-radius:50%; background:currentColor}
+.pill.s-pend{background:var(--warn-soft); color:var(--warn)}
+.pill.s-proc{background:var(--info-soft); color:var(--info)}
+.pill.s-ok{background:var(--ok-soft); color:var(--ok)}
+.pill.s-bad{background:var(--bad-soft); color:var(--bad)}
+.tag{font-size:12px; font-weight:600; padding:3px 8px; border-radius:6px; border:1px solid var(--line); color:var(--muted); white-space:nowrap}
+.tag.cripto{color:#1A9C63; border-color:#9BDDBF}
+:root[data-mode="cripto"] .tag.cripto{color:#2BD38A; border-color:#1E5A40}
+.tag.casa{color:#1F4FD8; border-color:#B9C9F5}
+:root[data-mode="cripto"] .tag.casa{color:#7DB4FF; border-color:#27456B}
+
+/* lista de operaciones */
+.filters{display:flex; gap:8px; flex-wrap:wrap}
+.filters button{border:1px solid var(--line); background:var(--surface); border-radius:99px; padding:7px 14px; font-size:14px; font-weight:600; cursor:pointer; color:var(--muted); display:inline-flex; gap:6px}
+.filters button[aria-pressed="true"]{background:var(--ink); color:var(--ground); border-color:var(--ink)}
+.filters .n{font-family:var(--f-mono); font-size:12px; opacity:.75}
+.oplist{list-style:none; margin:0; padding:0; background:var(--surface); border:1px solid var(--line); border-radius:20px; overflow:hidden}
+.oplist .hdr,.oplist a{display:grid; grid-template-columns:150px 110px minmax(0,1fr) 190px 20px; gap:16px; align-items:center; padding:16px 20px}
+.oplist .hdr{font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line); padding-block:12px}
+.oplist li + li a{border-top:1px solid var(--line)}
+.oplist a{text-decoration:none; transition:background-color .15s}
+.oplist a:hover{background:var(--ground)}
+.oplist .date{display:flex; flex-direction:column; font-size:14px}
+.oplist .date small{font-family:var(--f-mono); color:var(--muted); font-size:12px}
+.oplist .amt{font-family:var(--f-mono); font-size:15px; font-weight:600; overflow-wrap:anywhere}
+.oplist .amt small{display:block; font-weight:500; color:var(--muted); font-size:13px}
+.oplist .chev{width:16px; height:16px; stroke:var(--muted)}
+@media (max-width:760px){
+  .oplist .hdr{display:none}
+  .oplist a{grid-template-columns:1fr auto; grid-template-areas:"date state" "amt amt" "mod mod"; gap:8px 12px}
+  .oplist .date{grid-area:date} .oplist .st{grid-area:state; justify-self:end} .oplist .amt{grid-area:amt} .oplist .mod{grid-area:mod} .oplist .chev{display:none}
+}
+.empty{display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; padding:48px 20px; background:var(--surface); border:1px dashed var(--line); border-radius:20px}
+.empty svg{width:44px; height:44px; stroke:var(--muted)}
+.empty h2{font-size:22px}
+.empty p{margin:0; color:var(--muted); max-width:42ch}
+
+/* detalle */
+.detail{display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:20px; align-items:start}
+@media (max-width:860px){.detail{grid-template-columns:1fr}}
+.timeline{list-style:none; margin:0; padding:0; display:flex; flex-direction:column}
+.timeline li{display:grid; grid-template-columns:18px 1fr; gap:12px; padding-bottom:18px; position:relative}
+.timeline li::before{content:""; width:12px; height:12px; margin-top:5px; border-radius:50%; border:2px solid var(--line); background:var(--surface); z-index:1}
+.timeline li::after{content:""; position:absolute; left:5px; top:18px; bottom:0; width:2px; background:var(--line)}
+.timeline li:last-child::after{display:none}
+.timeline li.done::before{background:var(--accent); border-color:var(--accent)}
+.timeline li.bad::before{background:var(--bad); border-color:var(--bad)}
+.timeline li.todo{color:var(--muted)}
+.timeline b{display:block; font-size:15px}
+.timeline small{color:var(--muted); font-size:13px}
+.proof-img{width:100%; max-height:340px; object-fit:contain; border-radius:12px; background:var(--ground); border:1px solid var(--line)}
+
+/* éxito */
+.success{align-items:center; text-align:center}
+.success .ico{width:64px; height:64px; border-radius:50%; background:var(--ok-soft); display:grid; place-items:center}
+.success .ico svg{width:30px; height:30px; stroke:var(--ok)}
+.success p{margin:0; color:var(--muted); max-width:46ch}
+.code{font-family:var(--f-mono); font-size:22px; font-weight:600; letter-spacing:.04em}
+
+.spinner{width:16px; height:16px; border-radius:50%; border:2px solid currentColor; border-right-color:transparent; animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.skeleton{height:72px; border-radius:14px; background:linear-gradient(90deg,var(--surface-2),var(--surface),var(--surface-2)); background-size:200% 100%; animation:sh 1.2s infinite}
+@keyframes sh{to{background-position:-200% 0}}
+
+/* toast */
+.toast{position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom,0px)); transform:translate(-50%,20px); opacity:0; pointer-events:none; background:var(--ink); color:var(--ground); padding:14px 18px; border-radius:12px; font-size:14px; width:max-content; max-width:min(440px,calc(100vw - 32px)); transition:opacity .25s,transform .25s; z-index:50; box-shadow:0 12px 30px rgba(0,0,0,.25)}
+.toast.show{opacity:1; transform:translate(-50%,0); pointer-events:auto}
+.toast b{display:block; margin-bottom:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+
+/* ===================== v2: capa visual ===================== */
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
+
+/* Hero con atmósfera: retícula + halos del color de la modalidad */
+.hero-stage{position:relative; isolation:isolate; overflow:hidden; margin-inline:-16px; padding-inline:16px}
+.hero-stage::before{content:""; position:absolute; inset:0; z-index:-1;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:44px 44px; opacity:.55;
+  -webkit-mask-image:radial-gradient(ellipse 70% 60% at 60% 40%,#000 20%,transparent 75%); mask-image:radial-gradient(ellipse 70% 60% at 60% 40%,#000 20%,transparent 75%)}
+.hero-bg{position:absolute; inset:0; z-index:-1; pointer-events:none}
+.orb{position:absolute; border-radius:50%; filter:blur(70px); opacity:.35; background:var(--accent); transition:background-color .6s}
+.orb.o1{width:420px; height:420px; right:4%; top:-120px; animation:float 14s ease-in-out infinite}
+.orb.o2{width:300px; height:300px; left:-80px; bottom:-140px; opacity:.18; animation:float 18s ease-in-out infinite reverse}
+:root[data-mode="cripto"] .orb{opacity:.28}
+@keyframes float{50%{transform:translate(-30px,24px) scale(1.06)}}
+
+.live-chip{display:inline-flex; align-items:center; gap:8px; align-self:flex-start; font-size:13px; font-weight:600; padding:6px 12px 6px 10px; border-radius:99px; background:var(--surface); border:1px solid var(--line); color:var(--muted); transition:background-color .45s,border-color .45s}
+.live-chip i{width:8px; height:8px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 0 var(--ok); animation:pulse 2s infinite}
+.live-chip #hero-eyebrow{color:var(--ink)}
+.live-chip .sep{font-weight:400}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 55%,transparent)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+
+/* Pizarra de tasas */
+.board{background:color-mix(in srgb,var(--surface) 80%,transparent); backdrop-filter:blur(6px); border:1px solid var(--line); border-radius:18px; padding:16px 18px 10px; display:grid; grid-template-columns:auto 1fr; grid-template-areas:"head head" "nums chart"; gap:6px 20px; max-width:560px; transition:background-color .45s,border-color .45s}
+.board-head{grid-area:head; display:flex; align-items:center; gap:10px; font-size:14px}
+.board-pair{font-weight:700; font-family:var(--f-mono)}
+.board-range{margin-left:auto; font-size:12px}
+.board-nums{grid-area:nums; display:flex; gap:20px; align-items:flex-end; padding-bottom:6px}
+.board-nums div{display:flex; flex-direction:column}
+.board-nums small{font-size:12px; color:var(--muted)}
+.big{font-size:26px; font-weight:600; border-radius:6px; padding-inline:2px; margin-inline:-2px; transition:background-color .6s,color .6s}
+.board-chart{grid-area:chart; width:100%; height:64px; align-self:end; overflow:visible}
+.chg{font-family:var(--f-mono); font-size:12px; font-weight:600; padding:2px 7px; border-radius:6px}
+.chg.up{background:var(--ok-soft); color:var(--ok)} .chg.down{background:var(--bad-soft); color:var(--bad)}
+.flash-up{background:var(--ok-soft); color:var(--ok)} .flash-down{background:var(--bad-soft); color:var(--bad)}
+@media (max-width:560px){.board{grid-template-columns:1fr; grid-template-areas:"head" "nums" "chart"} .big{font-size:22px}}
+
+/* Cotizador: ahorro y tasa preferencial */
+.save{margin:0; font-size:13px; font-weight:600; color:var(--ok); background:var(--ok-soft); border-radius:10px; padding:8px 12px; display:flex; gap:8px; align-items:center}
+.save svg{width:16px; height:16px; stroke:currentColor; flex:none}
+.pref{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--accent-ink); background:var(--accent); padding:2px 7px; border-radius:6px; margin-left:6px; vertical-align:middle}
+.field input.bump{animation:bump .35s ease}
+@keyframes bump{40%{transform:translateY(-2px); opacity:.6}}
+
+/* Bancos + horario */
+.banks{display:flex; align-items:center; gap:10px 24px; flex-wrap:wrap; padding-block:20px 22px; font-size:14px}
+.banks ul{display:flex; flex-wrap:wrap; gap:8px 22px; list-style:none; margin:0; padding:0}
+.banks li{font-family:var(--f-display); font-weight:700; font-size:17px; letter-spacing:-.01em; color:var(--muted); opacity:.85}
+.open{margin-left:auto; display:inline-flex; align-items:center; gap:8px; font-weight:600; font-size:13px; color:var(--muted)}
+.open::before{content:""; width:8px; height:8px; border-radius:50%; background:var(--muted)}
+.open.is-open{color:var(--ok)} .open.is-open::before{background:var(--ok)}
+@media (max-width:700px){.open{margin-left:0}}
+
+/* Mercado */
+.head-row{display:flex; justify-content:space-between; align-items:flex-end; gap:20px; flex-wrap:wrap}
+.tabs{display:inline-flex; background:var(--surface-2); padding:4px; border-radius:12px; gap:4px}
+.tabs button{border:0; background:none; padding:8px 16px; border-radius:9px; font-weight:600; cursor:pointer; color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--surface); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.market-wrap{background:var(--surface); border:1px solid var(--line); border-radius:20px; overflow-x:auto; transition:background-color .45s,border-color .45s}
+.market{width:100%; border-collapse:collapse; font-size:15px; min-width:560px}
+.market th{font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); text-align:left; padding:14px 20px; border-bottom:1px solid var(--line)}
+.market td{padding:14px 20px; border-top:1px solid var(--line)}
+.market tr:first-child td{border-top:0}
+.market .num{text-align:right; font-family:var(--f-mono); font-variant-numeric:tabular-nums}
+.market td.num span{border-radius:5px; padding:1px 3px; transition:background-color .6s,color .6s}
+.market .pair{display:flex; align-items:center; gap:12px; font-weight:700}
+.market .pair small{display:block; font-weight:500; color:var(--muted); font-size:12px}
+.coin{width:34px; height:34px; border-radius:50%; display:grid; place-items:center; font-family:var(--f-mono); font-size:11px; font-weight:700; color:#fff; flex:none}
+.spk-col{width:140px}
+.spk{width:120px; height:34px; display:block}
+.market .go{border:1px solid var(--line); background:none; border-radius:9px; padding:7px 12px; font-weight:600; font-size:13px; cursor:pointer; white-space:nowrap}
+.market .go:hover{border-color:var(--accent); color:var(--accent)}
+.market tbody tr{transition:background-color .15s}
+.market tbody tr:hover{background:var(--ground)}
+
+/* Cómo funciona + teléfono */
+.how{display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:center}
+.how-copy{display:flex; flex-direction:column; gap:28px}
+.how-steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px}
+.how-steps button{position:relative; overflow:hidden; width:100%; text-align:left; display:flex; gap:16px; align-items:flex-start; padding:18px; border-radius:16px; border:1px solid transparent; background:none; cursor:pointer; transition:background-color .3s,border-color .3s}
+.how-steps button[aria-pressed="true"]{background:var(--surface); border-color:var(--line)}
+.how-steps .n{width:32px; height:32px; border-radius:10px; display:grid; place-items:center; font-family:var(--f-mono); font-weight:700; background:var(--surface-2); color:var(--muted); flex:none; transition:background-color .3s,color .3s}
+.how-steps button[aria-pressed="true"] .n{background:var(--accent); color:var(--accent-ink)}
+.how-steps b{display:block; font-size:18px; font-family:var(--f-display)}
+.how-steps small{display:block; color:var(--muted); font-size:14px; margin-top:2px}
+.how-steps .prog{position:absolute; left:0; bottom:0; height:3px; width:100%; background:var(--accent); transform:scaleX(0); transform-origin:left}
+.how-steps button[aria-pressed="true"] .prog{animation:prog 4.5s linear forwards}
+.how.paused .how-steps .prog{animation:none; transform:scaleX(0)}
+@keyframes prog{to{transform:scaleX(1)}}
+.phone-stage{display:grid; place-items:center; padding-block:12px; position:relative}
+.phone-stage::before{content:""; position:absolute; width:78%; aspect-ratio:1; border-radius:50%; background:radial-gradient(circle,var(--glow),transparent 70%)}
+.phone{position:relative; width:280px; max-width:100%; aspect-ratio:9/18.5; border-radius:40px; background:var(--surface); border:10px solid #0B1220; box-shadow:0 40px 80px -30px rgba(10,20,50,.45),inset 0 0 0 1px var(--line); overflow:hidden}
+.notch{position:absolute; top:8px; left:50%; transform:translateX(-50%); width:90px; height:22px; border-radius:14px; background:#0B1220; z-index:3}
+.screen{position:absolute; inset:0; padding:46px 16px 16px; display:flex; flex-direction:column; gap:10px; opacity:0; transform:translateY(12px); transition:opacity .5s,transform .5s; font-size:13px}
+.screen.on{opacity:1; transform:none}
+.ph-top{display:flex; justify-content:space-between; align-items:center; font-family:var(--f-display); font-size:17px}
+.ph-chip{font-family:var(--f-body); font-size:10px; font-weight:700; padding:3px 8px; border-radius:99px; background:var(--accent-soft); color:var(--accent)}
+.ph-field{border:1px solid var(--line); border-radius:12px; padding:9px 11px; background:var(--ground); display:flex; flex-direction:column}
+.ph-field small,.ph-row small,.ph-card small{color:var(--muted); font-size:11px}
+.ph-field span{font-family:var(--f-mono); font-weight:600; font-size:18px}
+.ph-field em{font-style:normal; font-size:12px; color:var(--muted)}
+.ph-field.hl span{color:var(--accent)}
+.ph-row{display:flex; justify-content:space-between; align-items:center; padding-inline:2px}
+.ph-row b{font-family:var(--f-mono)}
+.ph-timer{display:flex; flex-direction:column; gap:5px}
+.ph-timer small{font-size:11px; color:var(--muted)}
+.ph-timer i{height:4px; border-radius:4px; background:linear-gradient(90deg,var(--accent) 78%,var(--surface-2) 78%)}
+.ph-btn{margin-top:auto; background:var(--accent); color:var(--accent-ink); text-align:center; font-weight:700; padding:11px; border-radius:12px}
+.ph-card{border:1.5px dashed var(--accent); background:var(--accent-soft); border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:2px}
+.ph-card .mono{font-size:13px}
+.ph-drop{border:1.5px dashed var(--line); border-radius:12px; padding:14px; display:flex; flex-direction:column; align-items:center; gap:4px; color:var(--muted)}
+.ph-drop svg{width:22px; height:22px; stroke:var(--accent)}
+.ph-op{display:flex; justify-content:space-between; align-items:center; gap:8px; border:1px solid var(--line); border-radius:12px; padding:10px}
+.ph-op b{display:block; font-family:var(--f-mono); font-size:12px}
+.ph-op small{color:var(--muted); font-size:11px}
+.ph-op .pill{font-size:10px; padding:3px 7px}
+.ph-tl{list-style:none; margin:4px 0 0; padding:0 0 0 4px; display:flex; flex-direction:column; gap:12px}
+.ph-tl li{position:relative; padding-left:18px; font-weight:600; font-size:12px}
+.ph-tl li::before{content:""; position:absolute; left:0; top:3px; width:9px; height:9px; border-radius:50%; background:var(--accent)}
+.ph-tl li:not(:last-child)::after{content:""; position:absolute; left:4px; top:14px; height:14px; width:1px; background:var(--accent)}
+.ph-tl small{display:block; color:var(--muted); font-weight:500; font-size:11px}
+.ph-note{margin-top:auto; font-size:12px; background:var(--ok-soft); color:var(--ok); border-radius:10px; padding:10px; font-weight:600}
+@media (max-width:860px){.how{grid-template-columns:1fr} .phone{width:250px}}
+
+/* Comparador */
+.compare{display:grid; grid-template-columns:1fr 1.1fr; gap:40px; background:var(--surface); border:1px solid var(--line); border-radius:24px; padding:36px; transition:background-color .45s,border-color .45s}
+.compare-copy{display:flex; flex-direction:column; gap:14px}
+.compare-copy p{margin:0}
+.range-label{margin-top:10px; font-weight:600}
+.range-label b{font-size:22px; color:var(--accent); margin-left:6px}
+input[type=range]{width:100%; accent-color:var(--accent); height:28px; cursor:pointer}
+.range-scale{display:flex; justify-content:space-between; font-size:12px; color:var(--muted)}
+.compare-res{display:flex; flex-direction:column; gap:16px}
+.cmp-cards{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.cmp{border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:2px; border:1px solid var(--line); background:var(--ground)}
+.cmp small{color:var(--muted); font-size:13px}
+.cmp span{font-size:24px; font-weight:600}
+.cmp em{font-style:normal; font-size:12px; color:var(--muted)}
+.cmp.nexo{border-color:var(--accent); background:var(--accent-soft)}
+.cmp.nexo span{color:var(--accent)}
+.cmp-save{display:flex; align-items:baseline; justify-content:space-between; gap:12px; border-top:1px dashed var(--line); padding-top:14px}
+.cmp-save small{font-weight:600}
+.cmp-save span{font-size:30px; font-weight:600; color:var(--ok)}
+.cmp-bars{display:grid; grid-template-columns:repeat(6,1fr); gap:10px; align-items:end; height:130px; padding-top:18px; border-bottom:1px solid var(--line)}
+.cmp-bars div{position:relative; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; height:100%}
+.cmp-bars i{width:100%; max-width:42px; border-radius:8px 8px 0 0; background:var(--surface-2); transition:height .45s cubic-bezier(.3,.7,.2,1),background-color .3s}
+.cmp-bars div.cur i{background:var(--ok)}
+.cmp-bars b{position:absolute; top:-18px; font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--muted); white-space:nowrap}
+.cmp-bars div.cur b{color:var(--ok)}
+.cmp-bars small{position:absolute; bottom:-22px; font-size:11px; color:var(--muted); white-space:nowrap}
+.cmp-bars + .fine{margin-top:18px}
+@media (max-width:860px){.compare{grid-template-columns:1fr; padding:22px 16px}}
+@media (max-width:420px){.cmp span{font-size:19px} .cmp-bars b{display:none}}
+
+/* Modalidades enriquecidas */
+.mode-card{position:relative; overflow:hidden}
+.mc-ornament{position:absolute; right:-10px; top:-40px; font-family:var(--f-display); font-weight:800; font-size:220px; line-height:1; opacity:.09; pointer-events:none}
+.mc-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; font-size:14px}
+.mc-list li{display:flex; gap:8px; align-items:flex-start; opacity:.9}
+.mc-list li::before{content:"✓"; font-weight:700}
+.mode-card.fx{background:linear-gradient(145deg,#2A5BE6,#1638A8)}
+.mode-card.cx{background:radial-gradient(120% 80% at 100% 0%,#0F3325,#07130F 60%)}
+
+/* FAQ */
+.faq-wrap{display:grid; grid-template-columns:1fr 1.6fr; gap:40px; align-items:start}
+.faq{display:flex; flex-direction:column; border-top:1px solid var(--line)}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{list-style:none; cursor:pointer; padding:18px 36px 18px 0; font-weight:600; font-size:17px; position:relative}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:""; position:absolute; right:6px; top:50%; width:10px; height:10px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); transform:translateY(-70%) rotate(45deg); transition:transform .25s}
+.faq details[open] summary::after{transform:translateY(-30%) rotate(-135deg)}
+.faq p{margin:0 0 18px; color:var(--muted); max-width:62ch}
+@media (max-width:860px){.faq-wrap{grid-template-columns:1fr}}
+
+/* Banda CTA */
+.cta-band{margin-block:24px 72px; border-radius:28px; padding:44px; display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap; color:#fff; background:linear-gradient(120deg,#1F4FD8 0%,#1A3FAF 55%,#0E7A57 130%); position:relative; overflow:hidden}
+:root[data-mode="cripto"] .cta-band{background:linear-gradient(120deg,#0E3B2A,#0B2A1F 50%,#1F4FD8 150%)}
+.cta-band::after{content:""; position:absolute; inset:0; background-image:radial-gradient(rgba(255,255,255,.14) 1px,transparent 1px); background-size:18px 18px; -webkit-mask-image:linear-gradient(90deg,transparent 40%,#000); mask-image:linear-gradient(90deg,transparent 40%,#000); pointer-events:none}
+.cta-band h2{font-size:clamp(26px,3.4vw,38px)}
+.cta-band p{margin:8px 0 0; opacity:.85}
+.cta-actions{display:flex; gap:10px; flex-wrap:wrap; position:relative; z-index:1}
+.btn-light{background:#fff; color:#0E1B33}
+.btn-outline-light{background:transparent; color:#fff; border-color:rgba(255,255,255,.5)}
+.btn-outline-light:hover{border-color:#fff}
+@media (max-width:560px){.cta-band{padding:28px 20px} .cta-actions,.cta-actions .btn{width:100%}}
+
+/* App: resumen en Mis operaciones */
+.tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+.tile{background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:18px 20px; display:flex; flex-direction:column; gap:4px}
+.tile small{color:var(--muted); font-size:13px; font-weight:600}
+.tile span{font-family:var(--f-mono); font-size:26px; font-weight:600}
+.tile em{font-style:normal; font-size:12px; color:var(--muted)}
+.tile.accent{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.tile.accent small,.tile.accent em{color:inherit; opacity:.8}
+@media (max-width:700px){.tiles{grid-template-columns:1fr 1fr} .tile.accent{grid-column:1/-1}}
+
+/* Check animado de éxito */
+.success .ico svg path{stroke-dasharray:30; stroke-dashoffset:30; animation:draw .6s .15s ease forwards}
+.success .ico{animation:pop .45s cubic-bezier(.3,1.5,.5,1)}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes pop{from{transform:scale(.6); opacity:.3}}
+@media (prefers-reduced-motion:reduce){.success .ico svg path{stroke-dashoffset:0}}
+
+@media (max-width:400px){header .brand-t{display:none}}
+.market-wrap{position:relative}
+@media (max-width:600px){.market{min-width:0} .market th:nth-child(3),.market td:nth-child(3),.market th:nth-child(5),.market td:nth-child(5){display:none} .market th,.market td{padding:12px 10px} .market .pair small{display:none} .coin{width:28px; height:28px; font-size:9px}}
+section.block.how{display:grid}
+section.block.faq-wrap{display:grid}
+@media (max-width:860px){section.block.how,section.block.faq-wrap{grid-template-columns:1fr}}
+.ph-save{font-size:11px; font-weight:700; color:var(--ok); background:var(--ok-soft); border-radius:8px; padding:7px 9px}
+.ph-banks{display:flex; flex-direction:column; gap:2px; font-size:11px; font-weight:600}
+.ph-banks small{color:var(--muted); font-weight:500}
+</style>
+
+<header class="top">
+  <div class="wrap nav">
+    <a class="brand" href="#/" aria-label="NexoCambio, inicio">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect class="b" x="2" y="2" width="17" height="17" rx="5"/><rect class="a" x="13" y="13" width="17" height="17" rx="5"/></svg>
+      <span class="brand-t">NexoCambio</span>
+    </a>
+    <nav class="links" id="nav-links" aria-label="Principal"></nav>
+    <div class="auth" id="nav-auth"></div>
+  </div>
+  <nav class="wrap mobile-tabs" id="nav-mobile" aria-label="Secciones" hidden></nav>
+</header>
+
+<!-- ===================== LANDING ===================== -->
+<div id="page-home">
+
+<!-- HERO -->
+<div class="hero-stage">
+  <div class="hero-bg" aria-hidden="true"><span class="orb o1"></span><span class="orb o2"></span></div>
+  <div class="wrap">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="live-chip"><i></i><span id="hero-eyebrow">Casa de cambio digital</span><b class="sep">·</b><span id="upd">Tasas en vivo</span></span>
+        <h1 id="hero-title">Cambia soles y dólares <em>sin salir de casa</em>.</h1>
+        <p class="lead" id="hero-lead">Cotiza al instante, transfiere desde tu banco y sigue el estado de tu operación en línea. Casa de Cambio y Cripto en una sola plataforma.</p>
+
+        <div class="board" aria-live="off">
+          <div class="board-head">
+            <span class="board-pair" id="bd-pair">USD / PEN</span>
+            <span class="chg" id="bd-chg">+0.00%</span>
+            <span class="muted board-range">24 h</span>
+          </div>
+          <div class="board-nums">
+            <div><small>Compramos</small><span class="mono big" id="bd-buy">—</span></div>
+            <div><small>Vendemos</small><span class="mono big" id="bd-sell">—</span></div>
+          </div>
+          <svg class="board-chart" id="bd-chart" viewBox="0 0 320 90" preserveAspectRatio="none" role="img" aria-label="Evolución del tipo de cambio en las últimas 24 horas"></svg>
+        </div>
+      </div>
+
+      <form class="quoter" id="quoter" novalidate aria-labelledby="q-title">
+        <div class="q-head">
+          <span class="q-title" id="q-title">Cotiza tu operación</span>
+          <span class="src" id="src">Tasas de demostración</span>
+        </div>
+        <div class="seg" role="group" aria-label="Modalidad">
+          <span class="thumb" aria-hidden="true"></span>
+          <button type="button" id="m-casa" data-mode="casa" aria-pressed="true">Casa de Cambio</button>
+          <button type="button" id="m-cripto" data-mode="cripto" aria-pressed="false">Cripto</button>
+        </div>
+        <div class="field">
+          <label for="amt-from">Envías</label>
+          <input id="amt-from" inputmode="decimal" autocomplete="off" value="1,000.00" aria-describedby="q-err">
+          <select id="cur-from" aria-label="Moneda o activo que envías"></select>
+        </div>
+        <div class="swap-row">
+          <button type="button" class="swap" id="swap" aria-label="Intercambiar monedas">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>
+          </button>
+        </div>
+        <div class="field">
+          <label for="amt-to">Recibes (estimado)</label>
+          <input id="amt-to" readonly tabindex="-1" value="—">
+          <select id="cur-to" aria-label="Moneda o activo que recibes"></select>
+        </div>
+        <p class="q-err" id="q-err" role="alert" hidden></p>
+        <dl class="q-meta">
+          <dt id="rate-label">Tipo de cambio</dt><dd class="mono" id="rate">—</dd>
+          <dt>Comisión</dt><dd>S/ 0.00</dd>
+        </dl>
+        <p class="save" id="q-save" hidden></p>
+        <div class="timer" id="timer" aria-live="polite">
+          <span id="timer-text">Tasa válida por 05:00</span>
+          <span class="bar"><i id="timer-bar"></i></span>
+        </div>
+        <button type="submit" class="btn btn-solid cta" id="cta">Operar ahora</button>
+        <p class="fine">Montos desde US$ 5,000 acceden a tasa preferencial.</p>
+      </form>
+    </section>
+  </div>
+</div>
+
+<!-- BANCOS + HORARIO -->
+<div class="wrap">
+  <div class="banks">
+    <span class="muted">Transfiere desde</span>
+    <ul><li>BCP</li><li>Interbank</li><li>BBVA</li><li>Scotiabank</li><li>BanBif</li><li>Pichincha</li></ul>
+    <span class="open" id="open-status">—</span>
+  </div>
+</div>
+
+<div class="ticker" aria-hidden="true"><div class="ticker-track" id="ticker"></div></div>
+
+<div class="wrap">
+  <!-- MERCADO -->
+  <section class="block" id="mercado">
+    <div class="head-row">
+      <div class="head">
+        <span class="eyebrow">Mercado</span>
+        <h2>Tasas actualizadas cada pocos segundos</h2>
+        <p>Compra y venta de cada par, con su variación en las últimas 24 horas.</p>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Modalidad del mercado">
+        <button role="tab" id="mk-casa" data-mk="casa" aria-selected="true">Divisas</button>
+        <button role="tab" id="mk-cripto" data-mk="cripto" aria-selected="false">Cripto</button>
+      </div>
+    </div>
+    <div class="market-wrap">
+      <table class="market">
+        <thead><tr><th scope="col">Par</th><th scope="col" class="num">Compramos</th><th scope="col" class="num">Vendemos</th><th scope="col" class="num">24 h</th><th scope="col" class="spk-col">Tendencia</th><th scope="col"><span class="sr">Acción</span></th></tr></thead>
+        <tbody id="market-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- CÓMO FUNCIONA + TELÉFONO -->
+  <section class="block how" id="como-funciona">
+    <div class="how-copy">
+      <div class="head">
+        <span class="eyebrow">Cómo funciona</span>
+        <h2>Tu cambio en tres pasos, desde el celular</h2>
+        <p>Sin colas ni efectivo: el dinero se mueve entre tu banco y el nuestro.</p>
+      </div>
+      <ol class="how-steps" id="how-steps">
+        <li><button type="button" data-step="0" aria-pressed="true"><span class="n">1</span><span><b>Cotiza y confirma</b><small>Elige la modalidad, ingresa el monto y congela la tasa por 5 minutos.</small></span><i class="prog"></i></button></li>
+        <li><button type="button" data-step="1" aria-pressed="false"><span class="n">2</span><span><b>Transfiere y adjunta</b><small>Transfiere a la cuenta de NexoCambio y sube la foto o PDF del comprobante.</small></span><i class="prog"></i></button></li>
+        <li><button type="button" data-step="2" aria-pressed="false"><span class="n">3</span><span><b>Recibe y haz seguimiento</b><small>Validamos tu transferencia y ves cada cambio de estado en Mis operaciones.</small></span><i class="prog"></i></button></li>
+      </ol>
+    </div>
+    <div class="phone-stage" aria-hidden="true">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen s0 on">
+          <div class="ph-top"><b>Cotiza</b><span class="ph-chip">Casa de Cambio</span></div>
+          <div class="ph-field"><small>Envías</small><span>1,000.00 <em>PEN</em></span></div>
+          <div class="ph-field hl"><small>Recibes</small><span>294.09 <em>USD</em></span></div>
+          <div class="ph-row"><small>Tipo de cambio</small><b>3.4003</b></div>
+          <div class="ph-timer"><small>Tasa válida por 04:32</small><i></i></div>
+          <div class="ph-save">↗ Ahorras S/ 20.49 vs. banco</div>
+          <div class="ph-banks"><small>Transfiere desde</small><span>BCP · Interbank · BBVA · Scotiabank</span></div>
+          <div class="ph-btn">Operar ahora</div>
+        </div>
+        <div class="screen s1">
+          <div class="ph-top"><b>Transfiere</b><span class="ph-chip">Paso 2 de 3</span></div>
+          <div class="ph-card"><small>Cuenta de NexoCambio</small><b>BCP · Cta. Corriente</b><span class="mono">193-2458710-0-39</span></div>
+          <div class="ph-row"><small>Monto exacto</small><b>S/ 1,000.00</b></div>
+          <div class="ph-drop"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 16V4M7 9l5-5 5 5M4 16v3h16v-3"/></svg><small>voucher_bcp.jpg</small></div>
+          <div class="ph-btn">Confirmar operación</div>
+        </div>
+        <div class="screen s2">
+          <div class="ph-top"><b>Mis operaciones</b></div>
+          <div class="ph-op"><span><b>NX-7K2Q4P</b><small>S/ 1,000 → US$ 294.09</small></span><span class="pill s-ok">Procesada</span></div>
+          <ol class="ph-tl"><li class="d">Pendiente de validación<small>10:02</small></li><li class="d">En proceso<small>10:09</small></li><li class="d">Procesada<small>10:14</small></li></ol>
+          <div class="ph-note">Enviamos US$ 294.09 a tu cuenta Interbank.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPARADOR -->
+  <section class="block" id="ahorro">
+    <div class="compare">
+      <div class="compare-copy">
+        <span class="eyebrow">Comparador</span>
+        <h2>¿Cuánto ahorras frente al banco?</h2>
+        <p class="muted">Los bancos suelen aplicar un diferencial más amplio entre compra y venta. Mueve el monto y compara cuántos dólares recibes.</p>
+        <label class="range-label" for="cmp-amt">Cambias <b class="mono" id="cmp-amt-l">S/ 5,000</b></label>
+        <input type="range" id="cmp-amt" min="500" max="30000" step="500" value="5000">
+        <div class="range-scale"><span>S/ 500</span><span>S/ 30,000</span></div>
+      </div>
+      <div class="compare-res">
+        <div class="cmp-cards">
+          <div class="cmp bank"><small>Banco tradicional</small><span class="mono" id="cmp-bank">—</span><em>T.C. referencial <span id="cmp-bank-r">—</span></em></div>
+          <div class="cmp nexo"><small>NexoCambio</small><span class="mono" id="cmp-nexo">—</span><em>T.C. <span id="cmp-nexo-r">—</span></em></div>
+        </div>
+        <div class="cmp-save"><small>Tu ahorro</small><span class="mono" id="cmp-save">—</span></div>
+        <div class="cmp-bars" id="cmp-bars" role="img" aria-label="Ahorro estimado por monto"></div>
+        <p class="fine" style="text-align:left">Diferencial bancario referencial de 2.5 % sobre el precio medio. Solo con fines ilustrativos.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODALIDADES -->
+  <section class="block" id="servicios">
+    <div class="head">
+      <span class="eyebrow">Servicios</span>
+      <h2>Dos modalidades, una sola cuenta</h2>
+      <p>Alterna entre Casa de Cambio y Cripto desde el mismo cotizador, sin cambiar de página.</p>
+    </div>
+    <div class="modes">
+      <article class="mode-card fx">
+        <span class="mc-ornament" aria-hidden="true">$</span>
+        <h3>Casa de Cambio</h3>
+        <p>Compra y venta de dólares y euros con transferencia bancaria. Para personas y empresas.</p>
+        <div class="chips"><span>PEN</span><span>USD</span><span>EUR</span></div>
+        <ul class="mc-list"><li>Transferencia inmediata en 4 bancos</li><li>Interbancaria con CCI desde cualquier banco</li><li>Tasa preferencial desde US$ 5,000</li></ul>
+        <button type="button" class="btn" data-go="casa">Cotizar divisas</button>
+      </article>
+      <article class="mode-card cx">
+        <span class="mc-ornament" aria-hidden="true">₿</span>
+        <h3>Cripto</h3>
+        <p>Compra y vende stablecoins y criptoactivos pagando en soles o dólares.</p>
+        <div class="chips"><span>USDT</span><span>USDC</span><span>BTC</span><span>ETH</span></div>
+        <ul class="mc-list"><li>Redes TRC20, ERC20, Solana y Bitcoin</li><li>Envío directo a tu billetera</li><li>Sin custodia: tú controlas tus llaves</li></ul>
+        <button type="button" class="btn" data-go="cripto">Cotizar cripto</button>
+      </article>
+    </div>
+  </section>
+
+  <!-- SEGURIDAD -->
+  <section class="block" id="seguridad">
+    <div class="head">
+      <span class="eyebrow">Seguridad y confianza</span>
+      <h2>Tu dinero siempre entre cuentas a tu nombre</h2>
+    </div>
+    <div class="trust">
+      <div><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><h3>Identidad verificada</h3><p>Registro con DNI, CE o RUC antes de tu primera operación.</p></div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><h3>Datos cifrados</h3><p>Conexión HTTPS con la API y contraseñas guardadas con hash.</p></div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 10h18M5 10V20M19 10V20M9 10v10M15 10v10M3 20h18M12 3 3 8h18l-9-5Z"/></svg><h3>Solo transferencias</h3><p>No manejamos efectivo. Los fondos se mueven entre bancos.</p></div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><h3>Trazabilidad</h3><p>Cada operación tiene estado: Pendiente, En proceso, Procesada o Rechazada.</p></div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="block faq-wrap" id="faq">
+    <div class="head">
+      <span class="eyebrow">Preguntas frecuentes</span>
+      <h2>Lo que suelen preguntarnos</h2>
+    </div>
+    <div class="faq">
+      <details open><summary>¿Cuánto tarda en llegar mi cambio?</summary><p>Si transfieres desde BCP, Interbank, BBVA o Scotiabank, validamos y enviamos en minutos dentro del horario de atención. Las transferencias interbancarias con CCI pueden tardar hasta un día hábil.</p></details>
+      <details><summary>¿Por cuánto tiempo se mantiene la tasa?</summary><p>La tasa queda fija por 5 minutos desde que cotizas. Si vence antes de confirmar, la actualizas con un clic.</p></details>
+      <details><summary>¿Puedo operar como empresa?</summary><p>Sí. Registra la empresa con su RUC y los datos del representante autorizado; las operaciones quedan a nombre de la empresa.</p></details>
+      <details><summary>¿Qué pasa si mi operación es rechazada?</summary><p>Verás el motivo en el detalle de la operación. Si ya transferiste, devolvemos el monto a la cuenta de origen.</p></details>
+      <details><summary>¿En qué redes puedo recibir cripto?</summary><p>USDT en TRC20 o ERC20, USDC en ERC20 o Solana, BTC en la red Bitcoin y ETH en ERC20. Verifica siempre que tu billetera use la misma red.</p></details>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-band">
+    <div>
+      <h2>Empieza a cambiar en menos de 3 minutos</h2>
+      <p>Crea tu cuenta, cotiza y registra tu primera operación hoy.</p>
+    </div>
+    <div class="cta-actions">
+      <a class="btn btn-light" href="#/registro">Crear cuenta gratis</a>
+      <button type="button" class="btn btn-outline-light" id="cta-quote">Cotizar ahora</button>
+    </div>
+  </section>
+</div>
+</div>
+
+<!-- ===================== APP (login, registro, operar, operaciones) ===================== -->
+<main class="wrap" id="page-app" hidden></main>
+
+<div class="wrap">
+  <footer id="contacto">
+    <div>
+      <a class="brand" href="#/"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect class="b" x="2" y="2" width="17" height="17" rx="5"/><rect class="a" x="13" y="13" width="17" height="17" rx="5"/></svg>NexoCambio</a>
+      <p>Plataforma digital de Casa de Cambio y Cripto. Proyecto académico — Cloud Computing, UTEC Posgrado.</p>
+    </div>
+    <div><h4>Contacto</h4><ul><li>hola@nexocambio.pe</li><li>Lun–Vie 9:00–18:00</li><li>Sáb 9:00–13:00</li></ul></div>
+    <div><h4>Cuenta</h4><ul><li><a href="#/login">Iniciar sesión</a></li><li><a href="#/registro">Registrarse</a></li><li><a href="#/operaciones">Mis operaciones</a></li></ul></div>
+    <p class="legal">NexoCambio es una startup ficticia creada con fines académicos. Tasas, cuentas bancarias y direcciones mostradas son de demostración y no constituyen una oferta.</p>
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+<script>
+/* =====================================================================
+   NexoCambio — Front MVP (HU1–HU7)
+   ---------------------------------------------------------------------
+   CONFIGURACIÓN: coloca la URL del stage de API Gateway de cada
+   microservicio. Vacío = ese microservicio corre en modo demo (datos
+   simulados en el navegador). Puede ser la misma URL para los tres.
+   ej. "https://abc123.execute-api.us-east-1.amazonaws.com/dev"
+   ===================================================================== */
+const CONFIG = {
+  API: {
+    cotizaciones: "",   // POST /cotizar
+    clientes:     "",   // POST /registro, POST /login, GET /clientes/{id}
+    operaciones:  ""    // POST/GET /operaciones, GET /operaciones/{id}, POST /operaciones/{id}/comprobante
+  },
+  VALIDEZ_SEG: 300,           // vigencia de la cotización
+  MAX_COMPROBANTE_MB: 4   // base64 (+33%) debe caber en el límite de 6 MB de Lambda
+};
+
+/* ============================ CATÁLOGOS ============================ */
+const MID_USD = { USD:1, PEN:1/3.385, EUR:1.085, USDT:1.0, USDC:1.0, BTC:98500, ETH:3450 };  // demo
+const SPREAD = { casa:0.0045, cripto:0.012 };
+const BANK_SPREAD = 0.025;      // diferencial bancario referencial (comparador)
+const PREF_USD = 5000;          // desde este monto (equivalente en USD) aplica tasa preferencial
+const DEC = { PEN:2, USD:2, EUR:2, USDT:2, USDC:2, BTC:6, ETH:5 };
+const FIAT = ["PEN","USD","EUR"];
+const MODES = {
+  casa:{ from:["PEN","USD","EUR"], to:["USD","PEN","EUR"], def:["PEN","USD"], amt:1000,
+    eyebrow:"Casa de cambio digital", title:'Cambia soles y dólares <em>sin salir de casa</em>.',
+    lead:"Cotiza al instante, transfiere desde tu banco y sigue el estado de tu operación en línea. Casa de Cambio y Cripto en una sola plataforma." },
+  cripto:{ from:["PEN","USD","USDT","USDC","BTC","ETH"], to:["USDT","USDC","BTC","ETH","PEN","USD"], def:["PEN","USDT"], amt:1000,
+    eyebrow:"Cripto sin complicaciones", title:'Compra y vende cripto <em>en soles</em>.',
+    lead:"USDT, USDC, BTC y ETH con la misma experiencia de siempre: cotiza, transfiere y adjunta tu comprobante." }
+};
+const BANCOS = ["BCP","Interbank","BBVA","Scotiabank","BanBif","Banco Pichincha"];
+const REDES = { USDT:["TRON (TRC20)","Ethereum (ERC20)"], USDC:["Ethereum (ERC20)","Solana"], BTC:["Bitcoin"], ETH:["Ethereum (ERC20)"] };
+const MONEDA_NOMBRE = { PEN:"soles", USD:"dólares", EUR:"euros" };
+/* Cuentas y wallets de NexoCambio — FICTICIAS, solo para el prototipo */
+const CUENTAS_NEXO = {
+  BCP:        { PEN:["Cta. Corriente","193-2458710-0-39","002-193-002458710039-14"], USD:["Cta. Corriente","193-2458711-1-47","002-193-002458711147-17"], EUR:["Cta. Corriente","193-2458712-2-55","002-193-002458712255-10"] },
+  Interbank:  { PEN:["Cta. Corriente","200-3001845527","003-200-003001845527-38"], USD:["Cta. Corriente","200-3001845534","003-200-003001845534-31"] },
+  BBVA:       { PEN:["Cta. Corriente","0011-0174-0100073152","011-174-000100073152-86"], USD:["Cta. Corriente","0011-0174-0100073160","011-174-000100073160-81"] },
+  Scotiabank: { PEN:["Cta. Corriente","000-4127785","009-170-000004127785-52"], USD:["Cta. Corriente","000-4127793","009-170-000004127793-56"] }
+};
+const WALLETS_NEXO = {
+  "TRON (TRC20)":"TNxDemoC4mb1oU7k9QeR2sWp6YhL3vB8aZ",
+  "Ethereum (ERC20)":"0x4e5843616d62696f44656d6f0000000000A1f3",
+  "Solana":"NxDemo7h2Kq9bVw4sP1eYt6RuC3mZ8gL5aF0jX",
+  "Bitcoin":"bc1qnexodemo0cambio7x9p2k4w6s8u0y3r5t"
+};
+const ESTADOS = ["Pendiente de validación","En proceso","Procesada","Rechazada"];
+const PILL = { "Pendiente de validación":"s-pend", "En proceso":"s-proc", "Procesada":"s-ok", "Rechazada":"s-bad" };
+
+/* ============================ UTILIDADES ============================ */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = (n,c) => new Intl.NumberFormat("es-PE",{minimumFractionDigits:DEC[c]??2,maximumFractionDigits:DEC[c]??2}).format(n);
+const money = (n,c) => `${fmt(n,c)} ${c}`;
+const parseAmt = s => { const v = parseFloat(String(s).replace(/,/g,"")); return isFinite(v) ? v : NaN; };
+const fDate = iso => new Intl.DateTimeFormat("es-PE",{day:"2-digit",month:"short",year:"numeric"}).format(new Date(iso));
+const fTime = iso => new Intl.DateTimeFormat("es-PE",{hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
+const fDateTime = iso => `${fDate(iso)}, ${fTime(iso)}`;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const uid = (p,n=6) => p + Array.from({length:n},()=>"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.random()*32|0]).join("");
+const store = {
+  get(k, s=localStorage){ try{ return JSON.parse(s.getItem(k)); }catch(_){ return null; } },
+  set(k, v, s=localStorage){ try{ s.setItem(k, JSON.stringify(v)); }catch(_){} },
+  del(k, s=localStorage){ try{ s.removeItem(k); }catch(_){} }
+};
+const SS = (() => { try { return sessionStorage; } catch(_) { return null; } })();
+const icon = {
+  arrow:'<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  chev:'<svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>',
+  back:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  upload:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>',
+  person:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
+  company:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="4" y="3" width="11" height="18" rx="1"/><path d="M15 9h5v12h-5M8 7h3M8 11h3M8 15h3"/></svg>',
+  inbox:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M3 13h5l1.5 3h5L16 13h5M5 5h14l2 8v6H3v-6l2-8Z"/></svg>'
+};
+
+/* hash simple solo para el modo demo (el backend real usa pbkdf2/bcrypt) */
+function demoHash(pw, salt){ let h = 2166136261 >>> 0; const s = salt + ":" + pw;
+  for(let r=0;r<1000;r++) for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i) + r; h = Math.imul(h, 16777619) >>> 0; }
+  return salt + "$" + h.toString(16); }
+
+/* ============================ SESIÓN ============================ */
+const session = {
+  get(){ return SS ? store.get("nexo_sesion", SS) : session._mem; },
+  set(v){ session._mem = v; if(SS) store.set("nexo_sesion", v, SS); },
+  clear(){ session._mem = null; if(SS) store.del("nexo_sesion", SS); },
+  _mem:null
+};
+const draft = {
+  get(){ return (SS && store.get("nexo_borrador", SS)) || draft._mem; },
+  set(v){ draft._mem = v; if(SS) store.set("nexo_borrador", v, SS); },
+  clear(){ draft._mem = null; if(SS) store.del("nexo_borrador", SS); },
+  _mem:null
+};
+
+/* ============================ API ============================
+   Cada función usa el microservicio real si su URL está configurada;
+   si no, usa el simulador local (mock) con el mismo contrato.        */
+class ApiError extends Error { constructor(msg, status){ super(msg); this.status = status; } }
+
+async function http(service, method, path, body){
+  const base = CONFIG.API[service].replace(/\/$/,"");
+  const s = session.get();
+  let r;
+  try {
+    r = await fetch(base + path, { method,
+      headers:{ "Content-Type":"application/json", ...(s?.token ? { Authorization:"Bearer " + s.token } : {}) },
+      body: body ? JSON.stringify(body) : undefined });
+  } catch(e){ throw new ApiError("No pudimos conectar con el servidor. Revisa tu conexión e inténtalo otra vez.", 0); }
+  let data = null; try { data = await r.json(); } catch(_){}
+  if(r.status === 401 && path !== "/login"){ session.clear(); renderNav(); }
+  if(!r.ok) throw new ApiError(data?.mensaje || data?.message || data?.error || `Error ${r.status}`, r.status);
+  return data;
+}
+const live = svc => !!CONFIG.API[svc];
+
+const api = {
+  async cotizar(body){ return live("cotizaciones") ? http("cotizaciones","POST","/cotizar",body) : mock.cotizar(body); },
+  async registro(body){ return live("clientes") ? http("clientes","POST","/registro",body) : mock.registro(body); },
+  async login(body){ return live("clientes") ? http("clientes","POST","/login",body) : mock.login(body); },
+  async crearOperacion(body){ return live("operaciones") ? http("operaciones","POST","/operaciones",body) : mock.crearOperacion(body); },
+  async subirComprobante(id, body){ return live("operaciones") ? http("operaciones","POST",`/operaciones/${encodeURIComponent(id)}/comprobante`,body) : mock.subirComprobante(id, body); },
+  async listarOperaciones(){ const r = live("operaciones") ? await http("operaciones","GET","/operaciones") : await mock.listarOperaciones(); return Array.isArray(r) ? r : (r?.operaciones || r?.items || []); },
+  async obtenerOperacion(id){ return live("operaciones") ? http("operaciones","GET",`/operaciones/${encodeURIComponent(id)}`) : mock.obtenerOperacion(id); }
+};
+
+/* ---------------------- SIMULADOR (modo demo) ---------------------- */
+const DEMO = { correo:"demo@nexocambio.pe", password:"Demo1234" };
+function quoteLocal({modalidad, moneda_origen:o, moneda_destino:d, monto_origen:m}){
+  const pref = m * MID_USD[o] >= PREF_USD;
+  const tasa = (MID_USD[o] / MID_USD[d]) * (1 - SPREAD[modalidad] * (pref ? 0.6 : 1));
+  const now = Date.now();
+  return { id_cotizacion:uid("COT-",8), modalidad, moneda_origen:o, moneda_destino:d, monto_origen:m, tasa, tasa_preferencial:pref,
+    monto_destino:+(m*tasa).toFixed(DEC[d]), fecha_cotizacion:new Date(now).toISOString(),
+    fecha_expiracion:new Date(now + CONFIG.VALIDEZ_SEG*1000).toISOString() };
+}
+const mock = {
+  db:null,
+  load(){
+    if(mock.db) return mock.db;
+    mock.db = store.get("nexo_db") || { clientes:[], operaciones:[] };
+    if(!mock.db.clientes.some(c => c.correo === DEMO.correo)) mock.seed();
+    return mock.db;
+  },
+  save(){ store.set("nexo_db", mock.db); },
+  seed(){
+    const id = "CLI-DEMO01", salt = "s4lt";
+    mock.db.clientes.push({ id_cliente:id, tipo_cliente:"persona", nombre:"Lucía Ramírez Torres", tipo_documento:"DNI", numero_documento:"45879632",
+      correo:DEMO.correo, telefono:"987654321", password_hash:demoHash(DEMO.password, salt), fecha_registro:new Date(Date.now()-40*864e5).toISOString() });
+    const mk = (daysAgo, modalidad, o, d, m, estados, extra={}) => {
+      const t0 = Date.now() - daysAgo*864e5;
+      const q = quoteLocal({modalidad, moneda_origen:o, moneda_destino:d, monto_origen:m});
+      const hist = estados.map((e,i) => ({ estado:e, fecha:new Date(t0 + i*(2.5*36e5)).toISOString() }));
+      const op = { id_operacion:uid("NX-"), id_cliente:id, id_cotizacion:q.id_cotizacion, modalidad, moneda_origen:o, moneda_destino:d,
+        monto_origen:m, monto_destino:q.monto_destino, tasa:q.tasa, estado:estados.at(-1), fecha_operacion:hist[0].fecha, historial:hist,
+        origen: FIAT.includes(o) ? { tipo:"banco", banco:"BCP" } : { tipo:"wallet", red:REDES[o][0] },
+        destino: FIAT.includes(d) ? { tipo:"banco", banco:"Interbank", tipo_cuenta:"Ahorros", numero:"8983141592653", titular:"Lucía Ramírez Torres" }
+                                  : { tipo:"wallet", red:REDES[d][0], direccion:"TLuciaDemoW4ll3tX9pQ2rT5vB7nM1kH3sJ" },
+        numero_transferencia:String(100000 + (Math.random()*899999|0)), ...extra };
+      op.ruta_comprobante = `s3://nexocambio-comprobantes/${id}/${op.id_operacion}/comprobante.jpg`;
+      op.comprobante_nombre = "comprobante.jpg";
+      return op;
+    };
+    mock.db.operaciones.push(
+      mk(12, "casa", "PEN","USD", 3400, ["Pendiente de validación","En proceso","Procesada"]),
+      mk(6,  "cripto","PEN","USDT", 500, ["Pendiente de validación","Rechazada"], { motivo_rechazo:"El monto transferido (S/ 450.00) no coincide con el de la operación." }),
+      mk(1,  "casa", "USD","PEN", 800, ["Pendiente de validación","En proceso"]),
+      mk(0.02,"cripto","USDT","PEN", 250, ["Pendiente de validación"])
+    );
+    mock.save();
+  },
+  me(){ const s = session.get(); if(!s?.token) throw new ApiError("Tu sesión expiró. Inicia sesión otra vez.", 401);
+        return s.token.startsWith("mock.") ? s.token.slice(5) : s.cliente?.id_cliente; },
+  strip(c){ const { password_hash, ...rest } = c; return rest; },
+  async cotizar(b){ await sleep(120); return quoteLocal(b); },
+  async registro(b){
+    await sleep(500); const db = mock.load();
+    if(db.clientes.some(c => c.correo.toLowerCase() === b.correo.toLowerCase())) throw new ApiError("Ya existe una cuenta con ese correo. Inicia sesión o usa otro correo.", 409);
+    if(db.clientes.some(c => c.numero_documento === b.numero_documento)) throw new ApiError("Ya existe una cuenta con ese número de documento.", 409);
+    const { password, ...rest } = b;
+    const c = { ...rest, id_cliente:uid("CLI-"), password_hash:demoHash(password, uid("",4)), fecha_registro:new Date().toISOString() };
+    db.clientes.push(c); mock.save();
+    return { id_cliente:c.id_cliente, mensaje:"Cliente registrado" };
+  },
+  async login({correo, password}){
+    await sleep(450); const db = mock.load();
+    const c = db.clientes.find(x => x.correo.toLowerCase() === String(correo).toLowerCase());
+    if(!c || demoHash(password, c.password_hash.split("$")[0]) !== c.password_hash) throw new ApiError("Correo o contraseña incorrectos.", 401);
+    return { token:"mock." + c.id_cliente, cliente:mock.strip(c) };
+  },
+  async crearOperacion(b){
+    await sleep(400); const db = mock.load(); const idc = mock.me();
+    const op = { ...b, id_operacion:uid("NX-"), id_cliente:idc, estado:"Pendiente de comprobante", fecha_operacion:new Date().toISOString(), historial:[] };
+    db.operaciones.push(op); mock.save(); return op;
+  },
+  async subirComprobante(id, b){
+    await sleep(700); const db = mock.load(); const idc = mock.me();
+    const op = db.operaciones.find(o => o.id_operacion === id && o.id_cliente === idc);
+    if(!op) throw new ApiError("No encontramos la operación.", 404);
+    const now = new Date().toISOString();
+    Object.assign(op, { estado:"Pendiente de validación", ruta_comprobante:`s3://nexocambio-comprobantes/${idc}/${id}/${b.nombre_archivo}`,
+      comprobante_nombre:b.nombre_archivo, comprobante_tipo:b.content_type, numero_transferencia:b.numero_transferencia || null,
+      historial:[{ estado:"Pendiente de validación", fecha:now }] });
+    // el navegador guarda la vista previa solo si la imagen es pequeña (en AWS, el archivo va a S3)
+    if(b.contenido_base64 && b.contenido_base64.length < 1_500_000) op.comprobante_preview = `data:${b.content_type};base64,${b.contenido_base64}`;
+    try { mock.save(); } catch(_){ delete op.comprobante_preview; mock.save(); }
+    return op;
+  },
+  async listarOperaciones(){
+    await sleep(350); const idc = mock.me();
+    return mock.load().operaciones.filter(o => o.id_cliente === idc && o.estado !== "Pendiente de comprobante")
+      .sort((a,b) => b.fecha_operacion.localeCompare(a.fecha_operacion));
+  },
+  async obtenerOperacion(id){
+    await sleep(250); const idc = mock.me();
+    const op = mock.load().operaciones.find(o => o.id_operacion === id && o.id_cliente === idc);
+    if(!op) throw new ApiError("No encontramos esta operación en tu cuenta.", 404);
+    return op;
+  }
+};
+
+/* ============================ MODALIDAD / TEMA ============================ */
+let currentMode = "casa", homeMode = "casa";
+function applyMode(mode){ currentMode = mode; document.documentElement.dataset.mode = mode; }
+
+/* ============================ COTIZADOR (HU1) ============================ */
+const q = { from:$("amt-from"), to:$("amt-to"), cf:$("cur-from"), ct:$("cur-to"), rate:$("rate"), rateLbl:$("rate-label"),
+  err:$("q-err"), cta:$("cta"), timer:$("timer"), tText:$("timer-text"), tBar:$("timer-bar"), src:$("src") };
+let quoteState = { quote:null, expiresAt:0 };
+
+function options(sel, list, value){ sel.innerHTML = list.map(c => `<option value="${c}">${c}</option>`).join(""); sel.value = list.includes(value) ? value : list[0]; }
+function rateText(x){
+  const o=x.moneda_origen, d=x.moneda_destino, inv = MID_USD[o] < MID_USD[d];
+  const base = inv ? d : o, quote = inv ? o : d, v = inv ? 1/x.tasa : x.tasa, dec = v >= 100 ? 2 : 4;
+  return `1 ${base} = ${new Intl.NumberFormat("es-PE",{minimumFractionDigits:dec,maximumFractionDigits:dec}).format(v)} ${quote}`;
+}
+function rateLabel(x){
+  if(x.modalidad === "cripto") return FIAT.includes(x.moneda_origen) ? "Precio de compra" : "Precio de venta";
+  if(x.moneda_origen === "PEN") return "Tipo de cambio venta";
+  if(x.moneda_destino === "PEN") return "Tipo de cambio compra";
+  return "Tipo de cambio";
+}
+const expiresOf = x => x?.fecha_expiracion ? Date.parse(x.fecha_expiracion) : Date.now() + CONFIG.VALIDEZ_SEG*1000;
+const secsLeft = x => Math.max(0, Math.round((expiresOf(x) - Date.now())/1000));
+const mmss = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+
+let seq = 0, deb;
+async function requote(){
+  const m = parseAmt(q.from.value), o = q.cf.value, d = q.ct.value;
+  let msg = "";
+  if(o === d) msg = "Elige monedas distintas para enviar y recibir.";
+  else if(!(m > 0)) msg = "Ingresa un monto mayor a cero.";
+  else if(m * MID_USD[o] < 10) msg = "El monto mínimo equivale a US$ 10.";
+  q.err.textContent = msg; q.err.hidden = !msg;
+  if(msg){ quoteState.quote = null; q.to.value = "—"; q.rate.textContent = "—"; q.cta.disabled = true; $("q-save").hidden = true; return; }
+  const my = ++seq;
+  let x;
+  try { x = await api.cotizar({ modalidad:homeMode, moneda_origen:o, moneda_destino:d, monto_origen:m }); setSource(live("cotizaciones")); }
+  catch(e){ x = quoteLocal({ modalidad:homeMode, moneda_origen:o, moneda_destino:d, monto_origen:m }); setSource(false, "API no disponible · demo"); }
+  if(my !== seq) return;
+  quoteState.quote = x;
+  const prev = q.to.value;
+  q.to.value = fmt(x.monto_destino, d); q.rate.textContent = rateText(x);
+  q.rateLbl.innerHTML = esc(rateLabel(x)) + (x.tasa_preferencial ? '<span class="pref">Preferencial</span>' : "");
+  if(prev !== q.to.value){ q.to.classList.remove("bump"); void q.to.offsetWidth; q.to.classList.add("bump"); }
+  renderSaving(x);
+  q.cta.disabled = false; tickHome();
+}
+const schedule = () => { clearTimeout(deb); deb = setTimeout(requote, 250); };
+function setSource(isLive, text){ q.src.classList.toggle("live", isLive); q.src.textContent = text || (isLive ? "API conectada" : "Tasas de demostración"); }
+function tickHome(){
+  if(!quoteState.quote) return;
+  const left = secsLeft(quoteState.quote), exp = left === 0;
+  q.timer.classList.toggle("expired", exp);
+  q.tText.textContent = exp ? "Cotización vencida" : `Tasa válida por ${mmss(left)}`;
+  q.tBar.style.transform = `scaleX(${left/CONFIG.VALIDEZ_SEG})`;
+  q.cta.textContent = exp ? "Actualizar cotización" : "Operar ahora";
+}
+function setHomeMode(mode, keepAmount){
+  homeMode = mode; applyMode(mode);
+  const M = MODES[mode];
+  $("m-casa").setAttribute("aria-pressed", mode==="casa"); $("m-cripto").setAttribute("aria-pressed", mode==="cripto");
+  options(q.cf, M.from, M.def[0]); options(q.ct, M.to, M.def[1]);
+  if(!keepAmount) q.from.value = fmt(M.amt, q.cf.value);
+  $("hero-eyebrow").textContent = M.eyebrow; $("hero-title").innerHTML = M.title; $("hero-lead").textContent = M.lead;
+  if(window.__marketReady){ market.tab = mode; market.render(true); }
+  requote();
+}
+document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => setHomeMode(b.dataset.mode, true)));
+document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => { setHomeMode(b.dataset.go); $("quoter").scrollIntoView({behavior:"smooth", block:"center"}); }));
+q.from.addEventListener("input", schedule);
+q.from.addEventListener("blur", () => { const v = parseAmt(q.from.value); if(v > 0) q.from.value = fmt(v, q.cf.value); });
+q.from.addEventListener("focus", () => { const v = parseAmt(q.from.value); q.from.value = v > 0 ? String(v) : ""; });
+q.cf.addEventListener("change", requote); q.ct.addEventListener("change", requote);
+$("swap").addEventListener("click", () => {
+  const o = q.cf.value, d = q.ct.value, M = MODES[homeMode];
+  if(M.from.includes(d) && M.to.includes(o)){ q.cf.value = d; q.ct.value = o; }
+  const amt = quoteState.quote ? quoteState.quote.monto_destino : parseAmt(q.from.value);
+  if(amt > 0) q.from.value = fmt(amt, q.cf.value);
+  requote();
+});
+$("quoter").addEventListener("submit", e => {
+  e.preventDefault();
+  const x = quoteState.quote; if(!x) return;
+  if(secsLeft(x) === 0){ requote(); toast("Cotización actualizada", "La tasa anterior venció. Revisa el nuevo monto."); return; }
+  draft.set({ quote:x, step:1 });
+  if(session.get()) go("/operar");
+  else { toast("Inicia sesión para continuar", "Guardamos tu cotización. Ingresa o crea tu cuenta para registrar la operación."); go("/login?next=/operar"); }
+});
+/* el ticker se actualiza en vivo (ver MERCADO EN VIVO) */
+
+/* ============================ NAVEGACIÓN ============================ */
+function go(path){ location.hash = "#" + path; }
+function renderNav(active){
+  const s = session.get();
+  const links = s
+    ? [["/","Cotizar","home"],["/operaciones","Mis operaciones","operaciones"]]
+    : [["mercado","Tasas"],["como-funciona","Cómo funciona"],["ahorro","Comparador"],["seguridad","Seguridad"],["faq","Ayuda"]];
+  $("nav-links").innerHTML = links.map(([h,t,k]) => `<a href="#${h}" ${k && k===active ? 'aria-current="page"' : ""}>${t}</a>`).join("");
+  const mob = $("nav-mobile");
+  mob.hidden = !s;
+  mob.innerHTML = s ? links.map(([h,t,k]) => `<a href="#${h}" ${k===active ? 'aria-current="page"' : ""}>${t}</a>`).join("") : "";
+  $("nav-auth").innerHTML = s
+    ? `<span class="who" title="${esc(s.cliente.correo)}">${esc(firstName(s.cliente))}</span>
+       <a class="btn btn-solid" href="#/">Nueva operación</a>
+       <button class="btn btn-ghost" id="logout" type="button">Salir</button>`
+    : `<a class="btn btn-ghost" href="#/login">Iniciar sesión</a><a class="btn btn-solid" href="#/registro">Registrarse</a>`;
+  if(s) $("logout").onclick = () => { session.clear(); draft.clear(); toast("Sesión cerrada", "Hasta pronto."); go("/"); };
+}
+const firstName = c => c.tipo_cliente === "empresa" ? c.nombre : String(c.nombre || "").split(" ")[0];
+
+const app = $("page-app");
+let viewTimer = null;
+function route(){
+  clearInterval(viewTimer); viewTimer = null;
+  const raw = location.hash.slice(1);
+  if(!raw.startsWith("/")){                       // anclas de la landing (#seguridad, etc.)
+    showHome(); renderNav("home");
+    if(raw) requestAnimationFrame(() => document.getElementById(raw)?.scrollIntoView({behavior:"smooth"}));
+    return;
+  }
+  const [path, qs] = raw.split("?");
+  const params = new URLSearchParams(qs || "");
+  const parts = path.split("/").filter(Boolean);
+  window.scrollTo({top:0});
+  const needAuth = ["operar","operaciones"].includes(parts[0]);
+  if(needAuth && !session.get()){ go("/login?next=" + encodeURIComponent(path)); return; }
+  if(!parts.length){ showHome(); renderNav("home"); return; }
+  showApp(); applyMode(homeMode);
+  switch(parts[0]){
+    case "login": renderNav(); return viewLogin(params.get("next"));
+    case "registro": renderNav(); return viewRegistro(params.get("next"));
+    case "operar": renderNav(); return viewOperar();
+    case "operaciones": renderNav("operaciones"); return parts[1] ? viewDetalle(decodeURIComponent(parts[1])) : viewOperaciones();
+    default: showHome(); renderNav("home");
+  }
+}
+function showHome(){ $("page-home").hidden = false; app.hidden = true; app.innerHTML = ""; applyMode(homeMode); document.title = "NexoCambio"; }
+function showApp(){ $("page-home").hidden = true; app.hidden = false; }
+window.addEventListener("hashchange", route);
+
+/* ============================ UI helpers ============================ */
+let toastT;
+function toast(title, body){
+  const t = $("toast"); t.innerHTML = `<b>${esc(title)}</b>${esc(body)}`;
+  t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 4200);
+}
+function busy(btn, on, label){
+  if(on){ btn.dataset.label = btn.innerHTML; btn.disabled = true; btn.innerHTML = `<span class="spinner" aria-hidden="true"></span>${esc(label || "Procesando…")}`; }
+  else { btn.disabled = false; if(btn.dataset.label) btn.innerHTML = btn.dataset.label; }
+}
+const pill = e => `<span class="pill ${PILL[e] || "s-pend"}">${esc(e)}</span>`;
+const tag = m => `<span class="tag ${m}">${m === "cripto" ? "Cripto" : "Casa de Cambio"}</span>`;
+function stepper(labels, now){ return `<ol class="stepper" aria-label="Progreso">${labels.map((l,i) =>
+  `<li class="${i < now ? "done" : i === now ? "now" : ""}" ${i===now?'aria-current="step"':""}><span>${esc(l)}</span></li>`).join("")}</ol>`; }
+
+/* campo de formulario genérico */
+function field(f, val){
+  const v = esc(val ?? "");
+  const cls = `ff${f.full ? " full" : ""}`;
+  let ctl;
+  if(f.type === "select") ctl = `<select class="inp sel" id="${f.id}" name="${f.id}">${f.placeholder ? `<option value="">${esc(f.placeholder)}</option>` : ""}${f.options.map(o => `<option ${o===val?"selected":""}>${esc(o)}</option>`).join("")}</select>`;
+  else if(f.type === "password") ctl = `<div class="pw"><input class="inp" id="${f.id}" name="${f.id}" type="password" autocomplete="${f.ac||"current-password"}" value="${v}"><button type="button" data-toggle="${f.id}">Mostrar</button></div>`;
+  else ctl = `<input class="inp" id="${f.id}" name="${f.id}" type="${f.type||"text"}" ${f.mode?`inputmode="${f.mode}"`:""} ${f.ac?`autocomplete="${f.ac}"`:""} ${f.max?`maxlength="${f.max}"`:""} placeholder="${esc(f.placeholder||"")}" value="${v}" ${f.readonly?"readonly":""}>`;
+  return `<div class="${cls}" data-field="${f.id}"><label for="${f.id}">${esc(f.label)}</label>${ctl}${f.hint?`<small>${esc(f.hint)}</small>`:""}<span class="msg" hidden></span></div>`;
+}
+function bindPwToggles(root){ root.querySelectorAll("[data-toggle]").forEach(b => b.onclick = () => {
+  const i = $(b.dataset.toggle); const show = i.type === "password"; i.type = show ? "text" : "password"; b.textContent = show ? "Ocultar" : "Mostrar"; }); }
+function readFields(defs, root){ const o = {}; defs.forEach(f => { const el = root.querySelector("#"+f.id); if(el) o[f.id] = el.value.trim(); }); return o; }
+function validate(defs, data, root){
+  let first = null;
+  defs.forEach(f => {
+    const box = root.querySelector(`[data-field="${f.id}"]`); if(!box) return;
+    const msg = (f.required !== false && !data[f.id]) ? "Este campo es obligatorio." : (f.check ? f.check(data[f.id], data) : "");
+    box.classList.toggle("invalid", !!msg);
+    const m = box.querySelector(".msg"); m.textContent = msg || ""; m.hidden = !msg;
+    if(msg && !first) first = root.querySelector("#"+f.id);
+  });
+  first?.focus();
+  return !first;
+}
+/* reglas */
+const R = {
+  email: v => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) ? "" : "Ingresa un correo válido, por ejemplo nombre@correo.com.",
+  phone: v => /^9\d{8}$/.test(v) ? "" : "El celular debe tener 9 dígitos y empezar con 9.",
+  doc: (v, d, key="tipo_documento") => {
+    const t = d[key];
+    if(t === "DNI") return /^\d{8}$/.test(v) ? "" : "El DNI tiene 8 dígitos.";
+    if(t === "CE")  return /^[A-Za-z0-9]{9,12}$/.test(v) ? "" : "El carné de extranjería tiene entre 9 y 12 caracteres.";
+    if(t === "Pasaporte") return /^[A-Za-z0-9]{6,12}$/.test(v) ? "" : "Revisa el número de pasaporte.";
+    return "";
+  },
+  ruc: v => /^(10|15|17|20)\d{9}$/.test(v) ? "" : "El RUC tiene 11 dígitos y empieza con 10 o 20.",
+  adult: v => { const age = (Date.now() - Date.parse(v)) / (365.25*864e5); return age >= 18 ? "" : "Debes ser mayor de edad para registrarte."; },
+  pw: v => (v.length >= 8 && /[A-Za-z]/.test(v) && /\d/.test(v)) ? "" : "Usa al menos 8 caracteres, con letras y números.",
+  cuenta: v => /^\d{10,20}$/.test(v.replace(/[\s-]/g,"")) ? "" : "Ingresa entre 10 y 20 dígitos (número de cuenta o CCI).",
+  wallet: v => /^[A-Za-z0-9]{26,64}$/.test(v) ? "" : "La dirección no parece válida. Cópiala directamente desde tu billetera."
+};
+
+/* ============================ LOGIN (HU3) ============================ */
+function viewLogin(next){
+  document.title = "Iniciar sesión · NexoCambio";
+  const hasDraft = !!draft.get();
+  const defs = [
+    { id:"correo", label:"Correo electrónico", type:"email", ac:"email", check:R.email, placeholder:"nombre@correo.com" },
+    { id:"password", label:"Contraseña", type:"password" }
+  ];
+  app.innerHTML = `<div class="page narrow">
+    <div class="page-head"><div><h1>Inicia sesión</h1><p>${hasDraft ? "Tu cotización está guardada. Ingresa para registrar la operación." : "Accede a tus operaciones y a nuevas cotizaciones."}</p></div></div>
+    <form class="panel" id="f" novalidate>
+      <p class="form-err" id="err" role="alert" hidden></p>
+      ${defs.map(d => field(d)).join("")}
+      <button class="btn btn-solid cta" id="go" type="submit">Iniciar sesión</button>
+      ${live("clientes") ? "" : `<p class="form-note">Modo demo: prueba con <b>${DEMO.correo}</b> / <b>${DEMO.password}</b> <button type="button" class="btn-link" id="demo">Usar cuenta demo</button></p>`}
+    </form>
+    <p class="alt">¿Aún no tienes cuenta? <a href="#/registro${next ? "?next=" + encodeURIComponent(next) : ""}">Regístrate</a></p>
+  </div>`;
+  const f = $("f"); bindPwToggles(f);
+  $("demo")?.addEventListener("click", () => { $("correo").value = DEMO.correo; $("password").value = DEMO.password; });
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const data = readFields(defs, f); if(!validate(defs, data, f)) return;
+    const btn = $("go"), err = $("err"); err.hidden = true; busy(btn, true, "Validando…");
+    try {
+      const r = await api.login({ correo:data.correo, password:data.password });
+      session.set({ token:r.token, cliente:r.cliente || { correo:data.correo, nombre:data.correo, id_cliente:r.id_cliente } });
+      toast("Bienvenido", `Hola, ${firstName(session.get().cliente)}.`);
+      go(next || (draft.get() ? "/operar" : "/operaciones"));
+    } catch(ex){ err.textContent = ex.message; err.hidden = false; busy(btn, false); }
+  };
+}
+
+/* ============================ REGISTRO (HU2) ============================ */
+let reg = null;
+const REG_STEPS = {
+  persona: [
+    { title:"Tipo de cliente" },
+    { title:"Identidad", sub:"Tal como figura en tu documento.", fields:[
+      { id:"nombres", label:"Nombres", ac:"given-name" },
+      { id:"apellidos", label:"Apellidos", ac:"family-name" },
+      { id:"tipo_documento", label:"Tipo de documento", type:"select", options:["DNI","CE","Pasaporte"] },
+      { id:"numero_documento", label:"Número de documento", mode:"numeric", max:12, check:(v,d) => R.doc(v,d) },
+      { id:"fecha_nacimiento", label:"Fecha de nacimiento", type:"date", check:R.adult, full:true }
+    ]},
+    { title:"Contacto", sub:"Te avisaremos aquí cuando tu operación cambie de estado.", fields:[
+      { id:"telefono", label:"Celular", type:"tel", mode:"numeric", max:9, ac:"tel-national", check:R.phone, placeholder:"987654321" },
+      { id:"ocupacion", label:"Ocupación", type:"select", placeholder:"Selecciona", options:["Dependiente","Independiente","Empresario","Estudiante","Jubilado","Otro"] },
+      { id:"pep", label:"¿Eres Persona Expuesta Políticamente (PEP)?", type:"select", options:["No","Sí"], full:true, hint:"Requerido por normativa de prevención de lavado de activos." }
+    ]},
+    { title:"Acceso", sub:"Con estos datos iniciarás sesión.", fields:"access" }
+  ],
+  empresa: [
+    { title:"Tipo de cliente" },
+    { title:"Empresa", sub:"Datos según SUNAT.", fields:[
+      { id:"ruc", label:"RUC", mode:"numeric", max:11, check:R.ruc, placeholder:"20XXXXXXXXX" },
+      { id:"razon_social", label:"Razón social" },
+      { id:"actividad", label:"Actividad económica", type:"select", placeholder:"Selecciona", options:["Comercio","Servicios","Manufactura","Tecnología","Construcción","Otro"], full:true }
+    ]},
+    { title:"Representante", sub:"Persona autorizada para operar a nombre de la empresa.", fields:[
+      { id:"rep_nombres", label:"Nombres y apellidos", ac:"name", full:true },
+      { id:"rep_tipo_documento", label:"Tipo de documento", type:"select", options:["DNI","CE","Pasaporte"] },
+      { id:"rep_numero_documento", label:"Número de documento", mode:"numeric", max:12, check:(v,d) => R.doc(v,d,"rep_tipo_documento") },
+      { id:"rep_cargo", label:"Cargo", placeholder:"Gerente general" },
+      { id:"telefono", label:"Celular", type:"tel", mode:"numeric", max:9, check:R.phone, placeholder:"987654321" }
+    ]},
+    { title:"Acceso", sub:"El correo del representante será el usuario de la empresa.", fields:"access" }
+  ]
+};
+const ACCESS = [
+  { id:"correo", label:"Correo electrónico", type:"email", ac:"email", check:R.email, full:true, placeholder:"nombre@correo.com" },
+  { id:"password", label:"Contraseña", type:"password", ac:"new-password", check:R.pw, hint:"Mínimo 8 caracteres, con letras y números." },
+  { id:"password2", label:"Repite la contraseña", type:"password", ac:"new-password", check:(v,d) => v === d.password ? "" : "Las contraseñas no coinciden." }
+];
+function viewRegistro(next){
+  document.title = "Registro · NexoCambio";
+  if(!reg || reg.done) reg = { tipo:"persona", step:0, data:{ tipo_documento:"DNI", rep_tipo_documento:"DNI", pep:"No" }, next };
+  if(next) reg.next = next;
+  renderRegistro();
+}
+function renderRegistro(){
+  const steps = REG_STEPS[reg.tipo], st = steps[reg.step];
+  const defs = st.fields === "access" ? ACCESS : (st.fields || []);
+  const last = reg.step === steps.length - 1;
+  let body;
+  if(reg.step === 0){
+    body = `<div class="choices" role="radiogroup" aria-label="Tipo de cliente">
+      <label class="choice">${icon.person}<input type="radio" name="tipo" value="persona" ${reg.tipo==="persona"?"checked":""}><b>Persona natural</b><small>Operas a tu nombre con DNI, CE o pasaporte.</small></label>
+      <label class="choice">${icon.company}<input type="radio" name="tipo" value="empresa" ${reg.tipo==="empresa"?"checked":""}><b>Empresa</b><small>Operas con RUC mediante un representante.</small></label>
+    </div>`;
+  } else {
+    body = `<div class="fgrid">${defs.map(d => field(d, reg.data[d.id])).join("")}</div>
+      ${last ? `<label class="check"><input type="checkbox" id="terms" ${reg.data.terms?"checked":""}> Acepto los Términos y condiciones y la Política de privacidad, y declaro que los fondos que opere tienen origen lícito.</label>` : ""}`;
+  }
+  app.innerHTML = `<div class="page mid">
+    <div class="page-head"><div><h1>Crea tu cuenta</h1><p>Toma menos de 3 minutos. Paso ${reg.step + 1} de ${steps.length}.</p></div></div>
+    <form class="panel" id="f" novalidate>
+      ${stepper(steps.map(s => s.title), reg.step)}
+      <div><h2>${esc(st.title === "Tipo de cliente" ? "¿Cómo vas a operar?" : st.title)}</h2>${st.sub ? `<p class="muted" style="margin:6px 0 0">${esc(st.sub)}</p>` : ""}</div>
+      <p class="form-err" id="err" role="alert" hidden></p>
+      ${body}
+      <div class="actions">
+        ${reg.step > 0 ? `<button type="button" class="btn btn-ghost" id="prev">Atrás</button>` : `<span></span>`}
+        <button type="submit" class="btn btn-solid" id="nextb">${last ? "Crear cuenta" : "Continuar"}</button>
+      </div>
+    </form>
+    <p class="alt">¿Ya tienes cuenta? <a href="#/login${reg.next ? "?next=" + encodeURIComponent(reg.next) : ""}">Inicia sesión</a></p>
+  </div>`;
+  const f = $("f"); bindPwToggles(f);
+  f.querySelectorAll('input[name="tipo"]').forEach(r => r.onchange = () => { reg.tipo = r.value; });
+  $("prev") && ($("prev").onclick = () => { Object.assign(reg.data, readFields(defs, f)); reg.step--; renderRegistro(); });
+  // re-validar el número de documento cuando cambia el tipo
+  f.querySelectorAll("select").forEach(s => s.addEventListener("change", () => { reg.data[s.id] = s.value; }));
+  f.querySelector("input:not([type=radio]), select")?.focus();
+  f.onsubmit = async e => {
+    e.preventDefault();
+    if(reg.step === 0){ reg.step = 1; return renderRegistro(); }
+    const data = readFields(defs, f); Object.assign(reg.data, data);
+    if(!validate(defs, reg.data, f)) return;
+    if(!last){ reg.step++; return renderRegistro(); }
+    if(!$("terms").checked){ const er = $("err"); er.textContent = "Para crear tu cuenta debes aceptar los términos y la declaración de origen de fondos."; er.hidden = false; return; }
+    reg.data.terms = true;
+    await submitRegistro($("nextb"));
+  };
+}
+async function submitRegistro(btn){
+  const d = reg.data, err = $("err"); err.hidden = true;
+  const payload = reg.tipo === "persona"
+    ? { tipo_cliente:"persona", nombre:`${d.nombres} ${d.apellidos}`, nombres:d.nombres, apellidos:d.apellidos,
+        tipo_documento:d.tipo_documento, numero_documento:d.numero_documento, fecha_nacimiento:d.fecha_nacimiento,
+        telefono:d.telefono, ocupacion:d.ocupacion, pep:d.pep === "Sí", correo:d.correo, password:d.password }
+    : { tipo_cliente:"empresa", nombre:d.razon_social, razon_social:d.razon_social, tipo_documento:"RUC", numero_documento:d.ruc,
+        actividad:d.actividad, telefono:d.telefono, correo:d.correo, password:d.password,
+        representante:{ nombre:d.rep_nombres, tipo_documento:d.rep_tipo_documento, numero_documento:d.rep_numero_documento, cargo:d.rep_cargo } };
+  busy(btn, true, "Creando cuenta…");
+  try {
+    await api.registro(payload);
+    const r = await api.login({ correo:payload.correo, password:payload.password });
+    session.set({ token:r.token, cliente:r.cliente || { correo:payload.correo, nombre:payload.nombre, tipo_cliente:payload.tipo_cliente } });
+    reg.done = true;
+    const next = reg.next || (draft.get() ? "/operar" : null);
+    app.innerHTML = `<div class="page narrow"><div class="panel success">
+      <div class="ico">${icon.check}</div>
+      <h1 style="font-size:30px">Tu cuenta está lista</h1>
+      <p>Registramos a <b>${esc(payload.nombre)}</b>. Ya puedes operar en NexoCambio.</p>
+      <a class="btn btn-solid cta" href="#${next || "/"}">${next === "/operar" ? "Continuar con mi operación" : "Hacer mi primera cotización"}</a>
+    </div></div>`;
+    renderNav();
+  } catch(ex){ err.textContent = ex.message; err.hidden = false; busy(btn, false);
+    if(ex.status === 409){ /* volver al paso con el dato duplicado */ } }
+}
+
+/* ============================ OPERAR (HU4 + HU5) ============================ */
+function viewOperar(){
+  const d = draft.get();
+  if(!d?.quote){ toast("Primero cotiza", "Elige monedas y monto en el cotizador para iniciar una operación."); go("/"); return; }
+  applyMode(d.quote.modalidad);
+  document.title = "Nueva operación · NexoCambio";
+  ({1:opStep1, 2:opStep2, 3:opStep3, 4:opDone})[d.step || 1](d);
+}
+const OP_STEPS = ["Datos de la operación","Transferencia","Comprobante"];
+function quoteSummary(x){
+  return `<div class="qsum">
+    <div class="side"><small>Envías</small><span class="amt">${money(x.monto_origen, x.moneda_origen)}</span></div>
+    ${icon.arrow}
+    <div class="side"><small>Recibes</small><span class="amt">${money(x.monto_destino, x.moneda_destino)}</span></div>
+  </div>`;
+}
+function opShell(step, inner){
+  return `<div class="page mid">
+    <a class="back" href="#/">${icon.back} Volver al cotizador</a>
+    <div class="page-head"><div><h1>Nueva operación</h1><p>${tag(draft.get().quote.modalidad)}</p></div></div>
+    <div class="panel">${stepper(OP_STEPS, step)}${inner}</div></div>`;
+}
+
+/* Paso 1: confirmar cotización + cuentas (HU4) */
+function opStep1(d){
+  const x = d.quote, o = x.moneda_origen, dest = x.moneda_destino;
+  const cli = session.get().cliente;
+  const origFiat = FIAT.includes(o), destFiat = FIAT.includes(dest);
+  const defsO = origFiat
+    ? [{ id:"banco_origen", label:`Banco desde el que transferirás ${MONEDA_NOMBRE[o]}`, type:"select", options:BANCOS, full:true,
+         hint:"La cuenta de origen debe estar a tu nombre." }]
+    : [{ id:"red_origen", label:`Red desde la que enviarás ${o}`, type:"select", options:REDES[o], full:true }];
+  const defsD = destFiat
+    ? [{ id:"banco_destino", label:"Banco", type:"select", options:BANCOS },
+       { id:"tipo_cuenta", label:"Tipo de cuenta", type:"select", options:["Ahorros","Corriente"] },
+       { id:"numero_cuenta", label:`Número de cuenta o CCI en ${MONEDA_NOMBRE[dest]}`, mode:"numeric", max:24, check:R.cuenta, full:true },
+       { id:"titular", label:"Titular", readonly:true, full:true, required:false, hint:"Solo depositamos en cuentas a tu nombre." }]
+    : [{ id:"red_destino", label:"Red", type:"select", options:REDES[dest] },
+       { id:"wallet", label:`Dirección de tu billetera ${dest}`, check:R.wallet, full:true, placeholder:"Pega aquí tu dirección" }];
+  const saved = d.form || {};
+  const vals = { titular:cli.nombre, ...saved };
+  app.innerHTML = opShell(0, `
+    <div><h2>Confirma tu cotización</h2></div>
+    ${quoteSummary(x)}
+    <dl class="kv">
+      <dt>${rateLabel(x)}</dt><dd class="mono">${rateText(x)}</dd>
+      <dt>Comisión</dt><dd>S/ 0.00</dd>
+      <dt>Código de cotización</dt><dd class="mono">${esc(x.id_cotizacion)}</dd>
+    </dl>
+    <div class="timer" id="op-timer"><span id="op-tt"></span><span class="bar"><i id="op-tb"></i></span></div>
+    <form id="f" novalidate style="display:flex;flex-direction:column;gap:20px">
+      <div><h3>${origFiat ? "¿Desde qué banco transfieres?" : "¿Desde qué red envías?"}</h3></div>
+      <div class="fgrid">${defsO.map(f => field(f, vals[f.id])).join("")}</div>
+      <div><h3>${destFiat ? "¿Dónde recibes tu dinero?" : "¿Dónde recibes tus " + dest + "?"}</h3></div>
+      <div class="fgrid">${defsD.map(f => field(f, vals[f.id])).join("")}</div>
+      ${!destFiat ? `<p class="form-note">Verifica que la red de tu billetera sea la misma que elegiste. Un envío a una red distinta no se puede recuperar.</p>` : ""}
+      <div class="actions">
+        <a class="btn btn-ghost" href="#/">Cambiar monto</a>
+        <button type="submit" class="btn btn-solid" id="nextb">Confirmar y continuar</button>
+      </div>
+    </form>`);
+  const f = $("f"), nb = $("nextb");
+  const tick = () => {
+    const left = secsLeft(draft.get().quote), exp = left === 0;
+    $("op-timer").classList.toggle("expired", exp);
+    $("op-tt").textContent = exp ? "La tasa venció. Actualízala para continuar." : `Tasa válida por ${mmss(left)}`;
+    $("op-tb").style.transform = `scaleX(${left/CONFIG.VALIDEZ_SEG})`;
+    nb.textContent = exp ? "Actualizar tasa" : "Confirmar y continuar";
+  };
+  tick(); viewTimer = setInterval(tick, 1000);
+  const defs = [...defsO, ...defsD];
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const cur = draft.get();
+    const data = readFields(defs, f);
+    cur.form = data; draft.set(cur);
+    if(secsLeft(cur.quote) === 0){
+      busy(nb, true, "Actualizando…");
+      try { cur.quote = await api.cotizar({ modalidad:x.modalidad, moneda_origen:x.moneda_origen, moneda_destino:x.moneda_destino, monto_origen:x.monto_origen });
+            draft.set(cur); toast("Tasa actualizada", `Ahora recibes ${money(cur.quote.monto_destino, dest)}.`); }
+      catch(ex){ toast("No se pudo actualizar", ex.message); }
+      clearInterval(viewTimer); return opStep1(cur);
+    }
+    if(!validate(defs, data, f)) return;
+    cur.origen = origFiat ? { tipo:"banco", banco:data.banco_origen } : { tipo:"wallet", red:data.red_origen };
+    cur.destino = destFiat
+      ? { tipo:"banco", banco:data.banco_destino, tipo_cuenta:data.tipo_cuenta, numero:data.numero_cuenta.replace(/[\s-]/g,""), titular:cli.nombre }
+      : { tipo:"wallet", red:data.red_destino, direccion:data.wallet };
+    cur.step = 2; cur.confirmada = new Date().toISOString(); draft.set(cur);
+    clearInterval(viewTimer); opStep2(cur);
+  };
+}
+
+function nexoAccount(d){
+  const o = d.quote.moneda_origen;
+  if(d.origen.tipo === "wallet") return { wallet:true, red:d.origen.red, direccion:WALLETS_NEXO[d.origen.red] };
+  const same = CUENTAS_NEXO[d.origen.banco]?.[o];
+  if(same) return { banco:d.origen.banco, tipo:same[0], numero:same[1], cci:same[2], interbancaria:false };
+  const bcp = CUENTAS_NEXO.BCP[o];
+  return { banco:"BCP", tipo:bcp[0], numero:bcp[1], cci:bcp[2], interbancaria:true };
+}
+function copyable(v){ return `<span class="copy"><span>${esc(v)}</span><button type="button" data-copy="${esc(v)}">Copiar</button></span>`; }
+function bindCopy(root){ root.querySelectorAll("[data-copy]").forEach(b => b.onclick = async () => {
+  try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copiado"; } catch(_){ b.textContent = "Selecciónalo"; }
+  setTimeout(() => b.textContent = "Copiar", 1600); }); }
+function destinoText(dst){ return dst.tipo === "banco" ? `${dst.banco} · ${dst.tipo_cuenta} · ${dst.numero}` : `${dst.red} · ${dst.direccion}`; }
+
+/* Paso 2: resumen + datos para transferir (HU4) */
+function opStep2(d){
+  const x = d.quote, n = nexoAccount(d);
+  app.innerHTML = opShell(1, `
+    <div><h2>Resumen de tu operación</h2></div>
+    ${quoteSummary(x)}
+    <dl class="kv">
+      <dt>${rateLabel(x)}</dt><dd class="mono">${rateText(x)}</dd>
+      <dt>${d.origen.tipo === "banco" ? "Transfieres desde" : "Envías desde la red"}</dt><dd>${esc(d.origen.banco || d.origen.red)}</dd>
+      <dt>Recibes en</dt><dd>${esc(destinoText(d.destino))}</dd>
+      <hr><dt class="total">Monto a transferir</dt><dd class="total mono">${money(x.monto_origen, x.moneda_origen)}</dd>
+    </dl>
+    <div class="transfer">
+      <h3>${n.wallet ? `Envía tus ${x.moneda_origen} a esta dirección` : `Transfiere a la cuenta de NexoCambio`}</h3>
+      <dl class="kv">
+        ${n.wallet
+          ? `<dt>Red</dt><dd>${esc(n.red)}</dd><dt>Dirección</dt><dd>${copyable(n.direccion)}</dd><dt>Monto exacto</dt><dd>${copyable(fmt(x.monto_origen, x.moneda_origen))} ${x.moneda_origen}</dd>`
+          : `<dt>Banco</dt><dd>${esc(n.banco)}</dd><dt>Titular</dt><dd>NexoCambio S.A.C. (demo)</dd><dt>RUC</dt><dd>${copyable("20612345678")}</dd>
+             <dt>${esc(n.tipo)} en ${MONEDA_NOMBRE[x.moneda_origen]}</dt><dd>${copyable(n.numero)}</dd><dt>CCI</dt><dd>${copyable(n.cci)}</dd>
+             <dt>Monto exacto</dt><dd>${copyable(fmt(x.monto_origen, x.moneda_origen))} ${x.moneda_origen}</dd>`}
+      </dl>
+      <p class="form-note" style="background:var(--surface)">${n.wallet
+        ? `Envía solo ${x.moneda_origen} por la red ${esc(n.red)}. Luego adjunta la captura con el hash de la transacción.`
+        : n.interbancaria
+          ? `NexoCambio no tiene cuenta en ${esc(d.origen.banco)}: haz una transferencia interbancaria usando el CCI. Puede demorar hasta 1 día hábil.`
+          : `Transferencia dentro de ${esc(n.banco)}: se refleja al instante. Transfiere desde una cuenta a tu nombre.`}</p>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn btn-ghost" id="prev">Editar datos</button>
+      <button type="button" class="btn btn-solid" id="nextb">Ya transferí, adjuntar comprobante</button>
+    </div>`);
+  bindCopy(app);
+  $("prev").onclick = () => { d.step = 1; draft.set(d); opStep1(d); };
+  $("nextb").onclick = () => { d.step = 3; draft.set(d); opStep3(d); };
+}
+
+/* Paso 3: comprobante (HU5) */
+let pendingFile = null;
+function opStep3(d){
+  const x = d.quote;
+  app.innerHTML = opShell(2, `
+    <div><h2>Adjunta tu comprobante</h2><p class="muted" style="margin:6px 0 0">Foto o captura de la constancia de transferencia de ${money(x.monto_origen, x.moneda_origen)}.</p></div>
+    <p class="form-err" id="err" role="alert" hidden></p>
+    <label class="drop" id="drop" for="file">
+      ${icon.upload}
+      <b>Arrastra tu archivo o haz clic para elegirlo</b>
+      <small>JPG, PNG o PDF · máximo ${CONFIG.MAX_COMPROBANTE_MB} MB</small>
+    </label>
+    <input type="file" id="file" accept="image/jpeg,image/png,application/pdf" hidden>
+    <div id="preview"></div>
+    <div class="ff"><label for="nro">${FIAT.includes(x.moneda_origen) ? "Número de operación bancaria" : "Hash de la transacción"} <span class="muted">(opcional)</span></label>
+      <input class="inp" id="nro" autocomplete="off" value="${esc(d.nro || "")}" placeholder="${FIAT.includes(x.moneda_origen) ? "Ej. 004582" : "0x…"}"></div>
+    <div class="actions">
+      <button type="button" class="btn btn-ghost" id="prev">Ver datos de transferencia</button>
+      <button type="button" class="btn btn-solid" id="nextb" disabled>Confirmar operación</button>
+    </div>`);
+  const input = $("file"), drop = $("drop"), nb = $("nextb"), err = $("err");
+  const showFile = file => {
+    err.hidden = true;
+    const okType = ["image/jpeg","image/png","application/pdf"].includes(file.type);
+    if(!okType){ err.textContent = "Formato no permitido. Sube una imagen JPG o PNG, o un PDF."; err.hidden = false; return; }
+    if(file.size > CONFIG.MAX_COMPROBANTE_MB*1048576){ err.textContent = `El archivo pesa ${(file.size/1048576).toFixed(1)} MB. El máximo es ${CONFIG.MAX_COMPROBANTE_MB} MB.`; err.hidden = false; return; }
+    pendingFile = file;
+    const url = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+    $("preview").innerHTML = `<div class="file">${url ? `<img class="thumb" src="${url}" alt="Vista previa del comprobante">` : `<span class="thumb">PDF</span>`}
+      <div class="meta"><b>${esc(file.name)}</b><small>${(file.size/1024).toFixed(0)} KB</small></div>
+      <button type="button" class="btn btn-ghost" id="rm">Quitar</button></div>`;
+    drop.hidden = true; nb.disabled = false;
+    $("rm").onclick = () => { pendingFile = null; $("preview").innerHTML = ""; drop.hidden = false; nb.disabled = true; input.value = ""; };
+  };
+  if(pendingFile) showFile(pendingFile);
+  input.onchange = () => input.files[0] && showFile(input.files[0]);
+  ["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => e.dataTransfer.files[0] && showFile(e.dataTransfer.files[0]));
+  $("prev").onclick = () => { d.nro = $("nro").value; d.step = 2; draft.set(d); opStep2(d); };
+  nb.onclick = async () => {
+    if(!pendingFile) return;
+    err.hidden = true; busy(nb, true, "Registrando operación…");
+    try {
+      const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(pendingFile); });
+      let opId = d.id_operacion;
+      if(!opId){
+        const op = await api.crearOperacion({
+          id_cotizacion:x.id_cotizacion, modalidad:x.modalidad, moneda_origen:x.moneda_origen, moneda_destino:x.moneda_destino,
+          monto_origen:x.monto_origen, monto_destino:x.monto_destino, tasa:x.tasa, origen:d.origen, destino:d.destino });
+        opId = op.id_operacion; d.id_operacion = opId; draft.set(d);   // si falla la carga, no se duplica la operación
+      }
+      const done = await api.subirComprobante(opId, { nombre_archivo:pendingFile.name, content_type:pendingFile.type,
+        contenido_base64:b64, numero_transferencia:$("nro").value.trim() || null });
+      pendingFile = null;
+      d.step = 4; d.result = { id_operacion:opId, estado:done?.estado || "Pendiente de validación" }; draft.set(d);
+      opDone(d);
+    } catch(ex){ err.textContent = ex.message; err.hidden = false; busy(nb, false); }
+  };
+}
+function opDone(d){
+  const x = d.quote, r = d.result;
+  app.innerHTML = `<div class="page narrow"><div class="panel success">
+    <div class="ico">${icon.check}</div>
+    <h1 style="font-size:30px">Operación registrada</h1>
+    <span class="code">${esc(r.id_operacion)}</span>
+    ${pill(r.estado)}
+    <p>Recibimos tu comprobante. Validaremos la transferencia de <b>${money(x.monto_origen, x.moneda_origen)}</b> y te enviaremos <b>${money(x.monto_destino, x.moneda_destino)}</b>. Puedes seguir el estado en Mis operaciones.</p>
+    <div class="actions" style="width:100%">
+      <a class="btn btn-ghost" href="#/" id="again">Nueva operación</a>
+      <a class="btn btn-solid" href="#/operaciones/${encodeURIComponent(r.id_operacion)}">Ver mi operación</a>
+    </div>
+  </div></div>`;
+  draft.clear();
+}
+
+/* ============================ MIS OPERACIONES (HU6) ============================ */
+let opFilter = "Todas";
+async function viewOperaciones(){
+  document.title = "Mis operaciones · NexoCambio";
+  app.innerHTML = `<div class="page">
+    <div class="page-head"><div><h1>Mis operaciones</h1><p>Seguimiento de tus solicitudes de cambio.</p></div><a class="btn btn-solid" href="#/">Nueva operación</a></div>
+    <div id="list"><div class="skeleton"></div></div></div>`;
+  let ops;
+  try { ops = await api.listarOperaciones(); }
+  catch(ex){
+    if(ex.status === 401){ go("/login?next=/operaciones"); return; }
+    $("list").innerHTML = `<div class="empty"><h2>No pudimos cargar tus operaciones</h2><p>${esc(ex.message)}</p><button class="btn btn-solid" id="retry">Reintentar</button></div>`;
+    $("retry").onclick = viewOperaciones; return;
+  }
+  if(!ops.length){
+    $("list").innerHTML = `<div class="empty">${icon.inbox}<h2>Todavía no tienes operaciones</h2><p>Cuando registres tu primera operación, aquí verás su fecha, monto y estado.</p><a class="btn btn-solid" href="#/">Cotizar ahora</a></div>`;
+    return;
+  }
+  const counts = Object.fromEntries(ESTADOS.map(e => [e, ops.filter(o => o.estado === e).length]));
+  const enCurso = counts["Pendiente de validación"] + counts["En proceso"];
+  const usdEq = o => o.monto_origen * (BASE_MID[o.moneda_origen] || 1);
+  const total = ops.filter(o => o.estado !== "Rechazada").reduce((t,o) => t + usdEq(o), 0);
+  const last = ops[0];
+  const tiles = `<div class="tiles">
+    <div class="tile accent"><small>Operaciones en curso</small><span>${enCurso}</span><em>${enCurso ? "Te avisaremos cuando cambien de estado" : "Nada pendiente por ahora"}</em></div>
+    <div class="tile"><small>Total operado</small><span>US$ ${new Intl.NumberFormat("es-PE",{maximumFractionDigits:0}).format(total)}</span><em>Equivalente aproximado, sin rechazadas</em></div>
+    <div class="tile"><small>Última operación</small><span>${fDate(last.fecha_operacion)}</span><em>${esc(last.id_operacion)} · ${esc(last.estado)}</em></div>
+  </div>`;
+  const render = () => {
+    const shown = opFilter === "Todas" ? ops : ops.filter(o => o.estado === opFilter);
+    $("list").innerHTML = `<div style="display:flex;flex-direction:column;gap:16px">
+      ${tiles}
+      <div class="filters" role="group" aria-label="Filtrar por estado">
+        ${["Todas", ...ESTADOS].map(e => `<button type="button" data-f="${e}" aria-pressed="${opFilter===e}">${e}<span class="n">${e==="Todas" ? ops.length : counts[e]}</span></button>`).join("")}
+      </div>
+      ${shown.length ? `<ul class="oplist">
+        <li class="hdr" aria-hidden="true"><span>Fecha</span><span>Modalidad</span><span>Monto</span><span>Estado</span><span></span></li>
+        ${shown.map(o => `<li><a href="#/operaciones/${encodeURIComponent(o.id_operacion)}">
+          <span class="date">${fDate(o.fecha_operacion)}<small>${esc(o.id_operacion)}</small></span>
+          <span class="mod">${tag(o.modalidad)}</span>
+          <span class="amt">${money(o.monto_origen, o.moneda_origen)}<small>Recibes ${money(o.monto_destino, o.moneda_destino)}</small></span>
+          <span class="st">${pill(o.estado)}</span>${icon.chev}</a></li>`).join("")}
+      </ul>` : `<div class="empty"><p>No tienes operaciones con estado “${esc(opFilter)}”.</p></div>`}
+    </div>`;
+    $("list").querySelectorAll("[data-f]").forEach(b => b.onclick = () => { opFilter = b.dataset.f; render(); });
+  };
+  render();
+}
+
+/* ============================ DETALLE (HU7) ============================ */
+async function viewDetalle(id){
+  document.title = `${id} · NexoCambio`;
+  app.innerHTML = `<div class="page"><a class="back" href="#/operaciones">${icon.back} Mis operaciones</a><div class="skeleton"></div><div class="skeleton"></div></div>`;
+  let o;
+  try { o = await api.obtenerOperacion(id); }
+  catch(ex){
+    if(ex.status === 401){ go("/login?next=/operaciones/" + encodeURIComponent(id)); return; }
+    app.innerHTML = `<div class="page"><a class="back" href="#/operaciones">${icon.back} Mis operaciones</a><div class="empty"><h2>Operación no disponible</h2><p>${esc(ex.message)}</p></div></div>`; return;
+  }
+  applyMode(o.modalidad);
+  const hist = o.historial || [{ estado:o.estado, fecha:o.fecha_operacion }];
+  const at = e => hist.find(h => h.estado === e)?.fecha;
+  const rejected = o.estado === "Rechazada";
+  const flow = rejected ? ["Pendiente de validación","Rechazada"] : ["Pendiente de validación","En proceso","Procesada"];
+  const desc = { "Pendiente de validación":"Recibimos tu comprobante.", "En proceso":"Transferencia validada. Estamos enviando tu cambio.",
+                 "Procesada":"Enviamos el dinero a tu cuenta.", "Rechazada": o.motivo_rechazo || "No pudimos validar la transferencia." };
+  const dst = o.destino || {}, org = o.origen || {};
+  app.innerHTML = `<div class="page">
+    <a class="back" href="#/operaciones">${icon.back} Mis operaciones</a>
+    <div class="page-head"><div><span class="eyebrow">Operación</span><h1 class="mono" style="font-family:var(--f-mono)">${esc(o.id_operacion)}</h1><p>${fDateTime(o.fecha_operacion)} · ${tag(o.modalidad)}</p></div>${pill(o.estado)}</div>
+    <div class="detail">
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <section class="panel">
+          <h2>Detalle</h2>
+          ${quoteSummary(o)}
+          <dl class="kv">
+            <dt>${rateLabel(o)}</dt><dd class="mono">${rateText(o)}</dd>
+            <dt>Comisión</dt><dd>S/ 0.00</dd>
+            <dt>Cotización</dt><dd class="mono">${esc(o.id_cotizacion || "—")}</dd>
+            <hr>
+            <dt>${org.tipo === "wallet" ? "Red de envío" : "Banco de origen"}</dt><dd>${esc(org.banco || org.red || "—")}</dd>
+            ${dst.tipo === "wallet"
+              ? `<dt>Red de destino</dt><dd>${esc(dst.red)}</dd><dt>Billetera</dt><dd class="mono" style="font-size:13px">${esc(dst.direccion)}</dd>`
+              : `<dt>Banco de destino</dt><dd>${esc(dst.banco || "—")}</dd><dt>Cuenta</dt><dd class="mono">${esc([dst.tipo_cuenta, dst.numero].filter(Boolean).join(" · ") || "—")}</dd><dt>Titular</dt><dd>${esc(dst.titular || "—")}</dd>`}
+            ${o.numero_transferencia ? `<dt>N.º de operación bancaria</dt><dd class="mono">${esc(o.numero_transferencia)}</dd>` : ""}
+          </dl>
+        </section>
+        <section class="panel">
+          <h2>Comprobante</h2>
+          ${o.comprobante_preview && o.comprobante_preview.startsWith("data:image")
+            ? `<img class="proof-img" src="${o.comprobante_preview}" alt="Comprobante de transferencia">`
+            : o.comprobante_url ? `<a class="btn btn-ghost" href="${esc(o.comprobante_url)}" target="_blank" rel="noopener">Ver comprobante</a>` : ""}
+          <dl class="kv"><dt>Archivo</dt><dd>${esc(o.comprobante_nombre || "—")}</dd><dt>Ubicación</dt><dd class="mono" style="font-size:12px">${esc(o.ruta_comprobante || "—")}</dd></dl>
+        </section>
+      </div>
+      <section class="panel">
+        <h2>Estado</h2>
+        <ol class="timeline">
+          ${flow.map(e => { const t = at(e), done = !!t || e === o.estado;
+            return `<li class="${done ? (e === "Rechazada" ? "bad" : "done") : "todo"}"><span><b>${e}</b><small>${done ? esc(desc[e]) + (t ? " · " + fDateTime(t) : "") : "Pendiente"}</small></span></li>`; }).join("")}
+        </ol>
+        ${rejected ? `<p class="form-err">${esc(o.motivo_rechazo || "Tu operación fue rechazada.")} Si ya transferiste, escríbenos a hola@nexocambio.pe con el código de la operación.</p>` : ""}
+      </section>
+    </div>
+  </div>`;
+}
+
+
+/* ============================ MERCADO EN VIVO (simulado) ============================
+   En modo demo las tasas hacen un "random walk" suave cada 4 s para dar vida a la
+   landing. Una cotización ya emitida NO cambia: su tasa queda fija hasta que vence. */
+const BASE_MID = { ...MID_USD };
+const VOL = { USD:0, PEN:0.00045, EUR:0.0006, BTC:0.0035, ETH:0.0045, USDT:0.00006, USDC:0.00005 };
+const HIST_N = 72;
+const hist = {};
+(function seedHist(){
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for(const c in MID_USD){ const arr = [MID_USD[c]];
+    for(let i = 1; i < HIST_N; i++) arr.unshift(arr[0] * (1 + (rnd() - 0.5) * 3.2 * VOL[c]));
+    hist[c] = arr; }
+})();
+const MK_PAIRS = {
+  casa:   [["USD","PEN","Dólar estadounidense"],["EUR","PEN","Euro"],["EUR","USD","Euro / dólar"]],
+  cripto: [["USDT","PEN","Tether"],["USDC","PEN","USD Coin"],["BTC","USD","Bitcoin"],["ETH","USD","Ether"]]
+};
+const COIN = { USD:"#1F7A4D", EUR:"#2C4FA3", USDT:"#26A17B", USDC:"#2775CA", BTC:"#E8870E", ETH:"#5B72D9" };
+const pairSeries = (a,b) => hist[a].map((v,i) => v / hist[b][i]);
+const pairDec = v => v >= 1000 ? 0 : v >= 10 ? 2 : v >= 2 ? 3 : 4;
+const nf = (v,d) => new Intl.NumberFormat("es-PE",{minimumFractionDigits:d,maximumFractionDigits:d}).format(v);
+const pct = (a,b) => { const p = (b/a - 1) * 100; return { up:p >= 0, txt:`${p >= 0 ? "+" : "−"}${Math.abs(p).toFixed(2)}%` }; };
+
+/* línea (+ área) escalada al rango real de los datos */
+function sparkSVG(vals, w, h, { area=false, grid=false, dot=false, color="var(--accent)" } = {}){
+  const min = Math.min(...vals), max = Math.max(...vals), pad = (max - min) * 0.12 || max * 0.001;
+  const lo = min - pad, hi = max + pad, x = i => (i / (vals.length - 1)) * w, y = v => h - ((v - lo) / (hi - lo)) * h;
+  const pts = vals.map((v,i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+  let out = "";
+  if(grid) out += [0.2,0.5,0.8].map(f => `<line x1="0" x2="${w}" y1="${h*f}" y2="${h*f}" style="stroke:var(--line)" stroke-width="1" stroke-dasharray="2 4" vector-effect="non-scaling-stroke"/>`).join("");
+  if(area) out += `<path d="M0,${h} L${pts.join(" L")} L${w},${h} Z" style="fill:${color}; opacity:.12"/>`;
+  out += `<polyline points="${pts.join(" ")}" fill="none" style="stroke:${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+  if(dot){ const lx = x(vals.length-1), ly = y(vals.at(-1));
+    out += `<circle cx="${lx}" cy="${ly}" r="7" style="fill:${color}; opacity:.18"/><circle cx="${lx}" cy="${ly}" r="3.2" style="fill:${color}"/>`; }
+  return out;
+}
+function flash(el, dir){ if(!el || !dir) return; el.classList.remove("flash-up","flash-down"); void el.offsetWidth;
+  el.classList.add(dir > 0 ? "flash-up" : "flash-down"); setTimeout(() => el.classList.remove("flash-up","flash-down"), 900); }
+
+const market = {
+  tab:"casa", lastTick:Date.now(), prev:{},
+  buildRows(){
+    $("mk-casa").setAttribute("aria-selected", market.tab === "casa");
+    $("mk-cripto").setAttribute("aria-selected", market.tab === "cripto");
+    $("market-body").innerHTML = MK_PAIRS[market.tab].map(([a,b,name], i) => `<tr>
+      <td><div class="pair"><span class="coin" style="background:${COIN[a]}">${a}</span><span>${a}/${b}<small>${name}</small></span></div></td>
+      <td class="num"><span id="mk-b${i}"></span></td><td class="num"><span id="mk-s${i}"></span></td>
+      <td class="num"><span class="chg" id="mk-c${i}"></span></td>
+      <td><svg class="spk" id="mk-k${i}" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"></svg></td>
+      <td><button type="button" class="go" data-q="${b},${a}">Cotizar</button></td></tr>`).join("");
+    $("market-body").querySelectorAll("[data-q]").forEach(btn => btn.onclick = () => {
+      const [o,d] = btn.dataset.q.split(",");
+      setHomeMode(market.tab, true);
+      if(MODES[homeMode].from.includes(o)) q.cf.value = o;
+      if(MODES[homeMode].to.includes(d)) q.ct.value = d;
+      q.from.value = fmt(o === "PEN" ? 1000 : o === "USD" || o === "EUR" ? 500 : 100, o);
+      requote(); $("quoter").scrollIntoView({behavior:"smooth", block:"center"});
+    });
+    market.prev = {};
+  },
+  render(rebuild){
+    if(rebuild) market.buildRows();
+    const s = SPREAD[market.tab];
+    MK_PAIRS[market.tab].forEach(([a,b], i) => {
+      const ser = pairSeries(a,b), mid = ser.at(-1), d = pairDec(mid), ch = pct(ser[0], mid);
+      const key = a+b, dir = market.prev[key] ? Math.sign(mid - market.prev[key]) : 0; market.prev[key] = mid;
+      $("mk-b"+i).textContent = nf(mid*(1-s), d); $("mk-s"+i).textContent = nf(mid*(1+s), d);
+      if(dir){ flash($("mk-b"+i), dir); flash($("mk-s"+i), dir); }
+      const c = $("mk-c"+i); c.textContent = ch.txt; c.className = "chg " + (ch.up ? "up" : "down");
+      $("mk-k"+i).innerHTML = sparkSVG(ser.slice(-40), 120, 34, { color: ch.up ? "var(--ok)" : "var(--bad)" });
+    });
+    // pizarra del hero: par principal de la modalidad activa
+    const [a,b] = homeMode === "cripto" ? ["USDT","PEN"] : ["USD","PEN"];
+    const ser = pairSeries(a,b), mid = ser.at(-1), sp = SPREAD[homeMode], ch = pct(ser[0], mid);
+    const key = "bd"+a, dir = market.prev[key] ? Math.sign(mid - market.prev[key]) : 0; market.prev[key] = mid;
+    $("bd-pair").textContent = `${a} / ${b}`;
+    $("bd-buy").textContent = nf(mid*(1-sp), 3); $("bd-sell").textContent = nf(mid*(1+sp), 3);
+    if(dir){ flash($("bd-buy"), dir); flash($("bd-sell"), dir); }
+    $("bd-chg").textContent = ch.txt; $("bd-chg").className = "chg " + (ch.up ? "up" : "down");
+    $("bd-chart").innerHTML = sparkSVG(ser, 320, 90, { area:true, grid:true, dot:true });
+    // ticker
+    const items = [...MK_PAIRS.casa, ...MK_PAIRS.cripto].map(([x,y]) => {
+      const ss = pairSeries(x,y), m = ss.at(-1), sp2 = SPREAD[MK_PAIRS.casa.some(p => p[0]===x) ? "casa" : "cripto"], dd = pairDec(m), c2 = pct(ss[0], m);
+      return `<span><b>${x}/${y}</b> <span class="mono">${nf(m*(1-sp2),dd)} · ${nf(m*(1+sp2),dd)}</span> <span class="chg ${c2.up?"up":"down"}">${c2.txt}</span></span>`;
+    }).join("");
+    $("ticker").innerHTML = items + items;
+  },
+  step(){
+    if(document.hidden || $("page-home").hidden) return;
+    for(const c in MID_USD){ if(!VOL[c]) continue;
+      let v = MID_USD[c] * (1 + (Math.random() - 0.5) * 2 * VOL[c]);
+      v += (BASE_MID[c] - v) * 0.03;                 // reversión a la media
+      MID_USD[c] = v; hist[c].push(v); hist[c].shift(); }
+    market.lastTick = Date.now(); market.render(false); renderCompare();
+  }
+};
+$("mk-casa").onclick = () => { market.tab = "casa"; market.render(true); };
+$("mk-cripto").onclick = () => { market.tab = "cripto"; market.render(true); };
+setInterval(market.step, 4000);
+setInterval(() => { const s = Math.round((Date.now() - market.lastTick)/1000);
+  $("upd").textContent = s < 2 ? "Tasas en vivo" : `Actualizado hace ${s} s`; }, 1000);
+
+/* ahorro vs banco en el cotizador */
+function renderSaving(x){
+  const el = $("q-save"), o = x.moneda_origen, d = x.moneda_destino;
+  if(x.modalidad !== "casa" || (o !== "PEN" && d !== "PEN")){ el.hidden = true; return; }
+  const bank = x.monto_origen * (MID_USD[o] / MID_USD[d]) * (1 - BANK_SPREAD);
+  const diffPEN = (x.monto_destino - bank) * (MID_USD[d] / MID_USD.PEN);
+  if(diffPEN < 0.5){ el.hidden = true; return; }
+  el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>Recibes aprox. S/ ${nf(diffPEN,2)} más que en un banco tradicional`;
+  el.hidden = false;
+}
+
+/* ============================ CÓMO FUNCIONA (teléfono) ============================ */
+const how = {
+  i:0,
+  set(i){ how.i = i;
+    document.querySelectorAll("#how-steps button").forEach((b,k) => b.setAttribute("aria-pressed", k === i));
+    document.querySelectorAll(".phone .screen").forEach((s,k) => s.classList.toggle("on", k === i)); }
+};
+document.querySelectorAll("#how-steps button").forEach(b => {
+  b.onclick = () => how.set(+b.dataset.step);
+  b.querySelector(".prog").addEventListener("animationend", () => how.set((how.i + 1) % 3));
+});
+
+/* ============================ COMPARADOR ============================ */
+const CMP_STEPS = [1000, 2500, 5000, 10000, 20000, 30000];
+function cmpCalc(pen){
+  const usdMid = pen * MID_USD.PEN;
+  const nexoRate = MID_USD.PEN * (1 - SPREAD.casa * (usdMid >= PREF_USD ? 0.6 : 1));
+  const bankRate = MID_USD.PEN * (1 - BANK_SPREAD);
+  const nexo = pen * nexoRate, bank = pen * bankRate;
+  return { nexo, bank, savePEN:(nexo - bank) / MID_USD.PEN, nexoTC:1/nexoRate, bankTC:1/bankRate };
+}
+function renderCompare(){
+  const pen = +$("cmp-amt").value, r = cmpCalc(pen);
+  $("cmp-amt-l").textContent = `S/ ${nf(pen,0)}`;
+  $("cmp-bank").textContent = `US$ ${nf(r.bank,2)}`; $("cmp-nexo").textContent = `US$ ${nf(r.nexo,2)}`;
+  $("cmp-bank-r").textContent = nf(r.bankTC,3); $("cmp-nexo-r").textContent = nf(r.nexoTC,3);
+  $("cmp-save").textContent = `S/ ${nf(r.savePEN,2)}`;
+  const max = cmpCalc(CMP_STEPS.at(-1)).savePEN;
+  const near = CMP_STEPS.reduce((best,v) => Math.abs(v-pen) < Math.abs(best-pen) ? v : best, CMP_STEPS[0]);
+  $("cmp-bars").innerHTML = CMP_STEPS.map(v => { const sv = cmpCalc(v).savePEN;
+    return `<div class="${v === near ? "cur" : ""}"><b>S/ ${nf(sv,0)}</b><i style="height:${(sv/max*100).toFixed(1)}%"></i><small>${v >= 1000 ? nf(v/1000, v % 1000 ? 1 : 0) + "k" : v}</small></div>`; }).join("");
+}
+$("cmp-amt").addEventListener("input", renderCompare);
+
+/* ============================ HORARIO (hora de Lima) ============================ */
+function renderOpen(){
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US",{ timeZone:"America/Lima", weekday:"short", hour:"numeric", minute:"numeric", hour12:false })
+    .formatToParts(new Date()).map(p => [p.type, p.value]));
+  const h = (+parts.hour % 24) + (+parts.minute)/60, wd = parts.weekday;
+  const open = (["Mon","Tue","Wed","Thu","Fri"].includes(wd) && h >= 9 && h < 18) || (wd === "Sat" && h >= 9 && h < 13);
+  const el = $("open-status"); el.classList.toggle("is-open", open);
+  el.textContent = open ? `Abierto ahora · hasta las ${wd === "Sat" ? "13:00" : "18:00"}` : "Fuera de horario · procesamos al abrir (Lun–Vie 9–18, Sáb 9–13)";
+}
+renderOpen(); setInterval(renderOpen, 60000);
+
+$("cta-quote").onclick = () => { $("quoter").scrollIntoView({behavior:"smooth", block:"center"}); setTimeout(() => q.from.focus({preventScroll:true}), 500); };
+market.render(true); renderCompare();
+
+window.__marketReady = true;
+/* ============================ INICIO ============================ */
+setInterval(tickHome, 1000);
+setHomeMode("casa");
+route();
+</script>
+
+</body></html>

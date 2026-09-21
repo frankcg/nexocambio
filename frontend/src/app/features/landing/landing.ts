@@ -3,10 +3,11 @@ import { Footer } from '../../layout/footer/footer';
 import { HeroCotizador } from './secciones/hero-cotizador/hero-cotizador';
 import { FranjaBancos } from './secciones/franja-bancos/franja-bancos';
 import { Ticker } from './secciones/ticker/ticker';
+import { MercadoEnVivo } from './secciones/mercado-en-vivo/mercado-en-vivo';
 import { MercadoSimuladoService } from './mercado-simulado.service';
 
 @Component({
-  imports: [Footer, HeroCotizador, FranjaBancos, Ticker],
+  imports: [Footer, HeroCotizador, FranjaBancos, Ticker, MercadoEnVivo],
   selector: 'app-landing',
   providers: [MercadoSimuladoService],
   changeDetection: ChangeDetectionStrategy.OnPush,

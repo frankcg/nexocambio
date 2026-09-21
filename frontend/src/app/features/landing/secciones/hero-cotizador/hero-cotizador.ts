@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CotizacionesService } from '../../../../core/services/cotizaciones.service';
@@ -106,6 +106,21 @@ export class HeroCotizador {
     this.destroyRef.onDestroy(() => {
       if (this.debounceTimer) clearTimeout(this.debounceTimer);
       this.detenerTemporizador();
+    });
+
+    effect(() => {
+      const par = this.mercado.parPendiente();
+      if (!par) return;
+      this.theme.establecer(par.modo);
+      const cfg = MODOS_QUOTER[par.modo];
+      const origen = (cfg.from.includes(par.origen) ? par.origen : cfg.def[0]) as Moneda;
+      const destino = (cfg.to.includes(par.destino) ? par.destino : cfg.def[1]) as Moneda;
+      this.monedaOrigen.set(origen);
+      this.monedaDestino.set(destino);
+      const montoDefault = origen === 'PEN' ? 1000 : origen === 'USD' || origen === 'EUR' ? 500 : 100;
+      this.montoTexto.set(formatearMonto(montoDefault, origen));
+      this.solicitarCotizacion();
+      this.mercado.consumirParPendiente();
     });
   }
 

@@ -153,6 +153,17 @@ export class MercadoSimuladoService {
     };
   }
 
+  private readonly _parPendiente = signal<{ modo: Modo; origen: string; destino: string } | null>(null);
+  readonly parPendiente = this._parPendiente.asReadonly();
+
+  pedirPar(modo: Modo, origen: string, destino: string): void {
+    this._parPendiente.set({ modo, origen, destino });
+  }
+
+  consumirParPendiente(): void {
+    this._parPendiente.set(null);
+  }
+
   tasaMid(moneda: string): number {
     return this.midUsd[moneda];
   }

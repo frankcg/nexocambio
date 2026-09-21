@@ -1,0 +1,50 @@
+<section class="block" id="mercado">
+  <div class="head-row">
+    <div class="head">
+      <span class="eyebrow">Mercado</span>
+      <h2>Tasas actualizadas cada pocos segundos</h2>
+      <p>Compra y venta de cada par, con su variación en las últimas 24 horas.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Modalidad del mercado">
+      <button role="tab" [attr.aria-selected]="tab() === 'casa'" (click)="cambiarTab('casa')">Divisas</button>
+      <button role="tab" [attr.aria-selected]="tab() === 'cripto'" (click)="cambiarTab('cripto')">Cripto</button>
+    </div>
+  </div>
+  <div class="market-wrap">
+    <table class="market">
+      <thead>
+        <tr>
+          <th scope="col">Par</th>
+          <th scope="col" class="num">Compramos</th>
+          <th scope="col" class="num">Vendemos</th>
+          <th scope="col" class="num">24 h</th>
+          <th scope="col" class="spk-col">Tendencia</th>
+          <th scope="col"><span class="sr">Acción</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (fila of filas(); track fila.monedaA + fila.monedaB) {
+          <tr>
+            <td>
+              <div class="pair">
+                <span class="coin" [style.background]="fila.color">{{ fila.monedaA }}</span>
+                <span>{{ fila.monedaA }}/{{ fila.monedaB }}<small>{{ fila.nombre }}</small></span>
+              </div>
+            </td>
+            <td class="num"><span>{{ fila.compra }}</span></td>
+            <td class="num"><span>{{ fila.venta }}</span></td>
+            <td class="num">
+              <span class="chg" [class.up]="fila.subiendo" [class.down]="!fila.subiendo">{{ fila.cambioTexto }}</span>
+            </td>
+            <td>
+              <app-sparkline class="spk" [valores]="fila.serie" [ancho]="120" [alto]="34" [color]="fila.subiendo ? 'var(--ok)' : 'var(--bad)'" />
+            </td>
+            <td>
+              <button type="button" class="go" (click)="cotizarFila(fila.monedaA, fila.monedaB)">Cotizar</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>

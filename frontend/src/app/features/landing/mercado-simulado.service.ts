@@ -11,6 +11,15 @@ const VOL: Record<string, number> = { USD: 0, PEN: 0.00045, EUR: 0.0006, BTC: 0.
 const HIST_N = 72;
 export const SPREAD: Record<Modo, number> = { casa: 0.0045, cripto: 0.012 };
 export const BANK_SPREAD = 0.025;
+export const PREF_USD = 5000;
+
+export interface ComparacionBanco {
+  nexo: number;
+  banco: number;
+  ahorroPEN: number;
+  tcNexo: number;
+  tcBanco: number;
+}
 
 const MK_PAIRS: Record<Modo, [string, string, string][]> = {
   casa: [
@@ -165,7 +174,19 @@ export class MercadoSimuladoService {
   }
 
   tasaMid(moneda: string): number {
+    this._tick();
     return this.midUsd[moneda];
+  }
+
+  calcularComparacion(pen: number): ComparacionBanco {
+    this._tick();
+    const mid = this.midUsd['PEN'];
+    const usdMid = pen * mid;
+    const nexoRate = mid * (1 - SPREAD.casa * (usdMid >= PREF_USD ? 0.6 : 1));
+    const bankRate = mid * (1 - BANK_SPREAD);
+    const nexo = pen * nexoRate;
+    const banco = pen * bankRate;
+    return { nexo, banco, ahorroPEN: (nexo - banco) / mid, tcNexo: 1 / nexoRate, tcBanco: 1 / bankRate };
   }
 
   /** Ahorro estimado en PEN frente a un banco tradicional (BANK_SPREAD), solo referencial. */

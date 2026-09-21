@@ -21,5 +21,6 @@ export class MercadoEnVivo {
 
   protected cotizarFila(monedaA: string, monedaB: string): void {
     this.mercado.pedirPar(this.tab(), monedaB, monedaA);
+    document.getElementById('quoter')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 }

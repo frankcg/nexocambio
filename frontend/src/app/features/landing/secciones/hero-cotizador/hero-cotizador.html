@@ -26,7 +26,7 @@
         </div>
       </div>
 
-      <form class="quoter" novalidate aria-labelledby="q-title" (submit)="$event.preventDefault(); operarAhora()">
+      <form id="quoter" class="quoter" novalidate aria-labelledby="q-title" (submit)="$event.preventDefault(); operarAhora()">
         <div class="q-head">
           <span class="q-title" id="q-title">Cotiza tu operación</span>
           <span class="src" [class.live]="fuenteEnVivo()">{{ textoFuente() }}</span>

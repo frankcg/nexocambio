@@ -1,0 +1,33 @@
+<section class="block" id="servicios">
+  <div class="head">
+    <span class="eyebrow">Servicios</span>
+    <h2>Dos modalidades, una sola cuenta</h2>
+    <p>Alterna entre Casa de Cambio y Cripto desde el mismo cotizador, sin cambiar de página.</p>
+  </div>
+  <div class="modes">
+    <article class="mode-card fx">
+      <span class="mc-ornament" aria-hidden="true">$</span>
+      <h3>Casa de Cambio</h3>
+      <p>Compra y venta de dólares y euros con transferencia bancaria. Para personas y empresas.</p>
+      <div class="chips"><span>PEN</span><span>USD</span><span>EUR</span></div>
+      <ul class="mc-list">
+        <li>Transferencia inmediata en 4 bancos</li>
+        <li>Interbancaria con CCI desde cualquier banco</li>
+        <li>Tasa preferencial desde US$ 5,000</li>
+      </ul>
+      <button type="button" class="btn" (click)="cotizar('casa')">Cotizar divisas</button>
+    </article>
+    <article class="mode-card cx">
+      <span class="mc-ornament" aria-hidden="true">₿</span>
+      <h3>Cripto</h3>
+      <p>Compra y vende stablecoins y criptoactivos pagando en soles o dólares.</p>
+      <div class="chips"><span>USDT</span><span>USDC</span><span>BTC</span><span>ETH</span></div>
+      <ul class="mc-list">
+        <li>Redes TRC20, ERC20, Solana y Bitcoin</li>
+        <li>Envío directo a tu billetera</li>
+        <li>Sin custodia: tú controlas tus llaves</li>
+      </ul>
+      <button type="button" class="btn" (click)="cotizar('cripto')">Cotizar cripto</button>
+    </article>
+  </div>
+</section>

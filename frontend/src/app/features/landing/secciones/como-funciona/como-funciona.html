@@ -1,0 +1,67 @@
+<section class="block how" id="como-funciona">
+  <div class="how-copy">
+    <div class="head">
+      <span class="eyebrow">Cómo funciona</span>
+      <h2>Tu cambio en tres pasos, desde el celular</h2>
+      <p>Sin colas ni efectivo: el dinero se mueve entre tu banco y el nuestro.</p>
+    </div>
+    <ol class="how-steps">
+      <li>
+        <button type="button" [attr.aria-pressed]="pasoActual() === 0" (click)="elegirPaso(0)">
+          <span class="n">1</span>
+          <span><b>Cotiza y confirma</b><small>Elige la modalidad, ingresa el monto y congela la tasa por 5 minutos.</small></span>
+          <i class="prog"></i>
+        </button>
+      </li>
+      <li>
+        <button type="button" [attr.aria-pressed]="pasoActual() === 1" (click)="elegirPaso(1)">
+          <span class="n">2</span>
+          <span><b>Transfiere y adjunta</b><small>Transfiere a la cuenta de NexoCambio y sube la foto o PDF del comprobante.</small></span>
+          <i class="prog"></i>
+        </button>
+      </li>
+      <li>
+        <button type="button" [attr.aria-pressed]="pasoActual() === 2" (click)="elegirPaso(2)">
+          <span class="n">3</span>
+          <span><b>Recibe y haz seguimiento</b><small>Validamos tu transferencia y ves cada cambio de estado en Mis operaciones.</small></span>
+          <i class="prog"></i>
+        </button>
+      </li>
+    </ol>
+  </div>
+  <div class="phone-stage" aria-hidden="true">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen" [class.on]="pasoActual() === 0">
+        <div class="ph-top"><b>Cotiza</b><span class="ph-chip">Casa de Cambio</span></div>
+        <div class="ph-field"><small>Envías</small><span>1,000.00 <em>PEN</em></span></div>
+        <div class="ph-field hl"><small>Recibes</small><span>294.09 <em>USD</em></span></div>
+        <div class="ph-row"><small>Tipo de cambio</small><b>3.4003</b></div>
+        <div class="ph-timer"><small>Tasa válida por 04:32</small><i></i></div>
+        <div class="ph-save">↗ Ahorras S/ 20.49 vs. banco</div>
+        <div class="ph-banks"><small>Transfiere desde</small><span>BCP · Interbank · BBVA · Scotiabank</span></div>
+        <div class="ph-btn">Operar ahora</div>
+      </div>
+      <div class="screen" [class.on]="pasoActual() === 1">
+        <div class="ph-top"><b>Transfiere</b><span class="ph-chip">Paso 2 de 3</span></div>
+        <div class="ph-card"><small>Cuenta de NexoCambio</small><b>BCP · Cta. Corriente</b><span class="mono">193-2458710-0-39</span></div>
+        <div class="ph-row"><small>Monto exacto</small><b>S/ 1,000.00</b></div>
+        <div class="ph-drop">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 16V4M7 9l5-5 5 5M4 16v3h16v-3" /></svg>
+          <small>voucher_bcp.jpg</small>
+        </div>
+        <div class="ph-btn">Confirmar operación</div>
+      </div>
+      <div class="screen" [class.on]="pasoActual() === 2">
+        <div class="ph-top"><b>Mis operaciones</b></div>
+        <div class="ph-op"><span><b>NX-7K2Q4P</b><small>S/ 1,000 → US$ 294.09</small></span><span class="pill s-ok">Procesada</span></div>
+        <ol class="ph-tl">
+          <li>Pendiente de validación<small>10:02</small></li>
+          <li>En proceso<small>10:09</small></li>
+          <li>Procesada<small>10:14</small></li>
+        </ol>
+        <div class="ph-note">Enviamos US$ 294.09 a tu cuenta Interbank.</div>
+      </div>
+    </div>
+  </div>
+</section>

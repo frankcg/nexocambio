@@ -1,0 +1,37 @@
+<section class="block" id="ahorro">
+  <div class="compare">
+    <div class="compare-copy">
+      <span class="eyebrow">Comparador</span>
+      <h2>¿Cuánto ahorras frente al banco?</h2>
+      <p class="muted">Los bancos suelen aplicar un diferencial más amplio entre compra y venta. Mueve el monto y compara cuántos dólares recibes.</p>
+      <label class="range-label" for="cmp-amt">Cambias <b class="mono">{{ etiquetaMonto() }}</b></label>
+      <input
+        type="range"
+        id="cmp-amt"
+        min="500"
+        max="30000"
+        step="500"
+        [value]="monto()"
+        (input)="cambiarMonto($any($event.target).value)"
+      />
+      <div class="range-scale"><span>S/ 500</span><span>S/ 30,000</span></div>
+    </div>
+    <div class="compare-res">
+      <div class="cmp-cards">
+        <div class="cmp bank"><small>Banco tradicional</small><span class="mono">{{ textoBanco() }}</span><em>T.C. referencial {{ textoTcBanco() }}</em></div>
+        <div class="cmp nexo"><small>NexoCambio</small><span class="mono">{{ textoNexo() }}</span><em>T.C. {{ textoTcNexo() }}</em></div>
+      </div>
+      <div class="cmp-save"><small>Tu ahorro</small><span class="mono">{{ textoAhorro() }}</span></div>
+      <div class="cmp-bars" role="img" aria-label="Ahorro estimado por monto">
+        @for (barra of barras(); track barra.valor) {
+          <div [class.cur]="barra.actual">
+            <b>{{ barra.etiquetaAhorro }}</b>
+            <i [style.height.%]="barra.alturaPorcentaje"></i>
+            <small>{{ barra.etiquetaMonto }}</small>
+          </div>
+        }
+      </div>
+      <p class="fine" style="text-align: left">Diferencial bancario referencial de 2.5 % sobre el precio medio. Solo con fines ilustrativos.</p>
+    </div>
+  </div>
+</section>

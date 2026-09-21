@@ -1,0 +1,11 @@
+<div class="wrap">
+  <div class="banks">
+    <span class="muted">Transfiere desde</span>
+    <ul>
+      @for (banco of BANCOS; track banco) {
+        <li>{{ banco }}</li>
+      }
+    </ul>
+    <span class="open" [class.is-open]="estado().abierto">{{ estado().texto }}</span>
+  </div>
+</div>

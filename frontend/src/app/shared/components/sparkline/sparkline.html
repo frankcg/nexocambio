@@ -1,0 +1,15 @@
+<svg [attr.viewBox]="'0 0 ' + ancho() + ' ' + alto()" preserveAspectRatio="none" aria-hidden="true">
+  @if (grilla()) {
+    @for (y of datos().lineasGrilla; track y) {
+      <line x1="0" [attr.x2]="ancho()" [attr.y1]="y" [attr.y2]="y" style="stroke: var(--line)" stroke-width="1" stroke-dasharray="2 4" vector-effect="non-scaling-stroke" />
+    }
+  }
+  @if (area()) {
+    <path [attr.d]="datos().areaPath" [style.fill]="color()" style="opacity: 0.12" />
+  }
+  <polyline [attr.points]="datos().puntos" fill="none" [style.stroke]="color()" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />
+  @if (punto()) {
+    <circle [attr.cx]="datos().ultimoX" [attr.cy]="datos().ultimoY" r="7" [style.fill]="color()" style="opacity: 0.18" />
+    <circle [attr.cx]="datos().ultimoX" [attr.cy]="datos().ultimoY" r="3.2" [style.fill]="color()" />
+  }
+</svg>

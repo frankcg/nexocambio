@@ -1,11 +1,22 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
 import { Footer } from '../../layout/footer/footer';
+import { HeroCotizador } from './secciones/hero-cotizador/hero-cotizador';
+import { FranjaBancos } from './secciones/franja-bancos/franja-bancos';
+import { Ticker } from './secciones/ticker/ticker';
+import { MercadoSimuladoService } from './mercado-simulado.service';
 
 @Component({
-  imports: [Footer],
+  imports: [Footer, HeroCotizador, FranjaBancos, Ticker],
   selector: 'app-landing',
+  providers: [MercadoSimuladoService],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrl: './landing.scss',
   templateUrl: './landing.html',
 })
-export class Landing {}
+export class Landing {
+  private readonly mercado = inject(MercadoSimuladoService);
+
+  constructor() {
+    this.mercado.iniciar();
+    inject(DestroyRef).onDestroy(() => this.mercado.detener());
+  }
+}

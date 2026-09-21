@@ -1,0 +1,10 @@
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track">
+    @for (item of items(); track $index + '-a') {
+      <span><b>{{ item.par }}</b> <span class="mono">{{ item.sub }}</span> <span class="chg" [class.up]="item.subiendo" [class.down]="!item.subiendo">{{ item.cambioTexto }}</span></span>
+    }
+    @for (item of items(); track $index + '-b') {
+      <span><b>{{ item.par }}</b> <span class="mono">{{ item.sub }}</span> <span class="chg" [class.up]="item.subiendo" [class.down]="!item.subiendo">{{ item.cambioTexto }}</span></span>
+    }
+  </div>
+</div>

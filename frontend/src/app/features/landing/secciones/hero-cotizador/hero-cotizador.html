@@ -1,0 +1,97 @@
+<div class="hero-stage">
+  <div class="hero-bg" aria-hidden="true"><span class="orb o1"></span><span class="orb o2"></span></div>
+  <div class="wrap">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="live-chip">
+          <i></i>
+          <span>{{ eyebrow() }}</span>
+          <b class="sep">·</b>
+          <span>{{ fuenteEnVivo() ? 'Tasas en vivo' : textoFuente() }}</span>
+        </span>
+        <h1 [innerHTML]="tituloHtml()"></h1>
+        <p class="lead">{{ lead() }}</p>
+
+        <div class="board" aria-live="off">
+          <div class="board-head">
+            <span class="board-pair">{{ board().par }}</span>
+            <span class="chg" [class.up]="board().subiendo" [class.down]="!board().subiendo">{{ board().cambioTexto }}</span>
+            <span class="muted board-range">24 h</span>
+          </div>
+          <div class="board-nums">
+            <div><small>Compramos</small><span class="mono big">{{ board().compra }}</span></div>
+            <div><small>Vendemos</small><span class="mono big">{{ board().venta }}</span></div>
+          </div>
+          <app-sparkline class="board-chart" [valores]="board().serie" [ancho]="320" [alto]="90" [area]="true" [grilla]="true" [punto]="true" [color]="board().subiendo ? 'var(--ok)' : 'var(--bad)'" />
+        </div>
+      </div>
+
+      <form class="quoter" novalidate aria-labelledby="q-title" (submit)="$event.preventDefault(); operarAhora()">
+        <div class="q-head">
+          <span class="q-title" id="q-title">Cotiza tu operación</span>
+          <span class="src" [class.live]="fuenteEnVivo()">{{ textoFuente() }}</span>
+        </div>
+        <div class="seg" role="group" aria-label="Modalidad">
+          <span class="thumb" aria-hidden="true"></span>
+          <button type="button" [attr.aria-pressed]="modo() === 'casa'" (click)="cambiarModo('casa')">Casa de Cambio</button>
+          <button type="button" [attr.aria-pressed]="modo() === 'cripto'" (click)="cambiarModo('cripto')">Cripto</button>
+        </div>
+        <div class="field">
+          <label for="amt-from">Envías</label>
+          <input
+            id="amt-from"
+            inputmode="decimal"
+            autocomplete="off"
+            [value]="montoTexto()"
+            (input)="onInputMonto($any($event.target).value)"
+            (blur)="onBlurMonto()"
+            (focus)="onFocusMonto()"
+            aria-describedby="q-err"
+          />
+          <select [value]="monedaOrigen()" (change)="cambiarMonedaOrigen($any($event.target).value)" aria-label="Moneda o activo que envías">
+            @for (m of monedasOrigen(); track m) {
+              <option [value]="m">{{ m }}</option>
+            }
+          </select>
+        </div>
+        <div class="swap-row">
+          <button type="button" class="swap" aria-label="Intercambiar monedas" (click)="intercambiar()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" /></svg>
+          </button>
+        </div>
+        <div class="field">
+          <label for="amt-to">Recibes (estimado)</label>
+          <input id="amt-to" readonly tabindex="-1" [value]="textoMontoDestino()" />
+          <select [value]="monedaDestino()" (change)="cambiarMonedaDestino($any($event.target).value)" aria-label="Moneda o activo que recibes">
+            @for (m of monedasDestino(); track m) {
+              <option [value]="m">{{ m }}</option>
+            }
+          </select>
+        </div>
+        @if (errorMensaje()) {
+          <p class="q-err" role="alert">{{ errorMensaje() }}</p>
+        }
+        <dl class="q-meta">
+          <dt [innerHTML]="etiquetaTasa()"></dt>
+          <dd class="mono">{{ textoTasa() }}</dd>
+          <dt>Comisión</dt>
+          <dd>S/ 0.00</dd>
+        </dl>
+        @if (ahorroTexto(); as ahorro) {
+          <p class="save">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" /></svg>
+            {{ ahorro }}
+          </p>
+        }
+        @if (cotizacion()) {
+          <div class="timer" [class.expired]="vencida()" aria-live="polite">
+            <span>{{ textoTemporizador() }}</span>
+            <span class="bar"><i [style.transform]="'scaleX(' + proporcionBarra() + ')'"></i></span>
+          </div>
+        }
+        <button type="submit" class="btn btn-solid cta" [disabled]="!cotizacion()">{{ vencida() ? 'Actualizar cotización' : 'Operar ahora' }}</button>
+        <p class="fine">Montos desde US$ 5,000 acceden a tasa preferencial.</p>
+      </form>
+    </section>
+  </div>
+</div>

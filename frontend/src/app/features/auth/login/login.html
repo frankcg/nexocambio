@@ -1,1 +1,54 @@
-<p>login works!</p>
+<div class="page narrow">
+  <div class="page-head">
+    <div>
+      <h1>Inicia sesión</h1>
+      <p>
+        @if (hayDraft()) {
+          Tu cotización está guardada. Ingresa para registrar la operación.
+        } @else {
+          Accede a tus operaciones y a nuevas cotizaciones.
+        }
+      </p>
+    </div>
+  </div>
+
+  <form class="panel" [formGroup]="form" (ngSubmit)="enviar()" novalidate>
+    @if (errorGeneral(); as error) {
+      <p class="form-err" role="alert">{{ error }}</p>
+    }
+
+    <div class="ff" [class.invalid]="form.controls.correo.invalid && (form.controls.correo.touched || form.controls.correo.dirty)">
+      <label for="correo">Correo electrónico</label>
+      <input class="inp" id="correo" formControlName="correo" type="email" autocomplete="email" placeholder="nombre@correo.com" />
+      <app-campo-error [control]="form.controls.correo" />
+    </div>
+
+    <div class="ff" [class.invalid]="form.controls.password.invalid && (form.controls.password.touched || form.controls.password.dirty)">
+      <label for="password">Contraseña</label>
+      <div class="pw">
+        <input
+          class="inp"
+          id="password"
+          formControlName="password"
+          [type]="mostrarPassword() ? 'text' : 'password'"
+          autocomplete="current-password"
+        />
+        <button type="button" (click)="alternarPassword()">{{ mostrarPassword() ? 'Ocultar' : 'Mostrar' }}</button>
+      </div>
+      <app-campo-error [control]="form.controls.password" />
+    </div>
+
+    <button class="btn btn-solid cta" type="submit" [disabled]="enviando()">
+      @if (enviando()) {
+        <span class="spinner" aria-hidden="true"></span>Validando…
+      } @else {
+        Iniciar sesión
+      }
+    </button>
+  </form>
+
+  <p class="alt">
+    ¿Aún no tienes cuenta?
+    <a routerLink="/registro" [queryParams]="registroQueryParams">Regístrate</a>
+  </p>
+</div>

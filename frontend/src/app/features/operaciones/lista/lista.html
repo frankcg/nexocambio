@@ -1,1 +1,78 @@
-<p>lista works!</p>
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Mis operaciones</h1>
+      <p>Seguimiento de tus solicitudes de cambio.</p>
+    </div>
+    <a class="btn btn-solid" routerLink="/">Nueva operación</a>
+  </div>
+
+  @if (cargando()) {
+    <div class="skeleton"></div>
+  } @else if (error(); as msg) {
+    <div class="empty">
+      <h2>No pudimos cargar tus operaciones</h2>
+      <p>{{ msg }}</p>
+      <button class="btn btn-solid" type="button" (click)="cargar()">Reintentar</button>
+    </div>
+  } @else if (operaciones().length === 0) {
+    <div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M3 13h5l1.5 3h5L16 13h5M5 5h14l2 8v6H3v-6l2-8Z" /></svg>
+      <h2>Todavía no tienes operaciones</h2>
+      <p>Cuando registres tu primera operación, aquí verás su fecha, monto y estado.</p>
+      <a class="btn btn-solid" routerLink="/">Cotizar ahora</a>
+    </div>
+  } @else {
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div class="tiles">
+        <div class="tile accent">
+          <small>Operaciones en curso</small>
+          <span>{{ enCurso() }}</span>
+          <em>{{ enCurso() ? 'Te avisaremos cuando cambien de estado' : 'Nada pendiente por ahora' }}</em>
+        </div>
+        <div class="tile">
+          <small>Total operado</small>
+          <span>{{ totalOperadoTexto() }}</span>
+          <em>Equivalente aproximado, sin rechazadas</em>
+        </div>
+        @if (ultimaOperacion(); as u) {
+          <div class="tile">
+            <small>Última operación</small>
+            <span>{{ fecha(u.fecha_operacion) }}</span>
+            <em>{{ u.id_operacion }} · {{ u.estado }}</em>
+          </div>
+        }
+      </div>
+
+      <div class="filters" role="group" aria-label="Filtrar por estado">
+        <button type="button" [attr.aria-pressed]="filtro() === 'Todas'" (click)="elegirFiltro('Todas')">
+          Todas<span class="n">{{ operaciones().length }}</span>
+        </button>
+        @for (e of ESTADOS; track e) {
+          <button type="button" [attr.aria-pressed]="filtro() === e" (click)="elegirFiltro(e)">
+            {{ e }}<span class="n">{{ conteos()[e] }}</span>
+          </button>
+        }
+      </div>
+
+      @if (filtradas().length) {
+        <ul class="oplist">
+          <li class="hdr" aria-hidden="true"><span>Fecha</span><span>Modalidad</span><span>Monto</span><span>Estado</span><span></span></li>
+          @for (o of filtradas(); track o.id_operacion) {
+            <li>
+              <a [routerLink]="['/operaciones', o.id_operacion]">
+                <span class="date">{{ fecha(o.fecha_operacion) }}<small>{{ o.id_operacion }}</small></span>
+                <span class="mod"><span class="tag" [class.casa]="o.modalidad === 'casa'" [class.cripto]="o.modalidad === 'cripto'">{{ o.modalidad === 'cripto' ? 'Cripto' : 'Casa de Cambio' }}</span></span>
+                <span class="amt">{{ monto(o.monto_origen, o.moneda_origen) }}<small>Recibes {{ monto(o.monto_destino, o.moneda_destino) }}</small></span>
+                <span class="st"><span class="pill" [class]="claseEstado(o.estado)">{{ o.estado }}</span></span>
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6" /></svg>
+              </a>
+            </li>
+          }
+        </ul>
+      } @else {
+        <div class="empty"><p>No tienes operaciones con estado "{{ filtro() }}".</p></div>
+      }
+    </div>
+  }
+</div>

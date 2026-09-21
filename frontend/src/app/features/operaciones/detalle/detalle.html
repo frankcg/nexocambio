@@ -1,1 +1,104 @@
-<p>detalle works!</p>
+<div class="page">
+  <a class="back" routerLink="/operaciones">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6" /></svg>
+    Mis operaciones
+  </a>
+
+  @if (cargando()) {
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+  } @else if (error()) {
+    <div class="empty">
+      <h2>Operación no disponible</h2>
+      <p>{{ error() }}</p>
+    </div>
+  } @else if (operacion(); as o) {
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Operación</span>
+        <h1 class="mono" style="font-family: var(--f-mono)">{{ o.id_operacion }}</h1>
+        <p>
+          {{ fechaHora(o.fecha_operacion) }} ·
+          <span class="tag" [class.casa]="o.modalidad === 'casa'" [class.cripto]="o.modalidad === 'cripto'">{{ o.modalidad === 'cripto' ? 'Cripto' : 'Casa de Cambio' }}</span>
+        </p>
+      </div>
+      <span class="pill" [class]="claseEstado(o.estado)">{{ o.estado }}</span>
+    </div>
+
+    <div class="detail">
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <section class="panel">
+          <h2>Detalle</h2>
+          <div class="qsum">
+            <div class="side"><small>Envías</small><span class="amt">{{ monto(o.monto_origen, o.moneda_origen) }}</span></div>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            <div class="side"><small>Recibes</small><span class="amt">{{ monto(o.monto_destino, o.moneda_destino) }}</span></div>
+          </div>
+          <dl class="kv">
+            <dt>{{ etiquetaTasa() }}</dt>
+            <dd class="mono">{{ textoTasa() }}</dd>
+            <dt>Comisión</dt>
+            <dd>S/ 0.00</dd>
+            <dt>Cotización</dt>
+            <dd class="mono">{{ o.id_cotizacion }}</dd>
+            <hr />
+            <dt>{{ etiquetaOrigen() }}</dt>
+            <dd>{{ origenTexto() }}</dd>
+            @if (o.destino.tipo === 'wallet') {
+              <dt>Red de destino</dt>
+              <dd>{{ o.destino.red }}</dd>
+              <dt>Billetera</dt>
+              <dd class="mono" style="font-size: 13px">{{ o.destino.direccion }}</dd>
+            } @else {
+              <dt>Banco de destino</dt>
+              <dd>{{ o.destino.banco }}</dd>
+              <dt>Cuenta</dt>
+              <dd class="mono">{{ o.destino.tipo_cuenta }} · {{ o.destino.numero }}</dd>
+              <dt>Titular</dt>
+              <dd>{{ o.destino.titular }}</dd>
+            }
+          </dl>
+        </section>
+        <section class="panel">
+          <h2>Comprobante</h2>
+          @if (o.comprobante_url) {
+            @if (o.comprobante_tipo?.startsWith('image/')) {
+              <img class="proof-img" [src]="o.comprobante_url" alt="Comprobante de transferencia" />
+            } @else {
+              <a class="btn btn-ghost" [href]="o.comprobante_url" target="_blank" rel="noopener">Ver comprobante</a>
+            }
+          }
+          <dl class="kv">
+            <dt>Archivo</dt>
+            <dd>{{ o.comprobante_nombre || '—' }}</dd>
+          </dl>
+        </section>
+      </div>
+      <section class="panel">
+        <h2>Estado</h2>
+        <ol class="timeline">
+          @for (e of flujo(); track e) {
+            <li [class.done]="estaHecho(e) && e !== 'Rechazada'" [class.bad]="estaHecho(e) && e === 'Rechazada'" [class.todo]="!estaHecho(e)">
+              <span>
+                <b>{{ e }}</b>
+                <small>
+                  @if (estaHecho(e)) {
+                    {{ descripcionEstado(e) }}
+                    @if (fechaHito(e); as f) {
+                      · {{ fechaHora(f) }}
+                    }
+                  } @else {
+                    Pendiente
+                  }
+                </small>
+              </span>
+            </li>
+          }
+        </ol>
+        @if (rechazada()) {
+          <p class="form-err">{{ o.motivo_rechazo || 'Tu operación fue rechazada.' }} Si ya transferiste, escríbenos a hola&#64;nexocambio.pe con el código de la operación.</p>
+        }
+      </section>
+    </div>
+  }
+</div>

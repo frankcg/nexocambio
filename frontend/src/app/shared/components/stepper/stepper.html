@@ -1,0 +1,7 @@
+<ol class="stepper" aria-label="Progreso">
+  @for (etiqueta of etiquetas(); track etiqueta; let i = $index) {
+    <li [class.done]="i < pasoActual()" [class.now]="i === pasoActual()" [attr.aria-current]="i === pasoActual() ? 'step' : null">
+      <span>{{ etiqueta }}</span>
+    </li>
+  }
+</ol>

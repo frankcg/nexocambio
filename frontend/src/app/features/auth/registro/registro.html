@@ -1,1 +1,236 @@
-<p>registro works!</p>
+@if (registrado(); as r) {
+  <div class="page narrow">
+    <div class="panel success">
+      <div class="ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5" /></svg>
+      </div>
+      <h1 style="font-size:30px">Tu cuenta está lista</h1>
+      <p>Registramos a <b>{{ r.nombre }}</b>. Ya puedes operar en NexoCambio.</p>
+      <a class="btn btn-solid cta" [routerLink]="destinoFinal()">{{ etiquetaDestinoFinal() }}</a>
+    </div>
+  </div>
+} @else {
+  <div class="page mid">
+    <div class="page-head">
+      <div>
+        <h1>Crea tu cuenta</h1>
+        <p>Toma menos de 3 minutos. Paso {{ paso() + 1 }} de {{ pasos().length }}.</p>
+      </div>
+    </div>
+
+    <form class="panel" [formGroup]="form" (ngSubmit)="continuar()" novalidate>
+      <app-stepper [etiquetas]="pasos()" [pasoActual]="paso()" />
+
+      <div>
+        <h2>{{ tituloPaso() }}</h2>
+        @if (subtituloPaso(); as sub) {
+          <p class="muted" style="margin: 6px 0 0">{{ sub }}</p>
+        }
+      </div>
+
+      @if (errorGeneral(); as error) {
+        <p class="form-err" role="alert">{{ error }}</p>
+      }
+
+      @switch (paso()) {
+        @case (0) {
+          <div class="choices" role="radiogroup" aria-label="Tipo de cliente">
+            <label class="choice">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></svg>
+              <input type="radio" formControlName="tipo_cliente" value="persona" />
+              <b>Persona natural</b>
+              <small>Operas a tu nombre con DNI, CE o pasaporte.</small>
+            </label>
+            <label class="choice">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="4" y="3" width="11" height="18" rx="1" /><path d="M15 9h5v12h-5M8 7h3M8 11h3M8 15h3" /></svg>
+              <input type="radio" formControlName="tipo_cliente" value="empresa" />
+              <b>Empresa</b>
+              <small>Operas con RUC mediante un representante.</small>
+            </label>
+          </div>
+        }
+        @case (1) {
+          <div class="fgrid">
+            @if (form.controls.tipo_cliente.value === 'persona') {
+              <div class="ff">
+                <label for="nombres">Nombres</label>
+                <input class="inp" id="nombres" formControlName="nombres" autocomplete="given-name" />
+                <app-campo-error [control]="form.controls.nombres" />
+              </div>
+              <div class="ff">
+                <label for="apellidos">Apellidos</label>
+                <input class="inp" id="apellidos" formControlName="apellidos" autocomplete="family-name" />
+                <app-campo-error [control]="form.controls.apellidos" />
+              </div>
+              <div class="ff">
+                <label for="tipo_documento">Tipo de documento</label>
+                <select class="inp sel" id="tipo_documento" formControlName="tipo_documento">
+                  @for (t of TIPOS_DOCUMENTO_PERSONA; track t) {
+                    <option [value]="t">{{ t }}</option>
+                  }
+                </select>
+              </div>
+              <div class="ff">
+                <label for="numero_documento">Número de documento</label>
+                <input class="inp" id="numero_documento" formControlName="numero_documento" inputmode="numeric" maxlength="12" />
+                <app-campo-error [control]="form.controls.numero_documento" />
+              </div>
+              <div class="ff full">
+                <label for="fecha_nacimiento">Fecha de nacimiento</label>
+                <input class="inp" id="fecha_nacimiento" type="date" formControlName="fecha_nacimiento" />
+                <app-campo-error [control]="form.controls.fecha_nacimiento" />
+              </div>
+            } @else {
+              <div class="ff">
+                <label for="ruc">RUC</label>
+                <input class="inp" id="ruc" formControlName="ruc" inputmode="numeric" maxlength="11" placeholder="20XXXXXXXXX" />
+                <app-campo-error [control]="form.controls.ruc" />
+              </div>
+              <div class="ff">
+                <label for="razon_social">Razón social</label>
+                <input class="inp" id="razon_social" formControlName="razon_social" />
+                <app-campo-error [control]="form.controls.razon_social" />
+              </div>
+              <div class="ff full">
+                <label for="actividad">Actividad económica</label>
+                <select class="inp sel" id="actividad" formControlName="actividad">
+                  <option value="">Selecciona</option>
+                  @for (a of ACTIVIDADES; track a) {
+                    <option [value]="a">{{ a }}</option>
+                  }
+                </select>
+              </div>
+            }
+          </div>
+        }
+        @case (2) {
+          <div class="fgrid">
+            @if (form.controls.tipo_cliente.value === 'persona') {
+              <div class="ff">
+                <label for="telefono">Celular</label>
+                <input
+                  class="inp"
+                  id="telefono"
+                  type="tel"
+                  formControlName="telefono"
+                  inputmode="numeric"
+                  maxlength="9"
+                  autocomplete="tel-national"
+                  placeholder="987654321"
+                />
+                <app-campo-error [control]="form.controls.telefono" />
+              </div>
+              <div class="ff">
+                <label for="ocupacion">Ocupación</label>
+                <select class="inp sel" id="ocupacion" formControlName="ocupacion">
+                  <option value="">Selecciona</option>
+                  @for (o of OCUPACIONES; track o) {
+                    <option [value]="o">{{ o }}</option>
+                  }
+                </select>
+              </div>
+              <div class="ff full">
+                <label for="pep">¿Eres Persona Expuesta Políticamente (PEP)?</label>
+                <select class="inp sel" id="pep" formControlName="pep">
+                  <option value="No">No</option>
+                  <option value="Sí">Sí</option>
+                </select>
+                <small>Requerido por normativa de prevención de lavado de activos.</small>
+              </div>
+            } @else {
+              <div class="ff full">
+                <label for="rep_nombres">Nombres y apellidos</label>
+                <input class="inp" id="rep_nombres" formControlName="rep_nombres" autocomplete="name" />
+                <app-campo-error [control]="form.controls.rep_nombres" />
+              </div>
+              <div class="ff">
+                <label for="rep_tipo_documento">Tipo de documento</label>
+                <select class="inp sel" id="rep_tipo_documento" formControlName="rep_tipo_documento">
+                  @for (t of TIPOS_DOCUMENTO_PERSONA; track t) {
+                    <option [value]="t">{{ t }}</option>
+                  }
+                </select>
+              </div>
+              <div class="ff">
+                <label for="rep_numero_documento">Número de documento</label>
+                <input class="inp" id="rep_numero_documento" formControlName="rep_numero_documento" inputmode="numeric" maxlength="12" />
+                <app-campo-error [control]="form.controls.rep_numero_documento" />
+              </div>
+              <div class="ff">
+                <label for="rep_cargo">Cargo</label>
+                <input class="inp" id="rep_cargo" formControlName="rep_cargo" placeholder="Gerente general" />
+                <app-campo-error [control]="form.controls.rep_cargo" />
+              </div>
+              <div class="ff">
+                <label for="telefono">Celular</label>
+                <input class="inp" id="telefono" type="tel" formControlName="telefono" inputmode="numeric" maxlength="9" placeholder="987654321" />
+                <app-campo-error [control]="form.controls.telefono" />
+              </div>
+            }
+          </div>
+        }
+        @case (3) {
+          <div class="fgrid">
+            <div class="ff full">
+              <label for="correo">Correo electrónico</label>
+              <input class="inp" id="correo" type="email" formControlName="correo" autocomplete="email" placeholder="nombre@correo.com" />
+              <app-campo-error [control]="form.controls.correo" />
+            </div>
+            <div class="ff">
+              <label for="password">Contraseña</label>
+              <div class="pw">
+                <input
+                  class="inp"
+                  id="password"
+                  formControlName="password"
+                  [type]="mostrarPassword() ? 'text' : 'password'"
+                  autocomplete="new-password"
+                />
+                <button type="button" (click)="alternarPassword()">{{ mostrarPassword() ? 'Ocultar' : 'Mostrar' }}</button>
+              </div>
+              <small>Mínimo 8 caracteres, con letras y números.</small>
+              <app-campo-error [control]="form.controls.password" />
+            </div>
+            <div class="ff">
+              <label for="password2">Repite la contraseña</label>
+              <div class="pw">
+                <input
+                  class="inp"
+                  id="password2"
+                  formControlName="password2"
+                  [type]="mostrarPassword2() ? 'text' : 'password'"
+                  autocomplete="new-password"
+                />
+                <button type="button" (click)="alternarPassword2()">{{ mostrarPassword2() ? 'Ocultar' : 'Mostrar' }}</button>
+              </div>
+              <app-campo-error [control]="form.controls.password2" />
+            </div>
+          </div>
+          <label class="check">
+            <input type="checkbox" formControlName="terminos" />
+            Acepto los Términos y condiciones y la Política de privacidad, y declaro que los fondos que opere tienen origen lícito.
+          </label>
+        }
+      }
+
+      <div class="actions">
+        @if (paso() > 0) {
+          <button type="button" class="btn btn-ghost" (click)="atras()">Atrás</button>
+        } @else {
+          <span></span>
+        }
+        <button type="submit" class="btn btn-solid" [disabled]="enviando()">
+          @if (enviando()) {
+            <span class="spinner" aria-hidden="true"></span>Creando cuenta…
+          } @else {
+            {{ esUltimoPaso() ? 'Crear cuenta' : 'Continuar' }}
+          }
+        </button>
+      </div>
+    </form>
+    <p class="alt">
+      ¿Ya tienes cuenta?
+      <a routerLink="/login" [queryParams]="siguiente ? { next: siguiente } : {}">Inicia sesión</a>
+    </p>
+  </div>
+}

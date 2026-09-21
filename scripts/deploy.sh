@@ -32,10 +32,12 @@ out() { aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGI
         --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
 API_URL="$(out ApiUrl)"; WEB_BUCKET="$(out BucketWeb)"; WEB_URL="$(out SitioWebUrl)"
 
+echo "==> Compilando frontend Angular"
+( cd frontend && npm ci && npx ng build )
+python3 scripts/configurar_front.py frontend/dist/frontend/browser/config.json "$API_URL"
+
 echo "==> Publicando frontend en s3://${WEB_BUCKET}"
-python3 scripts/configurar_front.py frontend/index.html .index.configurado.html "$API_URL"
-aws s3 cp .index.configurado.html "s3://${WEB_BUCKET}/index.html" --content-type "text/html; charset=utf-8" --region "$REGION"
-rm -f .index.configurado.html
+aws s3 sync frontend/dist/frontend/browser/ "s3://${WEB_BUCKET}/" --delete --region "$REGION"
 
 cat <<MSG
 

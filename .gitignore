@@ -1,6 +1,5 @@
 .secrets/
 .packaged.yaml
-.index.configurado.html
 __pycache__/
 .pytest_cache/
 *.pyc

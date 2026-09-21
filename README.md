@@ -24,13 +24,13 @@ Parámetros útiles: `STAGE` (por defecto `dev`), `AWS_REGION` (por defecto `us-
 pip install -r requirements-dev.txt
 python -m pytest                       # 54 pruebas (AWS simulado con moto)
 python scripts/servidor_local.py       # API en http://localhost:8787 con cliente demo demo@nexocambio.pe / Demo1234
-python scripts/configurar_front.py frontend/index.html /tmp/front.html http://localhost:8787   # abrir /tmp/front.html
+cd frontend && npm ci && npx ng serve  # app Angular en http://localhost:4200 (lee la API de public/config.json)
 ```
 Postman: importar `postman/NexoCambio.postman_collection.json`, definir `baseUrl` (`ApiUrl` del despliegue) y `adminKey`, y ejecutar en el Runner (20 requests, 27 verificaciones).
 Regenerar: `python scripts/generar_postman.py` · `python docs/costos.py` · `python docs/generar_diagrama.py`.
 
 ## Frontend
-`frontend/index.html` es el prototipo del equipo. Funciona en modo demo y, con `CONFIG.API` apuntando a la API, consume los microservicios (`deploy.sh` lo configura y publica en S3).
+`frontend/` es la app Angular (standalone components, signals, formularios reactivos, rutas con hash) que consume los 3 microservicios. La URL de la API se lee en runtime de `frontend/public/config.json`; `deploy.sh` compila la app (`ng build`) y genera ese archivo con la URL real antes de publicar en S3. `frontend-legacy/index.html` es el prototipo original, mantenido solo como referencia de diseño y textos.
 
 ## Notas de seguridad / límites del MVP
 JWT HS256 propio (en producción: Cognito + Secrets Manager); contraseñas con PBKDF2; secretos en variables de entorno de Lambda; sin procesamiento real de fondos; los estados se avanzan con `PATCH /operaciones/{id}/estado` (cabecera `x-admin-key`).

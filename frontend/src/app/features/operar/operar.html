@@ -1,1 +1,274 @@
-<p>operar works!</p>
+@if (draftCotizacion(); as x) {
+  @if (paso() === 4) {
+    @if (resultado(); as r) {
+      <div class="page narrow">
+        <div class="panel success">
+          <div class="ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5" /></svg>
+          </div>
+          <h1 style="font-size: 30px">Operación registrada</h1>
+          <span class="code">{{ r.id_operacion }}</span>
+          <span class="pill" [class.s-pend]="r.estado === 'Pendiente de validación'" [class.s-proc]="r.estado === 'En proceso'" [class.s-ok]="r.estado === 'Procesada'" [class.s-bad]="r.estado === 'Rechazada'">{{ r.estado }}</span>
+          <p>
+            Recibimos tu comprobante. Validaremos la transferencia de <b>{{ textoMonto() }}</b> y te enviaremos
+            <b>{{ textoMontoDestino() }}</b>. Puedes seguir el estado en Mis operaciones.
+          </p>
+          <div class="actions" style="width: 100%">
+            <a class="btn btn-ghost" routerLink="/">Nueva operación</a>
+            <a class="btn btn-solid" [routerLink]="['/operaciones', r.id_operacion]">Ver mi operación</a>
+          </div>
+        </div>
+      </div>
+    }
+  } @else {
+    <div class="page mid">
+      <a class="back" routerLink="/">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6" /></svg>
+        Volver al cotizador
+      </a>
+      <div class="page-head">
+        <div>
+          <h1>Nueva operación</h1>
+          <p><span class="tag" [class.casa]="x.modalidad === 'casa'" [class.cripto]="x.modalidad === 'cripto'">{{ x.modalidad === 'cripto' ? 'Cripto' : 'Casa de Cambio' }}</span></p>
+        </div>
+      </div>
+      <div class="panel">
+        <app-stepper [etiquetas]="PASOS" [pasoActual]="paso() - 1" />
+
+        @switch (paso()) {
+          @case (1) {
+            <div><h2>Confirma tu cotización</h2></div>
+            <div class="qsum">
+              <div class="side"><small>Envías</small><span class="amt">{{ textoMonto() }}</span></div>
+              <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              <div class="side"><small>Recibes</small><span class="amt">{{ textoMontoDestino() }}</span></div>
+            </div>
+            <dl class="kv">
+              <dt>{{ etiquetaTasa() }}</dt>
+              <dd class="mono">{{ textoTasa() }}</dd>
+              <dt>Comisión</dt>
+              <dd>S/ 0.00</dd>
+              <dt>Código de cotización</dt>
+              <dd class="mono">{{ x.id_cotizacion }}</dd>
+            </dl>
+            <div class="timer" [class.expired]="vencida()">
+              <span>{{ textoTemporizador() }}</span>
+              <span class="bar"><i [style.transform]="'scaleX(' + proporcionBarra() + ')'"></i></span>
+            </div>
+            <form [formGroup]="form" (ngSubmit)="confirmarYContinuar()" novalidate style="display: flex; flex-direction: column; gap: 20px">
+              <div><h3>{{ origenEsFiat() ? '¿Desde qué banco transfieres?' : '¿Desde qué red envías?' }}</h3></div>
+              <div class="fgrid">
+                @if (origenEsFiat()) {
+                  <div class="ff full">
+                    <label for="banco_origen">Banco desde el que transferirás {{ nombreMonedaOrigen() }}</label>
+                    <select class="inp sel" id="banco_origen" formControlName="banco_origen">
+                      @for (b of BANCOS; track b) {
+                        <option [value]="b">{{ b }}</option>
+                      }
+                    </select>
+                    <small>La cuenta de origen debe estar a tu nombre.</small>
+                  </div>
+                } @else {
+                  <div class="ff full">
+                    <label for="red_origen">Red desde la que enviarás {{ x.moneda_origen }}</label>
+                    <select class="inp sel" id="red_origen" formControlName="red_origen">
+                      @for (r of redesOrigen(); track r) {
+                        <option [value]="r">{{ r }}</option>
+                      }
+                    </select>
+                  </div>
+                }
+              </div>
+              <div><h3>{{ destinoEsFiat() ? '¿Dónde recibes tu dinero?' : '¿Dónde recibes tus ' + x.moneda_destino + '?' }}</h3></div>
+              <div class="fgrid">
+                @if (destinoEsFiat()) {
+                  <div class="ff">
+                    <label for="banco_destino">Banco</label>
+                    <select class="inp sel" id="banco_destino" formControlName="banco_destino">
+                      @for (b of BANCOS; track b) {
+                        <option [value]="b">{{ b }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="ff">
+                    <label for="tipo_cuenta">Tipo de cuenta</label>
+                    <select class="inp sel" id="tipo_cuenta" formControlName="tipo_cuenta">
+                      @for (t of TIPOS_CUENTA; track t) {
+                        <option [value]="t">{{ t }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="ff full">
+                    <label for="numero_cuenta">Número de cuenta o CCI en {{ nombreMonedaDestino() }}</label>
+                    <input class="inp" id="numero_cuenta" formControlName="numero_cuenta" inputmode="numeric" maxlength="24" />
+                    <app-campo-error [control]="form.controls.numero_cuenta" />
+                  </div>
+                  <div class="ff full">
+                    <label for="titular">Titular</label>
+                    <input class="inp" id="titular" formControlName="titular" readonly />
+                    <small>Solo depositamos en cuentas a tu nombre.</small>
+                  </div>
+                } @else {
+                  <div class="ff">
+                    <label for="red_destino">Red</label>
+                    <select class="inp sel" id="red_destino" formControlName="red_destino">
+                      @for (r of redesDestino(); track r) {
+                        <option [value]="r">{{ r }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="ff full">
+                    <label for="wallet">Dirección de tu billetera {{ x.moneda_destino }}</label>
+                    <input class="inp" id="wallet" formControlName="wallet" placeholder="Pega aquí tu dirección" />
+                    <app-campo-error [control]="form.controls.wallet" />
+                  </div>
+                }
+              </div>
+              @if (!destinoEsFiat()) {
+                <p class="form-note">Verifica que la red de tu billetera sea la misma que elegiste. Un envío a una red distinta no se puede recuperar.</p>
+              }
+              <div class="actions">
+                <a class="btn btn-ghost" routerLink="/">Cambiar monto</a>
+                <button type="submit" class="btn btn-solid" [disabled]="enviando()">
+                  @if (enviando()) {
+                    <span class="spinner" aria-hidden="true"></span>Actualizando…
+                  } @else {
+                    {{ vencida() ? 'Actualizar tasa' : 'Confirmar y continuar' }}
+                  }
+                </button>
+              </div>
+            </form>
+          }
+          @case (2) {
+            <div><h2>Resumen de tu operación</h2></div>
+            <div class="qsum">
+              <div class="side"><small>Envías</small><span class="amt">{{ textoMonto() }}</span></div>
+              <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              <div class="side"><small>Recibes</small><span class="amt">{{ textoMontoDestino() }}</span></div>
+            </div>
+            <dl class="kv">
+              <dt>{{ etiquetaTasa() }}</dt>
+              <dd class="mono">{{ textoTasa() }}</dd>
+              <dt>{{ origen()?.tipo === 'banco' ? 'Transfieres desde' : 'Envías desde la red' }}</dt>
+              <dd>{{ origenTexto() }}</dd>
+              <dt>Recibes en</dt>
+              <dd>{{ textoDestinoElegido() }}</dd>
+              <hr />
+              <dt class="total">Monto a transferir</dt>
+              <dd class="total mono">{{ textoMonto() }}</dd>
+            </dl>
+            @if (cuentaNexo(); as n) {
+              <div class="transfer">
+                <h3>{{ n.wallet ? 'Envía tus ' + x.moneda_origen + ' a esta dirección' : 'Transfiere a la cuenta de NexoCambio' }}</h3>
+                <dl class="kv">
+                  @if (n.wallet) {
+                    <dt>Red</dt>
+                    <dd>{{ n.red }}</dd>
+                    <dt>Dirección</dt>
+                    <dd><app-boton-copiar [valor]="n.direccion" /></dd>
+                    <dt>Monto exacto</dt>
+                    <dd><app-boton-copiar [valor]="formatearMontoOrigenExacto()" /> {{ x.moneda_origen }}</dd>
+                  } @else {
+                    <dt>Banco</dt>
+                    <dd>{{ n.banco }}</dd>
+                    <dt>Titular</dt>
+                    <dd>NexoCambio S.A.C. (demo)</dd>
+                    <dt>RUC</dt>
+                    <dd><app-boton-copiar valor="20612345678" /></dd>
+                    <dt>{{ n.tipo }} en {{ nombreMonedaOrigen() }}</dt>
+                    <dd><app-boton-copiar [valor]="n.numero" /></dd>
+                    <dt>CCI</dt>
+                    <dd><app-boton-copiar [valor]="n.cci" /></dd>
+                    <dt>Monto exacto</dt>
+                    <dd><app-boton-copiar [valor]="formatearMontoOrigenExacto()" /> {{ x.moneda_origen }}</dd>
+                  }
+                </dl>
+                <p class="form-note" style="background: var(--surface)">
+                  @if (n.wallet) {
+                    Envía solo {{ x.moneda_origen }} por la red {{ n.red }}. Luego adjunta la captura con el hash de la transacción.
+                  } @else if (n.interbancaria) {
+                    NexoCambio no tiene cuenta en {{ origenBancoTexto() }}: haz una transferencia interbancaria usando el CCI. Puede demorar hasta 1 día hábil.
+                  } @else {
+                    Transferencia dentro de {{ n.banco }}: se refleja al instante. Transfiere desde una cuenta a tu nombre.
+                  }
+                </p>
+              </div>
+            }
+            <div class="actions">
+              <button type="button" class="btn btn-ghost" (click)="volverAPaso1()">Editar datos</button>
+              <button type="button" class="btn btn-solid" (click)="irAComprobante()">Ya transferí, adjuntar comprobante</button>
+            </div>
+          }
+          @case (3) {
+            <div>
+              <h2>Adjunta tu comprobante</h2>
+              <p class="muted" style="margin: 6px 0 0">Foto o captura de la constancia de transferencia de {{ textoMonto() }}.</p>
+            </div>
+            @if (errorArchivo()) {
+              <p class="form-err" role="alert">{{ errorArchivo() }}</p>
+            }
+            @if (errorGeneral()) {
+              <p class="form-err" role="alert">{{ errorGeneral() }}</p>
+            }
+            @if (!archivoPendiente()) {
+              <label
+                class="drop"
+                [class.over]="arrastrando()"
+                for="file"
+                (dragenter)="onDragOver($event)"
+                (dragover)="onDragOver($event)"
+                (dragleave)="onDragLeave($event)"
+                (drop)="onDrop($event)"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg>
+                <b>Arrastra tu archivo o haz clic para elegirlo</b>
+                <small>JPG, PNG o PDF · máximo 4 MB</small>
+              </label>
+            }
+            <input type="file" id="file" accept="image/jpeg,image/png,application/pdf" hidden (change)="onFileChange($event)" />
+            @if (archivoPendiente(); as archivo) {
+              <div class="file">
+                @if (previewUrl(); as url) {
+                  <img class="thumb" [src]="url" alt="Vista previa del comprobante" />
+                } @else {
+                  <span class="thumb">PDF</span>
+                }
+                <div class="meta">
+                  <b>{{ archivo.name }}</b>
+                  <small>{{ (archivo.size / 1024).toFixed(0) }} KB</small>
+                </div>
+                <button type="button" class="btn btn-ghost" (click)="quitarArchivo()">Quitar</button>
+              </div>
+            }
+            <div class="ff">
+              <label for="nro">
+                {{ origenEsFiat() ? 'Número de operación bancaria' : 'Hash de la transacción' }}
+                <span class="muted">(opcional)</span>
+              </label>
+              <input
+                class="inp"
+                id="nro"
+                autocomplete="off"
+                [value]="nro()"
+                (input)="onCambioNro($any($event.target).value)"
+                [placeholder]="origenEsFiat() ? 'Ej. 004582' : '0x…'"
+              />
+            </div>
+            <div class="actions">
+              <button type="button" class="btn btn-ghost" (click)="paso.set(2)">Ver datos de transferencia</button>
+              <button type="button" class="btn btn-solid" [disabled]="!archivoPendiente() || enviando()" (click)="confirmarOperacion()">
+                @if (enviando()) {
+                  <span class="spinner" aria-hidden="true"></span>Registrando operación…
+                } @else {
+                  Confirmar operación
+                }
+              </button>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+} @else {
+  <p class="page">Redirigiendo…</p>
+}

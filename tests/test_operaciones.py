@@ -196,6 +196,35 @@ def test_rechazo_exige_motivo_y_se_muestra_al_cliente(cli, cot, ops):
     assert det["estado"] == "Rechazada" and det["motivo_rechazo"] == "Monto no coincide"
 
 
+def test_backoffice_lista_operaciones_de_todos_los_clientes(cli, cot, ops):
+    tk = sesion(cli)
+    otro = sesion(cli, "otro@correo.com", {**PERSONA, "correo": "otro@correo.com", "numero_documento": "70000001"})
+    op1 = cuerpo(crear(ops, tk, hacer_cotizacion(cot))); subir(ops, tk, op1["id_operacion"])
+    op2 = cuerpo(crear(ops, otro, hacer_cotizacion(cot)))  # sin comprobante: sigue en borrador, no debe listarse
+    h = {"x-admin-key": "clave-admin-pruebas"}
+    r = ops.handler(evento("GET /operaciones/admin", headers=h))
+    assert r["statusCode"] == 200
+    ids = [o["id_operacion"] for o in cuerpo(r)["operaciones"]]
+    assert op1["id_operacion"] in ids and op2["id_operacion"] not in ids
+
+    assert ops.handler(evento("GET /operaciones/admin"))["statusCode"] == 403
+    assert ops.handler(evento("GET /operaciones/admin", headers={"x-admin-key": "incorrecta"}))["statusCode"] == 403
+
+
+def test_backoffice_detalle_no_depende_del_dueno(cli, cot, ops):
+    tk = sesion(cli)
+    op = cuerpo(crear(ops, tk, hacer_cotizacion(cot))); subir(ops, tk, op["id_operacion"])
+    h = {"x-admin-key": "clave-admin-pruebas"}
+    p = {"id_operacion": op["id_operacion"]}
+    r = ops.handler(evento("GET /operaciones/{id_operacion}/admin", headers=h, params=p))
+    assert r["statusCode"] == 200 and cuerpo(r)["comprobante_url"].startswith("https://")
+
+    assert ops.handler(evento("GET /operaciones/{id_operacion}/admin", params=p))["statusCode"] == 403
+    faltante = {"id_operacion": "NX-NOEXISTE"}
+    r404 = ops.handler(evento("GET /operaciones/{id_operacion}/admin", headers=h, params=faltante))
+    assert r404["statusCode"] == 404
+
+
 def test_backoffice_deshabilitado_si_no_hay_clave_configurada(cli, cot, ops, monkeypatch):
     monkeypatch.setenv("ADMIN_KEY", "")
     r = ops.handler(evento("PATCH /operaciones/{id_operacion}/estado", {"estado": "En proceso"},

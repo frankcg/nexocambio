@@ -281,9 +281,15 @@ Resources:
   RutaOperacionListar:
     Type: AWS::ApiGatewayV2::Route
     Properties: {ApiId: !Ref Api, RouteKey: "GET /operaciones", Target: !Sub "integrations/${IntOperaciones}"}
+  RutaOperacionListarAdmin:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "GET /operaciones/admin", Target: !Sub "integrations/${IntOperaciones}"}
   RutaOperacionDetalle:
     Type: AWS::ApiGatewayV2::Route
     Properties: {ApiId: !Ref Api, RouteKey: "GET /operaciones/{id_operacion}", Target: !Sub "integrations/${IntOperaciones}"}
+  RutaOperacionDetalleAdmin:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "GET /operaciones/{id_operacion}/admin", Target: !Sub "integrations/${IntOperaciones}"}
   RutaComprobante:
     Type: AWS::ApiGatewayV2::Route
     Properties: {ApiId: !Ref Api, RouteKey: "POST /operaciones/{id_operacion}/comprobante", Target: !Sub "integrations/${IntOperaciones}"}
@@ -294,7 +300,7 @@ Resources:
   Despliegue:
     Type: AWS::ApiGatewayV2::Deployment
     DependsOn: [RutaCotizar, RutaRegistro, RutaLogin, RutaCliente, RutaOperacionCrear, RutaOperacionListar,
-                RutaOperacionDetalle, RutaComprobante, RutaEstado]
+                RutaOperacionListarAdmin, RutaOperacionDetalle, RutaOperacionDetalleAdmin, RutaComprobante, RutaEstado]
     Properties: {ApiId: !Ref Api}
 
   EtapaV1:

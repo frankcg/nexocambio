@@ -92,6 +92,9 @@ def main():
             ("GET", r"^/clientes/([^/]+)$", "GET /clientes/{id_cliente}", cli, ("id_cliente",)),
             ("POST", r"^/operaciones$", "POST /operaciones", ops, ()),
             ("GET", r"^/operaciones$", "GET /operaciones", ops, ()),
+            # las rutas literales de back-office van antes que "{id_operacion}" (el matching es lineal, no por especificidad)
+            ("GET", r"^/operaciones/admin$", "GET /operaciones/admin", ops, ()),
+            ("GET", r"^/operaciones/([^/]+)/admin$", "GET /operaciones/{id_operacion}/admin", ops, ("id_operacion",)),
             ("GET", r"^/operaciones/([^/]+)$", "GET /operaciones/{id_operacion}", ops, ("id_operacion",)),
             ("POST", r"^/operaciones/([^/]+)/comprobante$", "POST /operaciones/{id_operacion}/comprobante", ops, ("id_operacion",)),
             ("PATCH", r"^/operaciones/([^/]+)/estado$", "PATCH /operaciones/{id_operacion}/estado", ops, ("id_operacion",)),

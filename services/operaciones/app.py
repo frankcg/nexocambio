@@ -14,12 +14,14 @@ Base de datos propia:
 Estados: [Pendiente de comprobante] (interno, no se lista) →
          Pendiente de validación → En proceso → Procesada | Rechazada
 
-Rutas HTTP (todas requieren JWT salvo la de back-office, que usa x-admin-key):
+Rutas HTTP (todas requieren JWT salvo las de back-office, que usan x-admin-key):
   POST  /operaciones                          registra una operación desde una cotización vigente
   POST  /operaciones/{id_operacion}/comprobante   adjunta el comprobante (imagen/PDF, base64)
   GET   /operaciones                          lista las operaciones del cliente autenticado
   GET   /operaciones/{id_operacion}           detalle (incluye URL temporal del comprobante)
   PATCH /operaciones/{id_operacion}/estado    [back-office simulado] avanza el estado
+  GET   /operaciones/admin                    [back-office simulado] lista TODAS las operaciones
+  GET   /operaciones/{id_operacion}/admin     [back-office simulado] detalle de cualquier operación
 
 Comunicación entre microservicios: invoca a Cotizaciones (Lambda → Lambda) para
 validar la cotización y NO confía en tasa/montos enviados por el navegador.
@@ -95,6 +97,23 @@ def _dec(x) -> Decimal:
 
 def _publico(op: dict) -> dict:
     return dict(op)
+
+
+def _exigir_admin(event) -> None:
+    """Protege las rutas de back-office simulado con la cabecera x-admin-key."""
+    admin = os.environ.get("ADMIN_KEY", "")
+    clave = encabezado(event, "x-admin-key") or ""
+    if not admin or not hmac.compare_digest(clave, admin):
+        raise ApiError(403, "Acceso restringido al back-office.", "prohibido")
+
+
+def _con_comprobante(op: dict, cfg: dict) -> dict:
+    op = _publico(op)
+    bucket, clave = _partir_ruta_s3(op.get("ruta_comprobante"))
+    if bucket:  # URL temporal firmada: el bucket nunca es público
+        op["comprobante_url"] = _s3().generate_presigned_url(
+            "get_object", Params={"Bucket": bucket, "Key": clave}, ExpiresIn=cfg["url_seg"])
+    return op
 
 
 def _validar_extremo(e, moneda: str, rol: str) -> dict:
@@ -267,21 +286,41 @@ def listar_operaciones(event):
 def obtener_operacion(event):
     claims = exigir_sesion(event)
     op = _cargar_propia(parametro_ruta(event, "id_operacion"), claims["sub"])
-    bucket, clave = _partir_ruta_s3(op.get("ruta_comprobante"))
-    if bucket:  # URL temporal firmada: el bucket nunca es público
-        op["comprobante_url"] = _s3().generate_presigned_url(
-            "get_object", Params={"Bucket": bucket, "Key": clave}, ExpiresIn=_cfg()["url_seg"])
-    return 200, _publico(op)
+    return 200, _con_comprobante(op, _cfg())
+
+
+# ------------------------------------------------- GET /operaciones/admin (back-office)
+def listar_operaciones_admin(event):
+    """Lista TODAS las operaciones (de cualquier cliente) para la cola de revisión del back-office."""
+    _exigir_admin(event)
+    kwargs = dict(FilterExpression=Attr("estado").ne(BORRADOR))
+    items = []
+    while True:
+        r = _tabla().scan(**kwargs)
+        items += r["Items"]
+        if "LastEvaluatedKey" not in r or len(items) >= 200:
+            break
+        kwargs["ExclusiveStartKey"] = r["LastEvaluatedKey"]
+    items.sort(key=lambda o: o["fecha_operacion"], reverse=True)
+    return 200, {"operaciones": [_publico(i) for i in items[:200]], "total": min(len(items), 200)}
+
+
+# ------------------------------------------ GET /operaciones/{id}/admin (back-office)
+def obtener_operacion_admin(event):
+    """Detalle de cualquier operación (sin restricción de dueño) para el back-office."""
+    _exigir_admin(event)
+    id_op = parametro_ruta(event, "id_operacion")
+    op = _tabla().get_item(Key={"id_operacion": id_op}).get("Item")
+    if not op:
+        raise ApiError(404, "No encontramos la operación.", "no_encontrada")
+    return 200, _con_comprobante(op, _cfg())
 
 
 # ----------------------------------- PATCH /operaciones/{id}/estado (back-office)
 def cambiar_estado(event):
     """Simula el back-office (fuera del alcance del MVP del cliente).
     Protegido con la cabecera x-admin-key; si ADMIN_KEY no está definida, la ruta queda deshabilitada."""
-    admin = os.environ.get("ADMIN_KEY", "")
-    clave = encabezado(event, "x-admin-key") or ""
-    if not admin or not hmac.compare_digest(clave, admin):
-        raise ApiError(403, "Acceso restringido al back-office.", "prohibido")
+    _exigir_admin(event)
     id_op = parametro_ruta(event, "id_operacion")
     d = cuerpo_json(event)
     requeridos(d, ["estado"])
@@ -312,7 +351,9 @@ def cambiar_estado(event):
 handler = manejar({
     "POST /operaciones": crear_operacion,
     "GET /operaciones": listar_operaciones,
+    "GET /operaciones/admin": listar_operaciones_admin,
     "GET /operaciones/{id_operacion}": obtener_operacion,
+    "GET /operaciones/{id_operacion}/admin": obtener_operacion_admin,
     "POST /operaciones/{id_operacion}/comprobante": subir_comprobante,
     "PATCH /operaciones/{id_operacion}/estado": cambiar_estado,
 })

@@ -43,6 +43,8 @@ export class Header {
     return cliente.tipo_cliente === 'empresa' ? cliente.nombre : String(cliente.nombre ?? '').split(' ')[0];
   });
 
+  protected readonly inicial = computed(() => this.primerNombre().trim().charAt(0).toUpperCase() || '?');
+
   protected salir(): void {
     this.auth.logout();
     this.toast.mostrar('Sesión cerrada', 'Hasta pronto.');

@@ -51,15 +51,19 @@ header.top{position:sticky; top:env(safe-area-inset-top,0px); z-index:10; backgr
 .brand-mark .a{fill:var(--accent)} .brand-mark .b{fill:var(--ink)}
 .links{display:flex; gap:22px; margin-left:auto; font-weight:500; font-size:15px}
 .links a{text-decoration:none; color:var(--muted)} .links a:hover,.links a[aria-current="page"]{color:var(--ink)}
-.auth{display:flex; gap:8px; align-items:center}
+.auth{display:flex; gap:10px; align-items:center}
 .who{font-size:14px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px}
+.user-chip{display:flex; align-items:center; gap:8px; padding:4px 12px 4px 4px; border-radius:99px; background:var(--surface-2); transition:background-color .45s}
+.user-avatar{width:28px; height:28px; border-radius:50%; display:grid; place-items:center; flex:none; background:var(--accent); color:var(--accent-ink); font-family:var(--f-display); font-weight:700; font-size:13px; transition:background-color .45s,color .45s}
+.user-chip .who{font-weight:600; color:var(--ink); max-width:140px}
 .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; border-radius:10px; padding:10px 16px; font-weight:600; font-size:15px; border:1px solid transparent; cursor:pointer; text-decoration:none; transition:transform .12s ease,background-color .3s,border-color .3s,color .3s; white-space:nowrap}
 .btn:active{transform:translateY(1px)}
 .btn[disabled]{opacity:.5; cursor:not-allowed; transform:none}
+.btn .icon{width:16px; height:16px; flex:none}
 .btn-ghost{background:transparent; border-color:var(--line)} .btn-ghost:hover{border-color:var(--ink)}
 .btn-solid{background:var(--accent); color:var(--accent-ink)} .btn-solid:hover{filter:brightness(1.07)}
 .btn-link{background:none; border:0; padding:0; color:var(--accent); font-weight:600; cursor:pointer; text-decoration:underline; text-underline-offset:3px}
-@media (max-width:860px){.links{display:none} .auth{margin-left:auto} .who{display:none}}
+@media (max-width:860px){.links{display:none} .auth{margin-left:auto} .user-chip .who{display:none} .user-chip{padding:4px; background:transparent}}
 @media (max-width:560px){.auth .btn-solid[href="#/"]{display:none}}
 @media (max-width:420px){.auth .btn{padding:8px 11px; font-size:14px} .brand{font-size:19px} .nav{gap:12px}}
 .mobile-tabs{display:none}
@@ -249,7 +253,8 @@ footer .legal{grid-column:1/-1; font-size:12px; border-top:1px solid var(--line)
 .pill.s-proc{background:var(--info-soft); color:var(--info)}
 .pill.s-ok{background:var(--ok-soft); color:var(--ok)}
 .pill.s-bad{background:var(--bad-soft); color:var(--bad)}
-.tag{font-size:12px; font-weight:600; padding:3px 8px; border-radius:6px; border:1px solid var(--line); color:var(--muted); white-space:nowrap}
+.tag{display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:600; padding:3px 8px; border-radius:6px; border:1px solid var(--line); color:var(--muted); white-space:nowrap}
+.tag .icon{width:13px; height:13px; flex:none}
 .tag.cripto{color:#1A9C63; border-color:#9BDDBF}
 :root[data-mode="cripto"] .tag.cripto{color:#2BD38A; border-color:#1E5A40}
 .tag.casa{color:#1F4FD8; border-color:#B9C9F5}
@@ -257,9 +262,15 @@ footer .legal{grid-column:1/-1; font-size:12px; border-top:1px solid var(--line)
 
 /* lista de operaciones */
 .filters{display:flex; gap:8px; flex-wrap:wrap}
-.filters button{border:1px solid var(--line); background:var(--surface); border-radius:99px; padding:7px 14px; font-size:14px; font-weight:600; cursor:pointer; color:var(--muted); display:inline-flex; gap:6px}
+.filters button{border:1px solid var(--line); background:var(--surface); border-radius:99px; padding:7px 14px; font-size:14px; font-weight:600; cursor:pointer; color:var(--muted); display:inline-flex; align-items:center; gap:6px}
 .filters button[aria-pressed="true"]{background:var(--ink); color:var(--ground); border-color:var(--ink)}
 .filters .n{font-family:var(--f-mono); font-size:12px; opacity:.75}
+.filters .dot{width:8px; height:8px; border-radius:50%; flex:none; background:currentColor; opacity:.5}
+.filters .dot-todas{background:var(--muted)}
+.filters .dot.s-pend{background:var(--warn); opacity:1}
+.filters .dot.s-proc{background:var(--info); opacity:1}
+.filters .dot.s-ok{background:var(--ok); opacity:1}
+.filters .dot.s-bad{background:var(--bad); opacity:1}
 .oplist{list-style:none; margin:0; padding:0; background:var(--surface); border:1px solid var(--line); border-radius:20px; overflow:hidden}
 .oplist .hdr,.oplist a{display:grid; grid-template-columns:150px 110px minmax(0,1fr) 190px 20px; gap:16px; align-items:center; padding:16px 20px}
 .oplist .hdr{font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line); padding-block:12px}
@@ -503,6 +514,8 @@ input[type=range]{width:100%; accent-color:var(--accent); height:28px; cursor:po
 /* App: resumen en Mis operaciones */
 .tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
 .tile{background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:18px 20px; display:flex; flex-direction:column; gap:4px}
+.tile-head{display:flex; align-items:center; gap:8px}
+.tile-icon{width:18px; height:18px; flex:none; opacity:.8}
 .tile small{color:var(--muted); font-size:13px; font-weight:600}
 .tile span{font-family:var(--f-mono); font-size:26px; font-weight:600}
 .tile em{font-style:normal; font-size:12px; color:var(--muted)}

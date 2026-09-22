@@ -36,12 +36,25 @@ Si responde 401 en una ruta protegida: limpiar sesión e ir a login.
 - GET /operaciones -> {operaciones, total}; GET /operaciones/{id} -> con historial y comprobante_url
 Estados: Pendiente de validación, En proceso, Procesada, Rechazada.
 
+Back-office (simulado, protegido con cabecera x-admin-key en vez de JWT; sin ella la ruta
+PATCH queda deshabilitada):
+- GET /operaciones/admin -> {operaciones, total} de TODOS los clientes (Scan, excluye borradores)
+- GET /operaciones/{id}/admin -> detalle de cualquier operación, con comprobante_url
+- PATCH /operaciones/{id}/estado {estado:"En proceso"|"Procesada"|"Rechazada", motivo_rechazo?}
+  Transiciones: Pendiente de validación -> {En proceso, Rechazada}; En proceso -> {Procesada, Rechazada}.
+
 ## Frontend Angular
 Migración de frontend-legacy/index.html completa: landing, login, registro (persona/empresa),
 wizard de operar, mis operaciones y detalle, con los textos, validaciones y tokens de color del
-prototipo portados tal cual. Simplificaciones conocidas frente al prototipo: el "mercado en vivo"
+prototipo portados tal cual. Simplificación conocida frente al prototipo: el "mercado en vivo"
 de la landing (sparklines/random walk) es decorativo y vive en `MercadoSimuladoService`, sin
-relación con las tasas reales de `/cotizar`; el panel de back-office (`PATCH /operaciones/{id}/estado`)
-no se implementó en el cliente. Tests: `nexo-validators` tiene cobertura unitaria completa; los
-flujos críticos (cotizador, wizard de operar, mis operaciones, detalle) tienen tests de integración
-con `HttpTestingController` contra el contrato real de la API.
+relación con las tasas reales de `/cotizar`. Tests: `nexo-validators` tiene cobertura unitaria
+completa; los flujos críticos (cotizador, wizard de operar, mis operaciones, detalle, back-office)
+tienen tests de integración con `HttpTestingController` contra el contrato real de la API.
+
+### Back-office (/admin)
+Sección separada del flujo de cliente: auth propia (`AdminAuthService`, guarda la clave
+x-admin-key en sessionStorage, sin JWT ni cuentas individuales) y su propio header
+(`AdminHeader`, sin nav de cliente). Rutas: `/admin/login`, `/admin/operaciones` (cola con
+filtro por estado), `/admin/operaciones/:id` (detalle + aprobar/rechazar). Un usuario de
+back-office solo puede llegar a este flujo; nunca ve las pantallas de cliente.

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { adminGuard } from './core/admin-auth/admin.guard';
+import { operarGuard } from './core/draft/operar.guard';
 
 export const routes: Routes = [
   {
@@ -17,7 +18,7 @@ export const routes: Routes = [
   },
   {
     path: 'operar',
-    canActivate: [authGuard],
+    canActivate: [authGuard, operarGuard],
     loadComponent: () => import('./features/operar/operar').then((m) => m.Operar),
   },
   {

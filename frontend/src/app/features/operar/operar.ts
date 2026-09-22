@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { map, of, tap } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
@@ -12,6 +12,7 @@ import { CampoError } from '../../shared/components/campo-error/campo-error';
 import { Stepper } from '../../shared/components/stepper/stepper';
 import { BotonCopiar } from '../../shared/components/boton-copiar/boton-copiar';
 import { BANCOS, Banco, CriptoActivo, MONEDAS_CASA, REDES_POR_CRIPTO, TIPOS_CUENTA, TipoCuenta } from '../../core/models/catalogos.model';
+import { Cotizacion } from '../../core/models/cotizacion.model';
 import { ContentTypeComprobante, Destino, EstadoOperacion, Origen } from '../../core/models/operacion.model';
 import { ErrorApi } from '../../core/models/error-api.model';
 import { cuentaBancariaValidator, walletValidator } from '../../shared/validators/nexo-validators';
@@ -38,13 +39,16 @@ export class Operar {
   private readonly cotizaciones = inject(CotizacionesService);
   private readonly operaciones = inject(OperacionesService);
   private readonly toast = inject(ToastService);
-  private readonly router = inject(Router);
 
   protected readonly PASOS = PASOS;
   protected readonly TIPOS_CUENTA = TIPOS_CUENTA;
   protected readonly BANCOS = BANCOS;
 
-  protected readonly draftCotizacion = this.draft.cotizacion;
+  // Copia local de la cotización, independiente del draft compartido: operarGuard garantiza que
+  // exista una al entrar, pero el draft se limpia al terminar (paso 4) y esa pantalla final sigue
+  // necesitando estos datos, así que no puede depender reactivamente del servicio.
+  protected readonly x = signal<Cotizacion>(this.draft.cotizacion()!);
+
   protected readonly paso = signal(1);
   protected readonly origen = signal<Origen | null>(null);
   protected readonly destino = signal<Destino | null>(null);
@@ -62,29 +66,16 @@ export class Operar {
   protected readonly segundosRestantes = signal(0);
   protected readonly vencida = computed(() => this.segundosRestantes() === 0);
 
-  protected readonly origenEsFiat = computed(() => {
-    const x = this.draftCotizacion();
-    return x ? FIAT.includes(x.moneda_origen) : true;
-  });
-  protected readonly destinoEsFiat = computed(() => {
-    const x = this.draftCotizacion();
-    return x ? FIAT.includes(x.moneda_destino) : true;
-  });
-  protected readonly redesOrigen = computed(() => {
-    const x = this.draftCotizacion();
-    return x && !this.origenEsFiat() ? REDES_POR_CRIPTO[x.moneda_origen as CriptoActivo] : [];
-  });
-  protected readonly redesDestino = computed(() => {
-    const x = this.draftCotizacion();
-    return x && !this.destinoEsFiat() ? REDES_POR_CRIPTO[x.moneda_destino as CriptoActivo] : [];
-  });
-  protected readonly nombreMonedaOrigen = computed(() => MONEDA_NOMBRE[this.draftCotizacion()?.moneda_origen ?? ''] ?? '');
-  protected readonly nombreMonedaDestino = computed(() => MONEDA_NOMBRE[this.draftCotizacion()?.moneda_destino ?? ''] ?? '');
+  protected readonly origenEsFiat = computed(() => FIAT.includes(this.x().moneda_origen));
+  protected readonly destinoEsFiat = computed(() => FIAT.includes(this.x().moneda_destino));
+  protected readonly redesOrigen = computed(() => (this.origenEsFiat() ? [] : REDES_POR_CRIPTO[this.x().moneda_origen as CriptoActivo]));
+  protected readonly redesDestino = computed(() => (this.destinoEsFiat() ? [] : REDES_POR_CRIPTO[this.x().moneda_destino as CriptoActivo]));
+  protected readonly nombreMonedaOrigen = computed(() => MONEDA_NOMBRE[this.x().moneda_origen] ?? '');
+  protected readonly nombreMonedaDestino = computed(() => MONEDA_NOMBRE[this.x().moneda_destino] ?? '');
 
   protected readonly cuentaNexo = computed(() => {
     const o = this.origen();
-    const x = this.draftCotizacion();
-    return o && x ? cuentaNexoPara(o, x.moneda_origen) : null;
+    return o ? cuentaNexoPara(o, this.x().moneda_origen) : null;
   });
   protected readonly textoDestinoElegido = computed(() => {
     const d = this.destino();
@@ -114,19 +105,12 @@ export class Operar {
   });
 
   constructor() {
-    if (!this.draft.cotizacion()) {
-      this.toast.mostrar('Primero cotiza', 'Elige monedas y monto en el cotizador para iniciar una operación.');
-      this.router.navigateByUrl('/');
-      return;
-    }
-
     this.actualizarSegundos();
     const intervalo = setInterval(() => this.actualizarSegundos(), 1000);
     inject(DestroyRef).onDestroy(() => intervalo && clearInterval(intervalo));
 
     effect(() => {
-      const x = this.draftCotizacion();
-      if (!x) return;
+      const x = this.x();
       if (!FIAT.includes(x.moneda_origen)) {
         this.form.controls.red_origen.setValue(REDES_POR_CRIPTO[x.moneda_origen as CriptoActivo][0]);
       }
@@ -142,25 +126,23 @@ export class Operar {
   }
 
   protected textoMonto(): string {
-    const x = this.draftCotizacion();
-    return x ? formatearMoney(x.monto_origen, x.moneda_origen) : '';
+    const x = this.x();
+    return formatearMoney(x.monto_origen, x.moneda_origen);
   }
 
   protected textoMontoDestino(): string {
-    const x = this.draftCotizacion();
-    return x ? formatearMoney(x.monto_destino, x.moneda_destino) : '';
+    const x = this.x();
+    return formatearMoney(x.monto_destino, x.moneda_destino);
   }
 
   protected textoTasa(): string {
-    const x = this.draftCotizacion();
-    if (!x) return '—';
+    const x = this.x();
     const dec = x.tasa >= 100 ? 2 : 4;
     return `1 ${x.moneda_origen} = ${new Intl.NumberFormat('es-PE', { minimumFractionDigits: dec, maximumFractionDigits: dec }).format(x.tasa)} ${x.moneda_destino}`;
   }
 
   protected etiquetaTasa(): string {
-    const x = this.draftCotizacion();
-    if (!x) return 'Tipo de cambio';
+    const x = this.x();
     if (x.modalidad === 'cripto') return FIAT.includes(x.moneda_origen) ? 'Precio de compra' : 'Precio de venta';
     if (x.moneda_origen === 'PEN') return 'Tipo de cambio venta';
     if (x.moneda_destino === 'PEN') return 'Tipo de cambio compra';
@@ -176,14 +158,10 @@ export class Operar {
   }
 
   private actualizarSegundos(): void {
-    const x = this.draftCotizacion();
-    this.segundosRestantes.set(x ? segundosRestantesHasta(x.fecha_expiracion) : 0);
+    this.segundosRestantes.set(segundosRestantesHasta(this.x().fecha_expiracion));
   }
 
   protected confirmarYContinuar(): void {
-    const x = this.draftCotizacion();
-    if (!x) return;
-
     if (this.vencida()) {
       this.actualizarCotizacion();
       return;
@@ -210,13 +188,14 @@ export class Operar {
   }
 
   private actualizarCotizacion(): void {
-    const x = this.draftCotizacion();
-    if (!x) return;
+    const x = this.x();
     this.enviando.set(true);
     this.cotizaciones.cotizar({ modalidad: x.modalidad, moneda_origen: x.moneda_origen, moneda_destino: x.moneda_destino, monto_origen: x.monto_origen }).subscribe({
       next: (nueva) => {
+        this.x.set(nueva);
         this.draft.guardar(nueva);
         this.enviando.set(false);
+        this.actualizarSegundos();
         this.toast.mostrar('Tasa actualizada', `Ahora recibes ${formatearMoney(nueva.monto_destino, nueva.moneda_destino)}.`);
       },
       error: () => {
@@ -282,8 +261,7 @@ export class Operar {
 
   protected confirmarOperacion(): void {
     const archivo = this.archivoPendiente();
-    const x = this.draftCotizacion();
-    if (!archivo || !x) return;
+    if (!archivo) return;
 
     this.errorGeneral.set('');
     this.enviando.set(true);
@@ -300,15 +278,14 @@ export class Operar {
   }
 
   private enviarComprobante(base64: string, archivo: File): void {
-    const x = this.draftCotizacion();
     const origen = this.origen();
     const destino = this.destino();
-    if (!x || !origen || !destino) return;
+    if (!origen || !destino) return;
 
     const idExistente = this.idOperacion();
     const idOperacion$ = idExistente
       ? of(idExistente)
-      : this.operaciones.crear({ id_cotizacion: x.id_cotizacion, origen, destino }).pipe(
+      : this.operaciones.crear({ id_cotizacion: this.x().id_cotizacion, origen, destino }).pipe(
           tap((op) => this.idOperacion.set(op.id_operacion)),
           map((op) => op.id_operacion)
         );
@@ -343,7 +320,7 @@ export class Operar {
   }
 
   protected formatearMontoOrigenExacto(): string {
-    const x = this.draftCotizacion();
-    return x ? formatearMonto(x.monto_origen, x.moneda_origen) : '';
+    const x = this.x();
+    return formatearMonto(x.monto_origen, x.moneda_origen);
   }
 }

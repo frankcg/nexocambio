@@ -345,7 +345,7 @@ def cambiar_estado(event):
             raise ApiError(409, "La operación cambió de estado. Vuelve a consultarla.", "conflicto")
         raise
     log("estado_actualizado", id_operacion=id_op, estado=nuevo)
-    return 200, _publico(r["Attributes"])
+    return 200, _con_comprobante(r["Attributes"], _cfg())
 
 
 handler = manejar({

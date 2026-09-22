@@ -186,6 +186,14 @@ def test_backoffice_avanza_estados_con_reglas(cli, cot, ops):
     assert [h["estado"] for h in det["historial"]] == ["Pendiente de validación", "En proceso", "Procesada"]
 
 
+def test_backoffice_respuesta_del_patch_incluye_url_del_comprobante(cli, cot, ops):
+    tk = sesion(cli)
+    op = cuerpo(crear(ops, tk, hacer_cotizacion(cot))); i = op["id_operacion"]; subir(ops, tk, i)
+    h = {"x-admin-key": "clave-admin-pruebas"}; p = {"id_operacion": i}
+    r = cuerpo(ops.handler(evento("PATCH /operaciones/{id_operacion}/estado", {"estado": "En proceso"}, params=p, headers=h)))
+    assert r["comprobante_url"].startswith("https://") and "X-Amz-Signature" in r["comprobante_url"]
+
+
 def test_rechazo_exige_motivo_y_se_muestra_al_cliente(cli, cot, ops):
     tk = sesion(cli)
     op = cuerpo(crear(ops, tk, hacer_cotizacion(cot))); i = op["id_operacion"]; subir(ops, tk, i)

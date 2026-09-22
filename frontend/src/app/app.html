@@ -1,3 +1,7 @@
-<app-header />
+@if (esRutaAdmin()) {
+  <app-admin-header />
+} @else {
+  <app-header />
+}
 <router-outlet />
 <app-toast />

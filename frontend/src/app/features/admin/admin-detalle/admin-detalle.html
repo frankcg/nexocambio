@@ -1,0 +1,141 @@
+<div class="page">
+  <a class="back" routerLink="/admin/operaciones">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6" /></svg>
+    Revisión de operaciones
+  </a>
+
+  @if (cargando()) {
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+  } @else if (error()) {
+    <div class="empty">
+      <h2>Operación no disponible</h2>
+      <p>{{ error() }}</p>
+    </div>
+  } @else if (operacion(); as o) {
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Operación</span>
+        <h1 class="mono" style="font-family: var(--f-mono)">{{ o.id_operacion }}</h1>
+        <p>
+          {{ fechaHora(o.fecha_operacion) }} ·
+          <span class="tag" [class.casa]="o.modalidad === 'casa'" [class.cripto]="o.modalidad === 'cripto'">{{ o.modalidad === 'cripto' ? 'Cripto' : 'Casa de Cambio' }}</span>
+          · Cliente <span class="mono">{{ o.id_cliente }}</span>
+        </p>
+      </div>
+      <span class="pill" [class]="claseEstado(o.estado)">{{ o.estado }}</span>
+    </div>
+
+    <div class="detail">
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <section class="panel">
+          <h2>Detalle</h2>
+          <div class="qsum">
+            <div class="side"><small>Envía</small><span class="amt">{{ monto(o.monto_origen, o.moneda_origen) }}</span></div>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            <div class="side"><small>Recibe</small><span class="amt">{{ monto(o.monto_destino, o.moneda_destino) }}</span></div>
+          </div>
+          <dl class="kv">
+            <dt>Cotización</dt>
+            <dd class="mono">{{ o.id_cotizacion }}</dd>
+            <hr />
+            <dt>{{ o.origen.tipo === 'wallet' ? 'Red de envío' : 'Banco de origen' }}</dt>
+            <dd>{{ origenTexto() }}</dd>
+            <dt>{{ o.destino.tipo === 'wallet' ? 'Billetera de destino' : 'Cuenta de destino' }}</dt>
+            <dd class="mono" style="font-size: 13px">{{ destinoTexto() }}</dd>
+            @if (o.numero_transferencia) {
+              <dt>N.º de operación / hash</dt>
+              <dd class="mono">{{ o.numero_transferencia }}</dd>
+            }
+          </dl>
+        </section>
+
+        <section class="panel">
+          <h2>Comprobante</h2>
+          @if (o.comprobante_url) {
+            @if (o.comprobante_tipo?.startsWith('image/')) {
+              <img class="proof-img" [src]="o.comprobante_url" alt="Comprobante de transferencia" />
+            } @else {
+              <a class="btn btn-ghost" [href]="o.comprobante_url" target="_blank" rel="noopener">Ver comprobante</a>
+            }
+          } @else {
+            <p class="muted">Todavía no se subió un comprobante.</p>
+          }
+          <dl class="kv">
+            <dt>Archivo</dt>
+            <dd>{{ o.comprobante_nombre || '—' }}</dd>
+          </dl>
+        </section>
+      </div>
+
+      <section class="panel">
+        <h2>Acciones</h2>
+
+        @if (errorAccion()) {
+          <p class="form-err" role="alert">{{ errorAccion() }}</p>
+        }
+
+        @if (puedeAccionar()) {
+          @if (!mostrandoMotivo()) {
+            <div class="actions" style="justify-content: flex-start">
+              <button class="btn btn-solid" type="button" [disabled]="enviando()" (click)="aprobar()">
+                @if (enviando()) {
+                  <span class="spinner" aria-hidden="true"></span>Guardando…
+                } @else {
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                  {{ siguienteAprobado() === 'Procesada' ? 'Marcar como Procesada' : 'Aprobar (pasar a En proceso)' }}
+                }
+              </button>
+              <button class="btn btn-ghost" type="button" [disabled]="enviando()" (click)="mostrarFormularioRechazo()">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                Rechazar
+              </button>
+            </div>
+          } @else {
+            <div class="ff">
+              <label for="motivo">Motivo del rechazo</label>
+              <textarea
+                class="inp"
+                id="motivo"
+                rows="3"
+                [value]="motivo()"
+                (input)="onCambioMotivo($any($event.target).value)"
+                placeholder="Ej. El monto transferido no coincide con el de la operación."
+              ></textarea>
+            </div>
+            <div class="actions" style="justify-content: flex-start">
+              <button class="btn btn-solid" type="button" [disabled]="enviando()" (click)="confirmarRechazo()">
+                @if (enviando()) {
+                  <span class="spinner" aria-hidden="true"></span>Rechazando…
+                } @else {
+                  Confirmar rechazo
+                }
+              </button>
+              <button class="btn btn-ghost" type="button" [disabled]="enviando()" (click)="cancelarRechazo()">Cancelar</button>
+            </div>
+          }
+        } @else {
+          <p class="muted">Esta operación ya está en un estado final y no admite más cambios.</p>
+        }
+
+        @if (o.estado === 'Rechazada' && o.motivo_rechazo) {
+          <p class="form-err">{{ o.motivo_rechazo }}</p>
+        }
+
+        <div>
+          <h3>Historial</h3>
+          <ol class="timeline">
+            @for (h of o.historial; track h.fecha) {
+              <li [class.done]="h.estado !== 'Rechazada'" [class.bad]="h.estado === 'Rechazada'">
+                <span>
+                  <b>{{ h.estado }}</b>
+                  <small>{{ fechaHora(h.fecha) }}</small>
+                </span>
+              </li>
+            }
+          </ol>
+        </div>
+      </section>
+    </div>
+  }
+</div>

@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { adminGuard } from './core/admin-auth/admin.guard';
 
 export const routes: Routes = [
   {
@@ -29,5 +30,20 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./features/operaciones/detalle/detalle').then((m) => m.Detalle),
   },
+  {
+    path: 'admin/login',
+    loadComponent: () => import('./features/admin/admin-login/admin-login').then((m) => m.AdminLogin),
+  },
+  {
+    path: 'admin/operaciones',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./features/admin/admin-lista/admin-lista').then((m) => m.AdminLista),
+  },
+  {
+    path: 'admin/operaciones/:id',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./features/admin/admin-detalle/admin-detalle').then((m) => m.AdminDetalle),
+  },
+  { path: 'admin', redirectTo: 'admin/operaciones' },
   { path: '**', redirectTo: '' },
 ];

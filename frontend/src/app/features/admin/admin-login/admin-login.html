@@ -1,0 +1,28 @@
+<div class="page narrow">
+  <div class="page-head">
+    <div>
+      <h1>Acceso back-office</h1>
+      <p>Uso interno del equipo de NexoCambio para revisar operaciones. No es la puerta de entrada de clientes.</p>
+    </div>
+  </div>
+
+  <form class="panel" (ngSubmit)="ingresar()" novalidate>
+    <div class="ff">
+      <label for="clave-admin">Clave de back-office</label>
+      <div class="pw">
+        <input
+          class="inp"
+          id="clave-admin"
+          name="clave-admin"
+          [type]="mostrarClave() ? 'text' : 'password'"
+          autocomplete="off"
+          [ngModel]="clave()"
+          (ngModelChange)="clave.set($event)"
+        />
+        <button type="button" (click)="alternarMostrar()">{{ mostrarClave() ? 'Ocultar' : 'Mostrar' }}</button>
+      </div>
+      <small>Es la cabecera x-admin-key configurada en el despliegue (ADMIN_KEY).</small>
+    </div>
+    <button class="btn btn-solid cta" type="submit" [disabled]="!clave().trim()">Ingresar</button>
+  </form>
+</div>

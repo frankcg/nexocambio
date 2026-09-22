@@ -67,6 +67,7 @@ export interface Operacion {
   comprobante_tipo?: string;
   comprobante_tamano?: number;
   comprobante_url?: string;
+  numero_transferencia?: string;
 }
 
 export interface ListarOperacionesResponse {

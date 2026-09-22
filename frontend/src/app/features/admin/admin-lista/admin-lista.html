@@ -1,0 +1,57 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Revisión de operaciones</h1>
+      <p>Aprueba o rechaza las transferencias reportadas por los clientes.</p>
+    </div>
+  </div>
+
+  @if (cargando()) {
+    <div class="skeleton"></div>
+  } @else if (error(); as msg) {
+    <div class="empty">
+      <h2>No pudimos cargar las operaciones</h2>
+      <p>{{ msg }}</p>
+      <button class="btn btn-solid" type="button" (click)="cargar()">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11A8 8 0 1 0 18 16" /><path d="M20 4v7h-7" /></svg>
+        Reintentar
+      </button>
+    </div>
+  } @else {
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div class="filters" role="group" aria-label="Filtrar por estado">
+        <button type="button" [attr.aria-pressed]="filtro() === 'Todas'" (click)="elegirFiltro('Todas')">
+          <span class="dot dot-todas" aria-hidden="true"></span>Todas<span class="n">{{ operaciones().length }}</span>
+        </button>
+        @for (e of ESTADOS; track e) {
+          <button type="button" [attr.aria-pressed]="filtro() === e" (click)="elegirFiltro(e)">
+            <span class="dot" [class]="claseEstado(e)" aria-hidden="true"></span>{{ e }}<span class="n">{{ conteos()[e] }}</span>
+          </button>
+        }
+      </div>
+
+      @if (filtradas().length) {
+        <ul class="oplist">
+          <li class="hdr" aria-hidden="true"><span>Fecha</span><span>Cliente</span><span>Monto</span><span>Estado</span><span></span></li>
+          @for (o of filtradas(); track o.id_operacion) {
+            <li>
+              <a [routerLink]="['/admin/operaciones', o.id_operacion]">
+                <span class="date">{{ fechaHora(o.fecha_operacion) }}<small>{{ o.id_operacion }}</small></span>
+                <span class="mod mono">{{ o.id_cliente }}</span>
+                <span class="amt">{{ monto(o.monto_origen, o.moneda_origen) }}<small>Recibe {{ monto(o.monto_destino, o.moneda_destino) }}</small></span>
+                <span class="st"><span class="pill" [class]="claseEstado(o.estado)">{{ o.estado }}</span></span>
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6" /></svg>
+              </a>
+            </li>
+          }
+        </ul>
+      } @else {
+        <div class="empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M3 13h5l1.5 3h5L16 13h5M5 5h14l2 8v6H3v-6l2-8Z" /></svg>
+          <h2>No hay operaciones con estado "{{ filtro() }}"</h2>
+          <p>Cuando un cliente registre una operación con este estado, aparecerá aquí.</p>
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -6,7 +6,10 @@ import json
 P = dict(lambda_req=0.20 / 1e6, lambda_gbs=0.0000166667, apigw_http=1.00 / 1e6,
          ddb_wru=0.625 / 1e6, ddb_rru=0.125 / 1e6, ddb_gb=0.25,
          s3_gb=0.023, s3_put=0.005 / 1000, s3_get=0.0004 / 1000,
-         cw_ingest_gb=0.50, cw_store_gb=0.03, cw_alarm=0.10, egress_gb=0.09, egress_free_gb=100)
+         cw_ingest_gb=0.50, cw_store_gb=0.03, cw_alarm=0.10, egress_gb=0.09, egress_free_gb=100,
+         cf_req=0.0100 / 10_000, cf_data_transfer_gb=0.085)   # CloudFront, PriceClass_100 (US/Canadá/Europa)
+
+CF_PAGINA_KB = 90   # bundle inicial comprimido (gzip/brotli) servido por CloudFront; estimación gruesa
 
 # Mezcla de tráfico por cada request de la API
 MIX = {  # accion: (fracción, servicio, memoria_MB, duración_ms, WRU, RRU)
@@ -40,6 +43,7 @@ def costo(reqs):
         "S3 (comprobantes + sitio web)": s3_gb * P["s3_gb"] + comprobantes * P["s3_put"] + detalles * P["s3_get"] + 0.13 / 1024 * P["s3_gb"],
         "CloudWatch (logs + 4 alarmas)": logs_gb * (P["cw_ingest_gb"] + P["cw_store_gb"]) + 4 * P["cw_alarm"],
         "Transferencia de datos": max(0.0, egreso_gb - P["egress_free_gb"]) * P["egress_gb"],
+        "CloudFront (HTTPS del sitio web, sin caché)": reqs * P["cf_req"] + reqs * CF_PAGINA_KB / 1024 / 1024 * P["cf_data_transfer_gb"],
         "SNS (alertas por correo)": 0.0,
     }
     return d, {"lambda_req": lam_req, "gbs": gbs, "wru": wru, "rru": rru, "s3_gb": s3_gb, "logs_gb": logs_gb, "egreso_gb": egreso_gb}

@@ -23,14 +23,17 @@ aws cloudformation package --template-file template.yaml --s3-bucket "$ARTIFACTS
     --output-template-file .packaged.yaml --region "$REGION" >/dev/null
 
 echo "==> Desplegando stack ${STACK} (${REGION})"
+echo "    Si es la primera vez que se crea la distribución CloudFront (HTTPS) o se cambia su"
+echo "    configuración, este paso puede tardar 10-20 minutos en propagar. Es normal."
 aws cloudformation deploy --template-file .packaged.yaml --stack-name "$STACK" --region "$REGION" \
     --no-fail-on-empty-changeset \
     --parameter-overrides "Stage=${STAGE}" "JwtSecret=${JWT_SECRET}" "AdminKey=${ADMIN_KEY}" \
-                          "AlertEmail=${ALERT_EMAIL:-}" "UsarTasasEnVivo=${USAR_TASAS_EN_VIVO:-true}"
+                          "AlertEmail=${ALERT_EMAIL:-}" "UsarTasasEnVivo=${USAR_TASAS_EN_VIVO:-true}" \
+                          "UsarHttps=${USAR_HTTPS:-true}"
 
 out() { aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
         --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
-API_URL="$(out ApiUrl)"; WEB_BUCKET="$(out BucketWeb)"; WEB_URL="$(out SitioWebUrl)"
+API_URL="$(out ApiUrl)"; WEB_BUCKET="$(out BucketWeb)"; WEB_URL="$(out SitioWebUrl)"; WEB_HTTPS_URL="$(out SitioWebHttpsUrl)"
 
 echo "==> Compilando frontend Angular"
 ( cd frontend && npm ci && npx ng build )
@@ -43,7 +46,14 @@ cat <<MSG
 
 ================ NexoCambio desplegado ================
 API (usar en Postman):   ${API_URL}
-Sitio web (frontend):    ${WEB_URL}
+MSG
+if [ -n "$WEB_HTTPS_URL" ]; then
+  echo "Sitio web (HTTPS):       ${WEB_HTTPS_URL}"
+  echo "Sitio web (HTTP directo, sin CloudFront): ${WEB_URL}"
+else
+  echo "Sitio web (frontend):    ${WEB_URL}"
+fi
+cat <<MSG
 Clave back-office:       ${ADMIN_KEY}   (cabecera x-admin-key)
 Prueba rápida:           curl -s -X POST ${API_URL}/cotizar -H 'content-type: application/json' \\
                            -d '{"modalidad":"casa","moneda_origen":"PEN","moneda_destino":"USD","monto_origen":1000}'

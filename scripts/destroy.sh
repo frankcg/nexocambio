@@ -8,6 +8,7 @@ for b in "nexo-${STAGE}-comprobantes-${ACCOUNT}-${REGION}" "nexo-${STAGE}-web-${
   aws s3 rm "s3://${b}" --recursive --region "$REGION" 2>/dev/null || true   # el bucket debe estar vacío
 done
 aws cloudformation delete-stack --stack-name "$STACK" --region "$REGION"
+echo "Esperando a que se elimine el stack (si hay una distribución CloudFront, puede tardar hasta 20-30 min)..."
 aws cloudformation wait stack-delete-complete --stack-name "$STACK" --region "$REGION"
 aws s3 rb "s3://nexo-${STAGE}-artifacts-${ACCOUNT}-${REGION}" --force --region "$REGION" 2>/dev/null || true
 echo "Stack ${STACK} eliminado."

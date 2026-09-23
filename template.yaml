@@ -43,10 +43,18 @@ Parameters:
     Default: "true"
     AllowedValues: ["true", "false"]
     Description: Crear el bucket S3 de sitio web estático para el frontend.
+  UsarHttps:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Crear una distribución CloudFront (HTTPS, con su dominio y certificado por defecto)
+      delante del sitio web. "false" si el Learner Lab restringe CloudFront.
 
 Conditions:
   ConCorreo: !Not [!Equals [!Ref AlertEmail, ""]]
   ConSitioWeb: !Equals [!Ref CrearSitioWeb, "true"]
+  ConHttps: !And [!Condition ConSitioWeb, !Equals [!Ref UsarHttps, "true"]]
 
 Resources:
   # =========================================================== DATOS (1 BD por microservicio)
@@ -147,6 +155,36 @@ Resources:
             Principal: "*"
             Action: "s3:GetObject"
             Resource: !Sub "${BucketWeb.Arn}/*"
+
+  DistribucionWeb:
+    Type: AWS::CloudFront::Distribution
+    Condition: ConHttps
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        HttpVersion: http2
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: OrigenSitioWeb
+            DomainName: !Select [1, !Split ["http://", !GetAtt BucketWeb.WebsiteURL]]
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+              HTTPPort: 80
+        DefaultCacheBehavior:
+          TargetOriginId: OrigenSitioWeb
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies: {Forward: none}
+          MinTTL: 0
+          DefaultTTL: 0
+          MaxTTL: 0
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
 
   # =========================================================== CÓMPUTO
   CapaComun:
@@ -408,8 +446,16 @@ Outputs:
     Value: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com/v1
   SitioWebUrl:
     Condition: ConSitioWeb
-    Description: URL del sitio web estático (frontend)
+    Description: URL directa del bucket S3 (HTTP, sin CloudFront) — referencia/bypass
     Value: !GetAtt BucketWeb.WebsiteURL
+  SitioWebHttpsUrl:
+    Condition: ConHttps
+    Description: URL del sitio web por HTTPS (CloudFront) — la que deben usar los usuarios
+    Value: !Sub "https://${DistribucionWeb.DomainName}"
+  DistribucionCloudFrontId:
+    Condition: ConHttps
+    Description: Id de la distribución CloudFront (útil para una invalidación manual)
+    Value: !Ref DistribucionWeb
   BucketWeb:
     Condition: ConSitioWeb
     Value: !Ref BucketWeb

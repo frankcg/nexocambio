@@ -15,9 +15,11 @@ git clone <este repo> && cd nexocambio
 ALERT_EMAIL=tu@correo.com ./scripts/deploy.sh      # imprime ApiUrl, sitio web y clave de back-office
 ./scripts/destroy.sh                                # al terminar: elimina todo
 ```
-Parámetros útiles: `STAGE` (por defecto `dev`), `AWS_REGION` (por defecto `us-east-1`), `USAR_TASAS_EN_VIVO=false` para usar tasas referenciales.
+Parámetros útiles: `STAGE` (por defecto `dev`), `AWS_REGION` (por defecto `us-east-1`), `USAR_TASAS_EN_VIVO=false` para usar tasas referenciales, `USAR_HTTPS=false` para desactivar CloudFront y servir el sitio solo por HTTP directo desde S3 (si el Lab lo restringe).
 
-> Requisitos del Lab: el rol `LabRole` debe existir (es el que usan las Lambdas) y S3 debe permitir un bucket con política pública para el sitio web. Si CloudFront está habilitado en su Lab puede ponerse delante del bucket web para obtener HTTPS.
+> Requisitos del Lab: el rol `LabRole` debe existir (es el que usan las Lambdas) y S3 debe permitir un bucket con política pública para el sitio web. Por defecto el sitio se sirve por HTTPS a través de una distribución CloudFront (dominio y certificado `*.cloudfront.net`, sin necesidad de ACM ni dominio propio); `deploy.sh` imprime esa URL al terminar. La primera vez que se crea (o se cambia) la distribución, el despliegue puede tardar 10-20 minutos en propagar — es normal, solo hay que esperar.
+>
+> Las credenciales de sesión del Learner Lab expiran cada pocas horas. Si `deploy.sh` o `destroy.sh` fallan a mitad de camino por eso (mientras CloudFront sigue propagando del lado de AWS), basta con refrescar las credenciales y volver a correr el mismo script: ambos son seguros de reintentar.
 
 ## Probar sin AWS
 ```bash

@@ -9,9 +9,10 @@
     "S3 (comprobantes + sitio web)": 0.01,
     "CloudWatch (logs + 4 alarmas)": 0.41,
     "Transferencia de datos": 0.0,
+    "CloudFront (HTTPS del sitio web, sin caché)": 0.17,
     "SNS (alertas por correo)": 0.0
    },
-   "total": 0.5,
+   "total": 0.66,
    "metricas": {
     "lambda_req": 21000.0,
     "gbs": 1260.0,
@@ -31,9 +32,10 @@
     "S3 (comprobantes + sitio web)": 0.21,
     "CloudWatch (logs + 4 alarmas)": 0.58,
     "Transferencia de datos": 0.0,
+    "CloudFront (HTTPS del sitio web, sin caché)": 2.49,
     "SNS (alertas por correo)": 0.0
    },
-   "total": 1.7,
+   "total": 4.19,
    "metricas": {
     "lambda_req": 315000.0,
     "gbs": 18900.0,
@@ -53,9 +55,10 @@
     "S3 (comprobantes + sitio web)": 2.13,
     "CloudWatch (logs + 4 alarmas)": 2.22,
     "Transferencia de datos": 0.0,
+    "CloudFront (HTTPS del sitio web, sin caché)": 24.89,
     "SNS (alertas por correo)": 0.0
    },
-   "total": 13.29,
+   "total": 38.17,
    "metricas": {
     "lambda_req": 3150000.0,
     "gbs": 189000.0,

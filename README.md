@@ -15,11 +15,15 @@ git clone <este repo> && cd nexocambio
 ALERT_EMAIL=tu@correo.com ./scripts/deploy.sh      # imprime ApiUrl, sitio web y clave de back-office
 ./scripts/destroy.sh                                # al terminar: elimina todo
 ```
-Parámetros útiles: `STAGE` (por defecto `dev`), `AWS_REGION` (por defecto `us-east-1`), `USAR_TASAS_EN_VIVO=false` para usar tasas referenciales, `USAR_HTTPS=false` para desactivar CloudFront y servir el sitio solo por HTTP directo desde S3 (si el Lab lo restringe).
+Parámetros útiles: `STAGE` (por defecto `dev`), `AWS_REGION` (por defecto `us-east-1`), `USAR_TASAS_EN_VIVO=false` para usar tasas referenciales, `USAR_HTTPS=true` para poner una distribución CloudFront delante del sitio (opt-in, ver abajo).
 
-> Requisitos del Lab: el rol `LabRole` debe existir (es el que usan las Lambdas) y S3 debe permitir un bucket con política pública para el sitio web. Por defecto el sitio se sirve por HTTPS a través de una distribución CloudFront (dominio y certificado `*.cloudfront.net`, sin necesidad de ACM ni dominio propio); `deploy.sh` imprime esa URL al terminar. La primera vez que se crea (o se cambia) la distribución, el despliegue puede tardar 10-20 minutos en propagar — es normal, solo hay que esperar.
+> Requisitos del Lab: el rol `LabRole` debe existir (es el que usan las Lambdas) y S3 debe permitir un bucket con política pública para el sitio web.
 >
-> Las credenciales de sesión del Learner Lab expiran cada pocas horas. Si `deploy.sh` o `destroy.sh` fallan a mitad de camino por eso (mientras CloudFront sigue propagando del lado de AWS), basta con refrescar las credenciales y volver a correr el mismo script: ambos son seguros de reintentar.
+> **HTTPS del sitio:** `deploy.sh` imprime `Sitio web (HTTPS)` al terminar. Por defecto es el endpoint REST de S3 (`https://<bucket>.s3.<región>.amazonaws.com/index.html`, certificado válido de Amazon): la API ya era HTTPS y, como la app usa rutas con hash, basta con que el bucket sea público. Hay que abrir la URL **con `/index.html`** (en la raíz S3 devuelve 403), y por eso `frontend/src/index.html` no lleva `<base href>`: con él, Angular reescribía la barra de direcciones a `/#/...` y un F5 rompía la página. El endpoint `http://...s3-website-...` (HTTP) sigue funcionando pero no está cifrado.
+>
+> **CloudFront (opcional):** con `USAR_HTTPS=true` se crea una distribución con su dominio/certificado `*.cloudfront.net` (sin ACM ni dominio propio) y `SitioWebHttpsUrl` apunta a ella; la primera creación tarda 10-20 min. En AWS Academy Learner Lab **no funciona**: el rol `voclabs` no tiene `cloudfront:CreateDistribution` y el stack falla con `AccessDenied` (hace rollback solo). Úsalo únicamente en una cuenta que sí lo permita.
+>
+> Las credenciales de sesión del Learner Lab expiran cada pocas horas. Si `deploy.sh` o `destroy.sh` fallan a mitad de camino por eso, basta con refrescar las credenciales y volver a correr el mismo script: ambos son seguros de reintentar.
 
 ## Probar sin AWS
 ```bash

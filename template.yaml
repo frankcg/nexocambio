@@ -45,11 +45,12 @@ Parameters:
     Description: Crear el bucket S3 de sitio web estático para el frontend.
   UsarHttps:
     Type: String
-    Default: "true"
+    Default: "false"
     AllowedValues: ["true", "false"]
     Description: >
-      Crear una distribución CloudFront (HTTPS, con su dominio y certificado por defecto)
-      delante del sitio web. "false" si el Learner Lab restringe CloudFront.
+      Crear una distribución CloudFront delante del sitio web. En AWS Academy Learner Lab el rol
+      voclabs NO tiene cloudfront:CreateDistribution (AccessDenied), por eso es opt-in: con "false"
+      el sitio se sirve por HTTPS desde el endpoint REST de S3 (ver output SitioWebHttpsUrl).
 
 Conditions:
   ConCorreo: !Not [!Equals [!Ref AlertEmail, ""]]
@@ -449,9 +450,15 @@ Outputs:
     Description: URL directa del bucket S3 (HTTP, sin CloudFront) — referencia/bypass
     Value: !GetAtt BucketWeb.WebsiteURL
   SitioWebHttpsUrl:
-    Condition: ConHttps
-    Description: URL del sitio web por HTTPS (CloudFront) — la que deben usar los usuarios
-    Value: !Sub "https://${DistribucionWeb.DomainName}"
+    Condition: ConSitioWeb
+    Description: >
+      URL del sitio web por HTTPS — la que deben usar los usuarios. Con CloudFront es su dominio;
+      sin CloudFront es el endpoint REST de S3 (certificado de Amazon), que exige /index.html
+      porque en la raíz S3 devuelve 403.
+    Value: !If
+      - ConHttps
+      - !Sub "https://${DistribucionWeb.DomainName}"
+      - !Sub "https://${BucketWeb.RegionalDomainName}/index.html"
   DistribucionCloudFrontId:
     Condition: ConHttps
     Description: Id de la distribución CloudFront (útil para una invalidación manual)

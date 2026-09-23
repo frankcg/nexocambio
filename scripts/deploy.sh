@@ -23,13 +23,16 @@ aws cloudformation package --template-file template.yaml --s3-bucket "$ARTIFACTS
     --output-template-file .packaged.yaml --region "$REGION" >/dev/null
 
 echo "==> Desplegando stack ${STACK} (${REGION})"
-echo "    Si es la primera vez que se crea la distribución CloudFront (HTTPS) o se cambia su"
-echo "    configuración, este paso puede tardar 10-20 minutos en propagar. Es normal."
+if [ "${USAR_HTTPS:-false}" = "true" ]; then
+  echo "    CloudFront activado: si es la primera vez que se crea la distribución (o se cambia su"
+  echo "    configuración), este paso puede tardar 10-20 minutos en propagar. Es normal."
+  echo "    (En AWS Academy Learner Lab suele fallar con AccessDenied: usa USAR_HTTPS=false, el valor por defecto.)"
+fi
 aws cloudformation deploy --template-file .packaged.yaml --stack-name "$STACK" --region "$REGION" \
     --no-fail-on-empty-changeset \
     --parameter-overrides "Stage=${STAGE}" "JwtSecret=${JWT_SECRET}" "AdminKey=${ADMIN_KEY}" \
                           "AlertEmail=${ALERT_EMAIL:-}" "UsarTasasEnVivo=${USAR_TASAS_EN_VIVO:-true}" \
-                          "UsarHttps=${USAR_HTTPS:-true}"
+                          "UsarHttps=${USAR_HTTPS:-false}"
 
 out() { aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
         --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
@@ -49,7 +52,7 @@ API (usar en Postman):   ${API_URL}
 MSG
 if [ -n "$WEB_HTTPS_URL" ]; then
   echo "Sitio web (HTTPS):       ${WEB_HTTPS_URL}"
-  echo "Sitio web (HTTP directo, sin CloudFront): ${WEB_URL}"
+  echo "Sitio web (HTTP, sin cifrar; solo referencia): ${WEB_URL}"
 else
   echo "Sitio web (frontend):    ${WEB_URL}"
 fi

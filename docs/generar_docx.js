@@ -69,12 +69,17 @@ function codigo(lineas, o = {}) {
   return new Table({ width: { size: CW, type: WidthType.DXA }, columnWidths: [CW], rows: [new TableRow({ children: [new TableCell({ children: kids, width: { size: CW, type: WidthType.DXA }, borders: bordes,
     shading: { fill: "F3F4F6", type: ShadingType.CLEAR, color: "auto" }, margins: { top: 80, bottom: 80, left: 140, right: 140 } })] })] });
 }
-function img(path, w, h) { return new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [new ImageRun({ type: "png", data: fs.readFileSync(path), transformation: { width: w, height: h }, altText: { title: path, description: path, name: path } })] }); }
+function img(path, w, h) { return new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, spacing: { after: 60 }, children: [new ImageRun({ type: "png", data: fs.readFileSync(path), transformation: { width: w, height: h }, altText: { title: path, description: path, name: path } })] }); }
 const pie = (s) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: s, italics: true, size: 17, color: "555555", font: FONT })] });
 const nota = (s) => caja([P(s, { after: 0, run: { size: 19 } })], "FFF8E1");
 const usd = (n) => "US$ " + n.toFixed(2);
 
-const SH = "/tmp/shots/";
+const SH = process.env.CAPTURAS || "docs/capturas/";
+const OUT = process.env.OUT || "docs/NexoCambio_ProyectoParcial_Final.docx";
+function imgW(path, w) {   // ancho fijo; el alto sale de la proporción real del PNG
+  const b = fs.readFileSync(path);
+  return img(path, w, Math.round((w * b.readUInt32BE(20)) / b.readUInt32BE(16)));
+}
 const c = []; // contenido sección 1
 
 // ================================================================ PORTADA
@@ -89,7 +94,8 @@ c.push(tabla([30, 70], null, [
   ["**Docente**", "Geraldo Colchado"], ["**Entrega**", "Martes 06-Oct-2026, 23:59 h"], ["**Exposición virtual**", "Miércoles 07-Oct-2026, 19:00 h"],
   ["**Integrantes**", ["[Integrante 1]", "[Integrante 2]", "[Integrante 3]", "[Integrante 4]", "[Integrante 5]"]],
   ["**Repositorio GitHub**", "[https://github.com/<organización>/nexocambio]"],
-  ["**Prototipo (FrontEnd)**", "https://claude.ai/artifact/AR38oPWroLtipBBGz6fXRP"],
+  ["**Aplicación web (FrontEnd)**", "Angular 22, carpeta `frontend/` del repositorio; desplegada en S3 por HTTPS (URL «Sitio web (HTTPS)» que imprime deploy.sh)"],
+  ["**Prototipo original**", "https://claude.ai/artifact/AR38oPWroLtipBBGz6fXRP"],
 ], { firstColFill: true, size: 20 }));
 c.push(spacer(200));
 c.push(nota("**Antes de entregar:** complete los campos entre [corchetes], pegue las capturas indicadas en la sección C.3 (Postman, consola de AWS y AWS Pricing Calculator) y verifique los precios en la calculadora."));
@@ -104,7 +110,7 @@ c.push(tabla([28, 72], null, [
   ["**Monedas y activos**", "Divisas: PEN, USD, EUR. Cripto: USDT, USDC, BTC, ETH (contra PEN o USD)."],
   ["**Identidad visual**", "Casa de Cambio: azul. Cripto: verde oscuro. El usuario alterna entre ambas desde el mismo cotizador, sin salir de la página."],
 ], { firstColFill: true }));
-c.push(P("NexoCambio Digital permite a personas y empresas cotizar y registrar operaciones de cambio de divisas y de activos virtuales desde una sola experiencia web: cotizar, registrarse, confirmar la operación, adjuntar el comprobante de la transferencia y hacer seguimiento del estado.", { before: 140 }));
+c.push(P("NexoCambio Digital permite a personas y empresas cotizar y registrar operaciones de cambio de divisas y de activos virtuales desde una sola experiencia web: cotizar, registrarse, confirmar la operación, adjuntar el comprobante de la transferencia y hacer seguimiento del estado. Del lado interno, un back-office permite revisar cada operación y aprobarla o rechazarla.", { before: 140 }));
 c.push(nota("Aviso académico: las tasas de demostración, cuentas bancarias y direcciones de billetera que muestra el prototipo son ficticias. El MVP no procesa fondos reales."));
 
 c.push(H2("2. Benchmark"));
@@ -144,7 +150,7 @@ c.push(tabla([22, 35, 43], ["Tipo de usuario", "Descripción", "Qué puede hacer
   ["**Visitante**", "Aún no inició sesión.", "Conocer el servicio, usar el cotizador, alternar Casa de Cambio/Cripto, registrarse o iniciar sesión."],
   ["**Cliente persona natural**", "Persona registrada e identificada (DNI, CE o pasaporte).", "Cotizar, iniciar sesión, registrar una operación, adjuntar comprobante y consultar operaciones, estados y detalle."],
   ["**Cliente empresa**", "Empresa registrada con RUC mediante un representante.", "Lo mismo que la persona natural, operando a nombre de la empresa."],
-  ["**Operador NexoCambio** (interno)", "Valida comprobantes y avanza el estado de las operaciones.", "Sin interfaz en el MVP: se simula con un endpoint protegido (ver Parte B). Fuera de la experiencia del cliente."],
+  ["**Operador de back-office** (interno)", "Personal de NexoCambio que valida los comprobantes y avanza el estado de las operaciones de todos los clientes.", "Ingresa por una sección aparte (`/admin`) con una clave de back-office: ve la cola de operaciones con filtro por estado, revisa el comprobante y aprueba (En proceso → Procesada) o rechaza con motivo. Nunca ve las pantallas de cliente."],
 ], { firstColFill: true }));
 
 c.push(H2("5. Funcionalidades del producto"));
@@ -158,10 +164,11 @@ c.push(tabla([20, 52, 28], ["Módulo", "Funcionalidad", "Alcance"], [
   ["Mis operaciones", "Listar las operaciones del cliente con su estado.", "MVP (HU6)"],
   ["Detalle de operación", "Datos completos, historial de estados y comprobante.", "MVP (HU7)"],
   ["Cuentas bancarias", "Guardar y reutilizar cuentas de destino.", "Post-MVP (HU8)"],
+  ["Back-office", "Revisar las operaciones de todos los clientes y aprobarlas o rechazarlas (con motivo).", "MVP (HU9)"],
 ], { zebra: true }));
 
 c.push(H2("6. Historias de usuario, criterios de aceptación y selección del MVP"));
-c.push(P("**Criterio de selección.** Se prioriza un flujo completo de punta a punta que pueda demostrarse en AWS: cotizar → registrarse/iniciar sesión → registrar operación → adjuntar comprobante → consultar la operación y su estado. Se incluye el detalle de operación (HU7) porque el prototipo y el backend ya lo implementan. Las funciones de conveniencia se dejan fuera."));
+c.push(P("**Criterio de selección.** Se prioriza un flujo completo de punta a punta que pueda demostrarse en AWS: cotizar → registrarse/iniciar sesión → registrar operación → adjuntar comprobante → revisión en back-office → consultar la operación y su estado. Se incluyen el detalle de operación (HU7) y la revisión desde back-office (HU9) porque el frontend y el backend ya los implementan. Las funciones de conveniencia se dejan fuera."));
 const HU = [
   ["HU1", "Cotización", "visitante o cliente", "cotizar una operación de Casa de Cambio o Cripto", "conocer cuánto recibiré antes de operar", true, [[
     "GIVEN el usuario se encuentre en la página web,", "WHEN accede al cotizador", "AND selecciona la modalidad Casa de Cambio o Cripto", "AND selecciona la moneda o activo que entrega y el que desea recibir",
@@ -189,6 +196,11 @@ const HU = [
     "GIVEN el cliente se encuentre en el listado de operaciones,", "WHEN selecciona una operación", "THEN se muestra el detalle completo: fecha, modalidad, montos, tasa, cuentas y estado", "AND se muestra el historial de estados", "AND se muestra el comprobante registrado", "AND, si fue rechazada, se muestra el motivo"]]],
   ["HU8", "Gestión de cuentas bancarias", "cliente", "registrar y reutilizar mis cuentas bancarias", "agilizar futuras operaciones", false, [[
     "GIVEN el cliente haya iniciado sesión,", "WHEN selecciona Registrar cuenta bancaria", "AND ingresa banco, moneda, tipo y número de cuenta", "AND presiona Guardar", "THEN la cuenta queda asociada al cliente", "AND puede reutilizarla en futuras operaciones"]]],
+  ["HU9", "Revisión de operaciones (back-office)", "operador de back-office", "revisar las operaciones de los clientes y aprobarlas o rechazarlas", "validar cada transferencia y mantener informado al cliente del estado de su solicitud", true, [[
+    "GIVEN el operador ingrese a la sección de back-office,", "WHEN escribe la clave de back-office correcta", "THEN accede a la cola de operaciones de todos los clientes", "AND puede filtrarlas por estado", "AND cada operación muestra fecha, cliente, monto y estado"],
+  ["GIVEN el operador abra una operación Pendiente de validación,", "WHEN revisa el comprobante y selecciona Aprobar", "THEN la operación pasa a En proceso", "AND, al confirmar el envío del dinero, pasa a Procesada", "AND el cliente ve el nuevo estado en el historial de su operación"],
+  ["GIVEN el operador abra una operación que no puede aprobar,", "WHEN selecciona Rechazar", "THEN debe ingresar el motivo del rechazo", "AND la operación pasa a Rechazada", "AND el cliente ve el motivo en el detalle de su operación"],
+  ["GIVEN una persona no tenga la clave de back-office,", "WHEN intenta ver o cambiar operaciones", "THEN el sistema indica que el acceso está restringido", "AND no se muestra ninguna operación"]]],
 ];
 HU.forEach(([id, t, como, quiero, para, mvp, escenarios]) => {
   c.push(spacer(140));
@@ -204,16 +216,18 @@ c.push(tabla([9, 27, 18, 46], ["ID", "Historia", "Clasificación", "Cómo se com
   ["HU1", "Cotización", "**MVP**", "POST /cotizar"], ["HU2", "Registro e identificación", "**MVP**", "POST /registro"], ["HU3", "Inicio de sesión", "**MVP**", "POST /login (JWT)"],
   ["HU4", "Registrar operación", "**MVP**", "POST /operaciones"], ["HU5", "Adjuntar comprobante", "**MVP**", "POST /operaciones/{id}/comprobante → S3"],
   ["HU6", "Mis operaciones", "**MVP**", "GET /operaciones"], ["HU7", "Detalle de operación", "**MVP**", "GET /operaciones/{id}"], ["HU8", "Cuentas bancarias", "Post-MVP", "—"],
+  ["HU9", "Revisión de operaciones (back-office)", "**MVP**", "GET /operaciones/admin · GET /operaciones/{id}/admin · PATCH /operaciones/{id}/estado"],
 ], { zebra: true }));
-c.push(P("**Flujo que debe funcionar al término del MVP:** el usuario ingresa a la web, cotiza, se registra o inicia sesión, confirma una operación, adjunta un comprobante y luego consulta la operación con su estado.", { before: 140 }));
+c.push(P("**Flujo que debe funcionar al término del MVP:** el usuario ingresa a la web, cotiza, se registra o inicia sesión, confirma una operación, adjunta un comprobante; el operador de back-office la aprueba o rechaza, y el cliente consulta la operación con su estado.", { before: 140 }));
 c.push(P("**Persistencia mínima:** identidad básica del cliente, datos de la operación, su estado con historial y el comprobante."));
-c.push(P("**Fuera del MVP:** panel administrativo, score/semáforo de riesgo, integraciones con exchanges (Binance/OKX/Bybit), automatización regulatoria, procesamiento real de fondos, gestión de cuentas bancarias (HU8), app móvil nativa y notificaciones por correo."));
+c.push(P("**Fuera del MVP:** cuentas individuales y roles para el back-office (hoy se usa una clave compartida), score/semáforo de riesgo, integraciones con exchanges (Binance/OKX/Bybit), automatización regulatoria, procesamiento real de fondos, gestión de cuentas bancarias (HU8), app móvil nativa y notificaciones por correo."));
 
 // ================================================================ PARTE B
 c.push(H1("PARTE B — DISEÑO DEL MVP (CÓMO)"));
-c.push(H2("1. Diseño de FrontEnd (prototipo)"));
-c.push(P("El prototipo web responsive fue construido con herramientas de IA a partir de las historias de usuario y criterios de aceptación. Está publicado en **https://claude.ai/artifact/AR38oPWroLtipBBGz6fXRP** y su código fuente está en la carpeta `frontend/` del repositorio. Por defecto funciona en «modo demo» (datos simulados en el navegador); al configurar las URL de la API pasa a consumir los microservicios de AWS (ver C.4)."));
-c.push(H3("Prompt utilizado"));
+c.push(H2("1. Diseño de FrontEnd (prototipo y aplicación Angular)"));
+c.push(P("El prototipo web responsive fue construido con herramientas de IA a partir de las historias de usuario y criterios de aceptación. Está publicado en **https://claude.ai/artifact/AR38oPWroLtipBBGz6fXRP** y su código de referencia se conserva en `frontend-legacy/`."));
+c.push(P("Después se **migró a una aplicación Angular 22** (carpeta `frontend/`): componentes standalone, signals, formularios reactivos y rutas con hash. Porta los textos, validaciones y colores del prototipo **sin rediseñarlos**, y consume los microservicios de AWS: la URL de la API se lee en tiempo de ejecución de `config.json` (ver C.4). Se añadió además la sección de **back-office** (`/admin`), separada de la experiencia del cliente, con su propio acceso y encabezado. Las capturas de esta sección corresponden a la aplicación Angular con datos de demostración."));
+c.push(H3("Prompt utilizado (prototipo original)"));
 c.push(caja([
   P("Crea una web responsive para **NexoCambio**, una plataforma digital de Casa de Cambio y operaciones Cripto, con estas funcionalidades:", { after: 80, run: { size: 18 } }),
   P("- **Bienvenida:** marca, descripción de servicios, seguridad y confianza, contacto y accesos a registro e inicio de sesión.", { after: 60, run: { size: 18 } }),
@@ -231,19 +245,24 @@ c.push(tabla([22, 12, 66], ["Pantalla", "HU", "Descripción"], [
   ["Registro", "HU2", "Selección persona/empresa y formulario de 3–4 pasos con validaciones (DNI, RUC, celular, mayoría de edad)."],
   ["Login", "HU3", "Correo y contraseña, con mensaje de error genérico."],
   ["Nueva operación", "HU4, HU5", "3 pasos: datos y cuentas → transferencia (datos de NexoCambio) → carga del comprobante."],
-  ["Mis operaciones", "HU6", "Resumen, filtros por estado y listado."],
+  ["Mis operaciones", "HU6", "Tarjetas de resumen, filtros por estado con contadores y listado."],
   ["Detalle de operación", "HU7", "Montos, tasa, cuentas, línea de tiempo de estados y comprobante."],
+  ["Back-office: acceso", "HU9", "Ingreso con la clave de back-office (`/admin`); sección separada de la del cliente."],
+  ["Back-office: revisión", "HU9", "Cola con las operaciones de todos los clientes y filtro por estado; detalle con comprobante, historial y acciones Aprobar / Rechazar (con motivo)."],
 ], { zebra: true }));
 c.push(spacer(120));
 c.push(img(SH + "01_home_casa.png", 560, 350)); c.push(pie("Figura B.1 — Inicio con cotizador, modalidad Casa de Cambio (identidad azul)."));
 c.push(img(SH + "02_home_cripto.png", 560, 350)); c.push(pie("Figura B.2 — Mismo cotizador en modalidad Cripto (identidad verde/oscura), sin cambiar de página."));
-c.push(img(SH + "07_operar_paso1.png", 560, 394)); c.push(pie("Figura B.3 — Nueva operación: confirmación de la cotización con tasa vigente."));
-c.push(img(SH + "05_mis_operaciones.png", 560, 333)); c.push(pie("Figura B.4 — Mis operaciones con los cuatro estados."));
-c.push(img(SH + "06_detalle.png", 560, 306)); c.push(pie("Figura B.5 — Detalle de operación con línea de tiempo de estados."));
-c.push(new Table({ width: { size: CW, type: WidthType.DXA }, columnWidths: [CW / 2, CW / 2], rows: [new TableRow({ children: [
+c.push(imgW(SH + "07_operar_paso1.png", 440)); c.push(pie("Figura B.3 — Nueva operación: confirmación de la cotización con tasa vigente."));
+c.push(imgW(SH + "05_mis_operaciones.png", 560)); c.push(pie("Figura B.4 — Mis operaciones con tarjetas de resumen, filtros y los cuatro estados."));
+c.push(imgW(SH + "06_detalle.png", 470)); c.push(pie("Figura B.5 — Detalle de operación con línea de tiempo de estados y comprobante."));
+c.push(new Table({ width: { size: CW, type: WidthType.DXA }, columnWidths: [CW / 2, CW / 2], borders: D.TableBorders.NONE, rows: [new TableRow({ children: [
   new TableCell({ width: { size: CW / 2, type: WidthType.DXA }, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } }, children: [img(SH + "08_movil_home.png", 190, 411)] }),
   new TableCell({ width: { size: CW / 2, type: WidthType.DXA }, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } }, children: [img(SH + "09_movil_registro.png", 190, 411)] })] })] }));
 c.push(pie("Figura B.6 — Versión móvil: inicio y registro por pasos."));
+c.push(imgW(SH + "11_admin_cola.png", 520)); c.push(pie("Figura B.7 — Back-office: cola de revisión con las operaciones de todos los clientes y filtro por estado."));
+c.push(imgW(SH + "12_admin_detalle.png", 430)); c.push(pie("Figura B.8 — Back-office: detalle de una operación pendiente, con su comprobante y las acciones Aprobar o Rechazar."));
+c.push(imgW(SH + "13_admin_rechazo.png", 430)); c.push(pie("Figura B.9 — Back-office: el rechazo exige un motivo, que el cliente verá en el detalle de su operación."));
 
 c.push(H2("2. Diseño de BackEnd (microservicios)"));
 c.push(P("El backend se compone de **tres microservicios independientes** en Python 3.12 sobre AWS Lambda, expuestos mediante un único Amazon API Gateway (HTTP API). **Cada microservicio tiene su propia base de datos**; ninguno accede a las tablas de otro. Las utilidades transversales (JWT, hash de contraseñas, respuestas HTTP) se comparten mediante una Lambda Layer."));
@@ -267,15 +286,17 @@ c.push(tabla([10, 28, 14, 48], ["Método", "Endpoint", "Acceso", "Descripción"]
   ["GET", "/clientes/{id_cliente}", "JWT", "Perfil básico; solo el propio cliente puede consultarlo."],
 ]));
 c.push(H3("Microservicio 3 — Operaciones"));
-c.push(P("Registra la operación a partir de una cotización vigente, guarda el comprobante en S3, mantiene el estado con su historial y lista/consulta las operaciones del cliente autenticado. **No confía en la tasa ni en los montos que envía el navegador:** consulta la cotización a Cotizaciones y usa esos valores; además, una cotización solo puede usarse una vez."));
+c.push(P("Registra la operación a partir de una cotización vigente, guarda el comprobante en S3, mantiene el estado con su historial y lista/consulta las operaciones del cliente autenticado. **No confía en la tasa ni en los montos que envía el navegador:** consulta la cotización a Cotizaciones y usa esos valores; además, una cotización solo puede usarse una vez. También atiende el **back-office**: lista y consulta las operaciones de todos los clientes y cambia su estado, con acceso protegido por la cabecera `x-admin-key`."));
 c.push(tabla([10, 34, 12, 44], ["Método", "Endpoint", "Acceso", "Descripción"], [
   ["POST", "/operaciones", "JWT", "Registra la operación (estado interno «Pendiente de comprobante»)."],
   ["POST", "/operaciones/{id}/comprobante", "JWT", "Adjunta imagen/PDF (máx. 4 MB); pasa a «Pendiente de validación»."],
   ["GET", "/operaciones", "JWT", "Lista las operaciones del cliente, de la más reciente a la más antigua."],
   ["GET", "/operaciones/{id}", "JWT", "Detalle con historial y URL temporal (15 min) del comprobante."],
-  ["PATCH", "/operaciones/{id}/estado", "x-admin-key", "Back-office simulado: En proceso → Procesada / Rechazada (con motivo)."],
+  ["GET", "/operaciones/admin", "x-admin-key", "Back-office: lista las operaciones de TODOS los clientes (excluye borradores), de la más reciente a la más antigua (máx. 200)."],
+  ["GET", "/operaciones/{id}/admin", "x-admin-key", "Back-office: detalle de cualquier operación, con historial y URL temporal del comprobante."],
+  ["PATCH", "/operaciones/{id}/estado", "x-admin-key", "Back-office: Pendiente de validación → En proceso / Rechazada; En proceso → Procesada / Rechazada. El motivo es obligatorio al rechazar. Devuelve la operación con la URL del comprobante."],
 ]));
-c.push(P("**Estados:** [Pendiente de comprobante, interno] → Pendiente de validación → En proceso → Procesada | Rechazada. Las transiciones se validan en el servidor.", { before: 100 }));
+c.push(P("**Estados:** [Pendiente de comprobante, interno] → Pendiente de validación → En proceso → Procesada | Rechazada. Las transiciones se validan en el servidor y Procesada y Rechazada son estados finales: una operación rechazada no se reabre.", { before: 100 }));
 
 c.push(H3("Diseño de las bases de datos (NoSQL — Amazon DynamoDB, modo bajo demanda)"));
 c.push(tabla([19, 22, 59], ["Tabla", "Clave", "Atributos y observaciones"], [
@@ -292,11 +313,13 @@ c.push(tabla([40, 60], ["Caso de uso", "Operación en DynamoDB"], [
   ["Mis operaciones", "Query al GSI `cliente-fecha-index` (orden descendente, excluye borradores)"],
   ["Detalle de operación", "GetItem por `id_operacion` + verificación de propietario (404 si no es suyo)"],
   ["Validar cotización", "GetItem por `id_cotizacion` (vía Lambda Invoke desde Operaciones)"],
+  ["Cola de back-office", "Scan de `nexo-operaciones` excluyendo borradores; la Lambda ordena por fecha y limita a 200. Adecuado para el volumen del MVP; a mayor escala se reemplazaría por un GSI por estado."],
 ], { zebra: true }));
 c.push(H3("Decisiones de seguridad y diseño"));
 c.push(...bullets([
   "**Autenticación propia con JWT** (HS256, secreto por variable de entorno) porque Cognito puede no estar disponible en el Learner Lab. Para producción se recomienda Cognito y guardar secretos en Secrets Manager.",
   "**Aislamiento entre clientes:** el `id_cliente` sale del token, nunca del cuerpo de la petición; consultar la operación de otro cliente devuelve 404.",
+  "**Back-office con clave compartida:** las rutas de back-office exigen la cabecera `x-admin-key`, que se compara en tiempo constante; sin clave, o con el JWT de un cliente, responden 403, y si el despliegue no define la clave las rutas quedan deshabilitadas. Es una simplificación del MVP: en producción se usarían usuarios individuales con roles (Cognito) y auditoría de quién cambió cada estado.",
   "**Comprobantes:** se valida el tipo real del archivo (firma JPG/PNG/WEBP/PDF), el tamaño y se sanea el nombre; el bucket nunca es público.",
   "**Robustez:** errores 4xx con mensaje claro en español y código; los errores inesperados devuelven 500 sin detalles internos; el API Gateway limita la tasa de solicitudes.",
   "**Monitoreo:** logs estructurados en CloudWatch (sin datos sensibles), alarmas de errores por Lambda y de 5xx de la API, con aviso por SNS.",
@@ -306,18 +329,19 @@ c.push(...bullets([
 const d = [];
 d.push(H1s("3. Diagrama de Arquitectura de Solución en AWS"));
 d.push(img("docs/arquitectura_nexocambio.png", 900, 551));
-d.push(pie("Figura B.7 — Arquitectura serverless de NexoCambio (AWS Academy · us-east-1)."));
+d.push(pie("Figura B.10 — Arquitectura serverless de NexoCambio (AWS Academy · us-east-1)."));
 
 // ============ sección 3
 const e = [];
 e.push(P("**Flujo de una operación:**", { after: 60 }));
 e.push(...numbered([
-  "El cliente abre el sitio: el navegador descarga el frontend estático desde **S3**.",
+  "El cliente abre el sitio por HTTPS: el navegador descarga la app Angular estática desde **S3**.",
   "El frontend llama a **API Gateway** por HTTPS (JSON; el JWT viaja en la cabecera `Authorization`).",
   "API Gateway enruta cada ruta a su **Lambda**.",
   "**Cotizaciones** lee/actualiza tasas y guarda la cotización en DynamoDB (vigencia 5 min).",
   "**Clientes** registra/valida al cliente y emite el JWT.",
   "**Operaciones** valida la cotización con Cotizaciones (Lambda Invoke), registra la operación y guarda el comprobante en S3.",
+  "El **operador de back-office** entra a `/admin` con su clave (cabecera `x-admin-key`), revisa el comprobante mediante su URL temporal y aprueba o rechaza: **Operaciones** actualiza el estado y su historial.",
   "**CloudWatch** recibe logs y métricas de todo el flujo; SNS avisa cuando una alarma se activa.",
 ]));
 e.push(H2("4. Región de AWS"));
@@ -329,7 +353,7 @@ const esc = costos.escenarios, nombres = Object.keys(esc), serv = Object.keys(es
 e.push(tabla([34, 22, 22, 22], ["Servicio", ...nombres.map((n) => `${n} (${(esc[n].requests / 1000).toLocaleString("en-US")} mil req/mes)`)],
   [...serv.map((s) => [s, ...nombres.map((n) => usd(esc[n].detalle[s]))]), ["**Total mensual**", ...nombres.map((n) => `**${usd(esc[n].total)}**`)]], { firstColFill: true }));
 e.push(spacer(80));
-e.push(P("**Supuestos:** mezcla de tráfico por cada 100 llamadas: 70 cotizaciones, 4 inicios de sesión, 1 registro, 5 operaciones nuevas, 5 comprobantes (400 KB c/u), 10 listados y 5 detalles. Lambda: 256–512 MB y 120–500 ms según la función. DynamoDB bajo demanda. Región us-east-1."));
+e.push(P("**Supuestos:** mezcla de tráfico por cada 100 llamadas: 70 cotizaciones, 4 inicios de sesión, 1 registro, 5 operaciones nuevas, 5 comprobantes (400 KB c/u), 10 listados y 5 detalles. Lambda: 256–512 MB y 120–500 ms según la función. DynamoDB bajo demanda. Región us-east-1. No se incluye CloudFront (opcional; el Learner Lab no lo permite) ni el tráfico del back-office, marginal frente al de los clientes."));
 const m = esc[nombres[1]].metricas;
 e.push(P(`**Datos para replicar el escenario «Piloto» en la calculadora:** API Gateway HTTP = 300,000 solicitudes; Lambda = ${Math.round(m.lambda_req).toLocaleString("en-US")} invocaciones y ${Math.round(m.gbs).toLocaleString("en-US")} GB-s; DynamoDB = ${Math.round(m.wru).toLocaleString("en-US")} unidades de escritura y ${Math.round(m.rru).toLocaleString("en-US")} de lectura; S3 = ${m.s3_gb.toFixed(2)} GB de comprobantes; CloudWatch = ${m.logs_gb.toFixed(3)} GB de logs y 4 alarmas.`));
 e.push(P("**Comparación:** la misma solución con contenedores 24×7 (ECS Fargate con 6 tareas pequeñas, Application Load Balancer y RDS PostgreSQL db.t3.micro) costaría del orden de **" + usd(costos.alternativa_total) + " al mes** aun sin tráfico. La opción serverless paga solo por uso, escala automáticamente y encaja con el presupuesto limitado del Learner Lab."));
@@ -338,7 +362,7 @@ e.push(nota("Enlace de la estimación en AWS Pricing Calculator: [pegar enlace] 
 // ================================================================ PARTE C
 e.push(H1("PARTE C — IMPLEMENTACIÓN DEL MVP EN AWS"));
 e.push(H2("1. Catálogo de APIs"));
-e.push(P("**URL base:** `https://<api-id>.execute-api.us-east-1.amazonaws.com/v1` (salida `ApiUrl` del despliegue). Formato JSON. Rutas protegidas: cabecera `Authorization: Bearer <token>`. Los errores devuelven `{\"mensaje\": \"...\", \"codigo\": \"...\"}`."));
+e.push(P("**URL base:** `https://<api-id>.execute-api.us-east-1.amazonaws.com/v1` (salida `ApiUrl` del despliegue). Formato JSON. Rutas protegidas: cabecera `Authorization: Bearer <token>`; las de back-office usan la cabecera `x-admin-key`. Los errores devuelven `{\"mensaje\": \"...\", \"codigo\": \"...\"}`."));
 e.push(tabla([9, 26, 16, 14, 35], ["Método", "Ruta", "Servicio", "Acceso", "Códigos de respuesta"], [
   ["POST", "/cotizar", "Cotizaciones", "Público", "201 · 400 · 422"],
   ["POST", "/registro", "Clientes", "Público", "201 · 400 · 409 (correo/documento duplicado) · 422"],
@@ -348,6 +372,8 @@ e.push(tabla([9, 26, 16, 14, 35], ["Método", "Ruta", "Servicio", "Acceso", "Có
   ["POST", "/operaciones/{id}/comprobante", "Operaciones", "JWT", "200 · 400 · 401 · 404 · 409 · 413 · 422"],
   ["GET", "/operaciones", "Operaciones", "JWT", "200 · 401"],
   ["GET", "/operaciones/{id}", "Operaciones", "JWT", "200 · 401 · 404"],
+  ["GET", "/operaciones/admin", "Operaciones", "x-admin-key", "200 · 403"],
+  ["GET", "/operaciones/{id}/admin", "Operaciones", "x-admin-key", "200 · 403 · 404"],
   ["PATCH", "/operaciones/{id}/estado", "Operaciones", "x-admin-key", "200 · 400 · 403 · 404 · 409"],
 ], { size: 17, zebra: true }));
 e.push(H3("POST /cotizar"));
@@ -357,28 +383,30 @@ e.push(codigo(["// Registro (persona natural)", "{ \"tipo_cliente\": \"persona\"
 e.push(P("Para empresas: `tipo_cliente: \"empresa\"`, `razon_social`, `tipo_documento: \"RUC\"`, `actividad` y `representante {nombre, tipo_documento, numero_documento, cargo}`.", { before: 80 }));
 e.push(H3("POST /operaciones  ·  POST /operaciones/{id}/comprobante"));
 e.push(codigo(["// Registrar operación (el servidor toma tasa y montos de la cotización)", "{ \"id_cotizacion\": \"COT-SXC7PXG3\",", "  \"origen\":  { \"tipo\": \"banco\", \"banco\": \"BCP\" },", "  \"destino\": { \"tipo\": \"banco\", \"banco\": \"Interbank\", \"tipo_cuenta\": \"Ahorros\",", "              \"numero\": \"8983141592653\", \"titular\": \"Lucía Ramírez Torres\" } }", "// Respuesta 201:  { \"id_operacion\": \"NX-SXC7PXG3\", \"estado\": \"Pendiente de comprobante\", ... }", "", "// Adjuntar comprobante", "{ \"nombre_archivo\": \"transferencia.png\", \"content_type\": \"image/png\",", "  \"contenido_base64\": \"iVBORw0KGgo...\", \"numero_transferencia\": \"778899\" }", "// Respuesta 200:  { \"id_operacion\": \"NX-SXC7PXG3\", \"estado\": \"Pendiente de validación\",", "//                  \"ruta_comprobante\": \"s3://nexo-dev-comprobantes-<cuenta>-us-east-1/comprobantes/...\" }"]));
-e.push(H3("GET /operaciones  ·  GET /operaciones/{id}  ·  PATCH /operaciones/{id}/estado"));
-e.push(codigo(["// GET /operaciones → 200", "{ \"operaciones\": [ { \"id_operacion\": \"NX-SXC7PXG3\", \"fecha_operacion\": \"...\", \"modalidad\": \"casa\",", "    \"monto_origen\": 1000, \"monto_destino\": 294.07, \"estado\": \"Pendiente de validación\" } ], \"total\": 1 }", "", "// GET /operaciones/{id} → 200  (agrega historial y URL temporal)", "{ ..., \"historial\": [ { \"estado\": \"Pendiente de validación\", \"fecha\": \"...\" } ],", "  \"comprobante_url\": \"https://<bucket>.s3.amazonaws.com/...&X-Amz-Signature=...\" }", "", "// PATCH (cabecera x-admin-key)   { \"estado\": \"En proceso\" }   |   { \"estado\": \"Rechazada\", \"motivo_rechazo\": \"...\" }"]));
+e.push(H3("GET /operaciones  ·  GET /operaciones/{id}  ·  rutas de back-office"));
+e.push(codigo(["// GET /operaciones → 200", "{ \"operaciones\": [ { \"id_operacion\": \"NX-SXC7PXG3\", \"fecha_operacion\": \"...\", \"modalidad\": \"casa\",", "    \"monto_origen\": 1000, \"monto_destino\": 294.07, \"estado\": \"Pendiente de validación\" } ], \"total\": 1 }", "", "// GET /operaciones/{id} → 200  (agrega historial y URL temporal)", "{ ..., \"historial\": [ { \"estado\": \"Pendiente de validación\", \"fecha\": \"...\" } ],", "  \"comprobante_url\": \"https://<bucket>.s3.amazonaws.com/...&X-Amz-Signature=...\" }", "", "", "// Back-office (cabecera x-admin-key)", "// GET /operaciones/admin → 200  { \"operaciones\": [ ...todos los clientes... ], \"total\": 4 }", "// GET /operaciones/{id}/admin → 200  (detalle con historial y comprobante_url)", "// PATCH /operaciones/{id}/estado   { \"estado\": \"En proceso\" }", "//                                  { \"estado\": \"Rechazada\", \"motivo_rechazo\": \"...\" }", "//                                  (el motivo es obligatorio al rechazar)", "// Sin clave, o con el JWT de un cliente → 403", "//   { \"mensaje\": \"Acceso restringido al back-office.\", \"codigo\": \"prohibido\" }"]));
 
 e.push(H2("2. Implementación y despliegue"));
 e.push(P("Todo el código está en un único repositorio: **[https://github.com/<organización>/nexocambio]**."));
-e.push(codigo(["nexocambio/", "├─ template.yaml            CloudFormation: tablas, buckets, Lambdas, API, alarmas", "├─ services/", "│   ├─ cotizaciones/app.py  Microservicio 1", "│   ├─ clientes/app.py      Microservicio 2", "│   └─ operaciones/app.py   Microservicio 3", "├─ layer/python/nexo_common.py   Capa compartida (JWT, hash, respuestas)", "├─ frontend/index.html      Prototipo conectable a la API (CONFIG.API)", "├─ tests/                   54 pruebas automáticas (pytest + moto)", "├─ postman/                 Colección con 20 requests y 27 verificaciones", "├─ scripts/                 deploy.sh · destroy.sh · servidor_local.py · configurar_front.py", "└─ docs/                    arquitectura, costos y diagrama"]));
+e.push(codigo(["nexocambio/", "├─ template.yaml            CloudFormation: tablas, buckets, Lambdas, API, alarmas", "├─ services/", "│   ├─ cotizaciones/app.py  Microservicio 1", "│   ├─ clientes/app.py      Microservicio 2", "│   └─ operaciones/app.py   Microservicio 3", "├─ layer/python/nexo_common.py   Capa compartida (JWT, hash, respuestas)", "├─ frontend/                App Angular 22 (cliente y back-office); 61 pruebas Vitest", "├─ frontend-legacy/         Prototipo original (solo referencia de diseño)", "├─ tests/                   57 pruebas automáticas del backend (pytest + moto)", "├─ postman/                 Colección con 33 requests y 62 verificaciones", "├─ scripts/                 deploy.sh · destroy.sh · servidor_local.py", "│                           configurar_front.py · generar_postman.py", "└─ docs/                    arquitectura, costos y diagrama"]));
 e.push(H3("Despliegue en AWS Academy (AWS CloudShell)"));
 e.push(...numbered([
   "Inicie el Learner Lab y abra **AWS CloudShell** en la región us-east-1.",
   "Clone el repositorio: `git clone https://github.com/<organización>/nexocambio && cd nexocambio`.",
-  "Ejecute `ALERT_EMAIL=<su correo> ./scripts/deploy.sh`. El script empaqueta las funciones, crea el stack de CloudFormation (con el rol `LabRole`), publica el frontend en S3 y muestra la **URL de la API** y del **sitio web**.",
+  "Instale **Node.js 22** para compilar la app Angular: CloudShell trae Node 20, que no basta. Por ejemplo, instale nvm y ejecute `nvm install 22`.",
+  "Ejecute `ALERT_EMAIL=<su correo> ./scripts/deploy.sh`. El script empaqueta las funciones, crea el stack de CloudFormation (con el rol `LabRole`), compila la app Angular (`ng build`), la publica en S3 y muestra la **URL de la API**, el **sitio web (HTTPS)** —ábralo con la URL completa, que termina en `/index.html`— y la **clave de back-office**.",
   "Confirme la suscripción SNS que llega al correo para recibir alertas.",
   "Al terminar: `./scripts/destroy.sh` elimina todo y evita consumir el presupuesto del laboratorio.",
 ]));
 e.push(H3("Verificación realizada durante el desarrollo"));
 e.push(...bullets([
-  "**54 pruebas automáticas** (pytest + moto) sobre los tres microservicios: validaciones, seguridad, aislamiento entre clientes, unicidad, expiración de cotizaciones y flujo completo.",
-  "**Colección de Postman** ejecutada con Newman contra el servidor local: 20 requests, 27 verificaciones, 0 fallidas.",
-  "**Prototipo real** conectado al backend local: registro, login, cotización, operación, comprobante, listado y detalle.",
-  "La plantilla CloudFormation pasa `cfn-lint`. **Falta ejecutar el despliegue en la cuenta del Learner Lab del equipo** y registrar las evidencias de la sección C.3.",
+  "**57 pruebas automáticas** (pytest + moto) sobre los tres microservicios: validaciones, seguridad, aislamiento entre clientes, unicidad, expiración de cotizaciones, flujo completo y back-office.",
+  "**61 pruebas del frontend** (Vitest): validadores y flujos críticos (cotizador, wizard de operar, mis operaciones, detalle y back-office) contra el contrato real de la API.",
+  "**Colección de Postman** ejecutada con Newman contra el servidor local: 33 requests, 62 verificaciones, 0 fallidas (incluye listar, detalle, aprobar y rechazar desde back-office).",
+  "**Aplicación Angular** conectada al backend local: registro, login, cotización, operación, comprobante, listado, detalle y back-office.",
+  "**Despliegue en AWS:** el stack se desplegó en el Learner Lab (us-east-1) con `deploy.sh` y se probó el flujo de cliente y el de back-office sobre el sitio publicado en S3. La plantilla CloudFormation pasa `cfn-lint`. **Falta registrar las evidencias de la sección C.3.**",
 ]));
-e.push(P("**Servidor local para ensayar sin AWS:** `pip install -r requirements-dev.txt && python scripts/servidor_local.py` levanta la API en `http://localhost:8787` con un cliente demo (`demo@nexocambio.pe` / `Demo1234`).", { before: 80 }));
+e.push(P("**Servidor local para ensayar sin AWS:** `pip install -r requirements-dev.txt && python scripts/servidor_local.py` levanta la API en `http://localhost:8787` con un cliente demo (`demo@nexocambio.pe` / `Demo1234`). Para ver la app: `cd frontend && npm ci && npx ng serve` (http://localhost:4200); el back-office queda en `/#/admin` con la clave `admin-local`.", { before: 80 }));
 
 e.push(H2("3. Evidencias de uso (Postman y AWS)"));
 e.push(P("Importe `postman/NexoCambio.postman_collection.json`, cambie la variable `baseUrl` por la `ApiUrl` del despliegue y `adminKey` por la clave que imprime `deploy.sh`, y ejecute la colección completa (Runner). Pegue aquí las capturas:"));
@@ -386,33 +414,38 @@ e.push(tabla([6, 46, 48], ["#", "Evidencia", "Captura"], [
   ["1", "Postman — POST /cotizar (201) para Casa de Cambio y Cripto", "[Insertar captura]"],
   ["2", "Postman — POST /registro y POST /login (JWT)", "[Insertar captura]"],
   ["3", "Postman — POST /operaciones, /comprobante, GET /operaciones y detalle", "[Insertar captura]"],
-  ["4", "Postman — Runner con todas las verificaciones en verde", "[Insertar captura]"],
-  ["5", "Consola AWS — Lambda (3 funciones) y API Gateway (rutas)", "[Insertar captura]"],
-  ["6", "Consola AWS — DynamoDB (ítems en las 4 tablas) y S3 (comprobante subido)", "[Insertar captura]"],
-  ["7", "Consola AWS — CloudWatch (logs y alarmas)", "[Insertar captura]"],
-  ["8", "Frontend en S3 consumiendo la API (insignia «API conectada»)", "[Insertar captura]"],
+  ["4", "Postman — carpetas Back-office y Rechazo: listar, detalle, aprobar y rechazar con motivo", "[Insertar captura]"],
+  ["5", "Postman — Runner con todas las verificaciones en verde (33 requests, 62 verificaciones)", "[Insertar captura]"],
+  ["6", "Consola AWS — Lambda (3 funciones) y API Gateway (rutas)", "[Insertar captura]"],
+  ["7", "Consola AWS — DynamoDB (ítems en las 4 tablas) y S3 (comprobante subido)", "[Insertar captura]"],
+  ["8", "Consola AWS — CloudWatch (logs y alarmas)", "[Insertar captura]"],
+  ["9", "Frontend Angular en S3, por HTTPS, consumiendo la API (cotizador y Mis operaciones)", "[Insertar captura]"],
+  ["10", "Back-office (`/admin`) en el sitio desplegado: cola de operaciones y aprobación o rechazo", "[Insertar captura]"],
 ], { zebra: true }));
 
 e.push(H2("4. FrontEnd conectado a la API (opcional — puntaje adicional)"));
-e.push(P("El prototipo consume **los tres microservicios**: el cotizador usa `POST /cotizar`; registro y login usan `/registro` y `/login`; y el flujo de operación usa `/operaciones`, `/comprobante`, el listado y el detalle. `deploy.sh` inyecta la URL de la API en `CONFIG.API` del `index.html` y lo publica en el bucket S3 de sitio web. Cuando la API responde, el cotizador muestra la insignia «API conectada»."));
-e.push(nota("Importante: la versión publicada como artifact no puede llamar a la API de AWS por restricciones de seguridad de esa plataforma; para la demostración se debe usar el sitio alojado en S3 (URL «Sitio web» del despliegue) o el servidor local."));
+e.push(P("La app Angular consume **los tres microservicios**: el cotizador usa `POST /cotizar`; registro y login usan `/registro` y `/login`; el flujo de operación usa `/operaciones` y `/comprobante`; y Mis operaciones y el detalle usan el listado y el detalle. La sección de back-office (`/admin`) usa `GET /operaciones/admin`, `GET /operaciones/{id}/admin` y `PATCH …/estado` con la cabecera `x-admin-key`."));
+e.push(P("La URL de la API no está incrustada en el código: la app la lee en tiempo de ejecución de `config.json` (`apiBaseUrl`). `deploy.sh` compila la app (`ng build`), completa ese archivo con la `ApiUrl` real y publica el resultado en el bucket S3 de sitio web. Si una ruta protegida responde 401, la app limpia la sesión y vuelve al login."));
+e.push(nota("**HTTPS:** el sitio se sirve por HTTPS desde el endpoint REST de S3 (`https://<bucket>.s3.us-east-1.amazonaws.com/index.html`), con el certificado de Amazon y sin costo adicional; como la app usa rutas con hash (`#/…`), basta con que el bucket sea público. Se probó CloudFront, pero el rol del Learner Lab no tiene permiso para crear distribuciones (`AccessDenied`); queda como opción (`USAR_HTTPS=true`) para cuentas que sí lo permitan."));
+e.push(spacer(80));
+e.push(nota("Importante: la versión publicada como artifact (el prototipo original) no puede llamar a la API de AWS por restricciones de seguridad de esa plataforma; para la demostración se debe usar el sitio alojado en S3 (URL «Sitio web (HTTPS)» del despliegue) o la app en local junto con el servidor local."));
 
 e.push(H1("GUÍA PARA LA EXPOSICIÓN (miércoles 07-Oct, 19:00 h)"));
 e.push(tabla([12, 46, 12, 30], ["Tiempo", "Contenido", "Parte", "Responsable"], [
   ["2 min", "Problema, NexoCambio y benchmark (qué nos diferencia)", "A", "[Integrante]"],
   ["1 min", "Historias de usuario y selección del MVP", "A", "[Integrante]"],
   ["2 min", "Arquitectura, región y decisiones (microservicios, una BD por servicio, seguridad)", "B", "[Integrante]"],
-  ["3 min", "**Demo en vivo:** sitio en S3 → cotizar → registrarse → operar → comprobante → estado; luego Postman y consola de AWS", "C", "[Integrante]"],
+  ["3 min", "**Demo en vivo:** sitio en S3 → cotizar → registrarse → operar → comprobante; el back-office (`/admin`) aprueba o rechaza → el cliente ve el estado; luego Postman y consola de AWS", "C", "[Integrante]"],
   ["1 min", "Costos: escenarios y comparación con contenedores", "B", "[Integrante]"],
   ["1 min", "Aprendizajes, limitaciones y siguientes pasos", "—", "[Integrante]"],
 ], { zebra: true }));
-e.push(P("**Sugerencia:** antes de exponer, deje el stack desplegado, ejecute la colección de Postman una vez para verificar y tenga a mano una cuenta ya registrada con operaciones en distintos estados (use `PATCH …/estado` para simularlo).", { before: 120 }));
+e.push(P("**Sugerencia:** antes de exponer, deje el stack desplegado, ejecute la colección de Postman una vez para verificar y tenga a mano una cuenta ya registrada con operaciones en distintos estados (llévelas de un estado a otro desde el back-office) y la clave de back-office que imprimió `deploy.sh`.", { before: 120 }));
 e.push(H3("Limitaciones que conviene mencionar"));
 e.push(...bullets([
   "No se procesan fondos reales; las cuentas y direcciones de NexoCambio son ficticias.",
   "La autenticación es propia (JWT); en producción se usaría Cognito y Secrets Manager.",
-  "El sitio en S3 se sirve por HTTP; con CloudFront (si el laboratorio lo permite) se obtiene HTTPS y caché.",
-  "No hay panel de back-office: los estados se cambian con un endpoint protegido.",
+  "El sitio se sirve por HTTPS desde el endpoint REST de S3 (la URL lleva `/index.html`); CloudFront, con dominio propio y caché, no está disponible en el Learner Lab.",
+  "El back-office usa una clave compartida (`x-admin-key`): no hay usuarios individuales, roles ni auditoría, y el listado usa Scan, adecuado para el volumen del MVP.",
 ]));
 
 // ================================================================ documento
@@ -436,4 +469,4 @@ const doc = new Document({
     { properties: { page: { size: A4, margin: { top: 1440, right: 1440, bottom: 1300, left: 1440 } } }, headers: { default: header }, footers: { default: footer }, children: e },
   ],
 });
-Packer.toBuffer(doc).then((b) => { fs.writeFileSync("docs/NexoCambio_ProyectoParcial_Final.docx", b); console.log("docx ok", b.length); });
+Packer.toBuffer(doc).then((b) => { fs.writeFileSync(OUT, b); console.log("docx ok", OUT, b.length); });

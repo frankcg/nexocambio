@@ -28,11 +28,11 @@ Parámetros útiles: `STAGE` (por defecto `dev`), `AWS_REGION` (por defecto `us-
 ## Probar sin AWS
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest                       # 54 pruebas (AWS simulado con moto)
+python -m pytest                       # 57 pruebas (AWS simulado con moto)
 python scripts/servidor_local.py       # API en http://localhost:8787 con cliente demo demo@nexocambio.pe / Demo1234
 cd frontend && npm ci && npx ng serve  # app Angular en http://localhost:4200 (lee la API de public/config.json)
 ```
-Postman: importar `postman/NexoCambio.postman_collection.json`, definir `baseUrl` (`ApiUrl` del despliegue) y `adminKey`, y ejecutar en el Runner (20 requests, 27 verificaciones).
+Postman: importar `postman/NexoCambio.postman_collection.json`, definir `baseUrl` (`ApiUrl` del despliegue) y `adminKey`, y ejecutar en el Runner (33 requests, 62 verificaciones; incluye el flujo de back-office: listar, detalle, aprobar y rechazar).
 Regenerar: `python scripts/generar_postman.py` · `python docs/costos.py` · `python docs/generar_diagrama.py`.
 
 ## Frontend

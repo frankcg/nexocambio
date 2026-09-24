@@ -2,7 +2,7 @@
   "info": {
     "name": "NexoCambio API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Ejecutar en orden (Runner). Configure baseUrl con la salida ApiUrl del despliegue, o http://localhost:8787 con el servidor local."
+    "description": "Ejecutar en orden (Runner). Configure baseUrl con la salida ApiUrl del despliegue, o http://localhost:8787 con el servidor local, y adminKey con la clave de back-office (la imprime deploy.sh; en local es admin-local)."
   },
   "item": [
     {
@@ -727,6 +727,83 @@
       "name": "4. Back-office simulado (x-admin-key)",
       "item": [
         {
+          "name": "Listar todas las operaciones (back-office)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Incluye la operación del paso 2\", () => pm.expect(j.operaciones.map(o => o.id_operacion)).to.include(pm.collectionVariables.get(\"id_operacion\")));",
+                  "pm.test(\"Excluye los borradores\", () => pm.expect(j.operaciones.every(o => o.estado !== \"Pendiente de comprobante\")).to.be.true);",
+                  "pm.test(\"total coincide con la lista\", () => pm.expect(j.total).to.eql(j.operaciones.length));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-admin-key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "admin"
+              ]
+            },
+            "description": "Cola de revisión: operaciones de TODOS los clientes, más recientes primero (máx. 200). No incluye las que aún no tienen comprobante."
+          }
+        },
+        {
+          "name": "Detalle de operación (back-office)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Pendiente de validación\", () => pm.expect(j.estado).to.eql(\"Pendiente de validación\"));",
+                  "pm.test(\"Incluye URL temporal del comprobante\", () => pm.expect(j.comprobante_url).to.include(\"https://\"));",
+                  "pm.test(\"Incluye historial\", () => pm.expect(j.historial).to.be.an(\"array\").that.is.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-admin-key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/{{id_operacion}}/admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "{{id_operacion}}",
+                "admin"
+              ]
+            },
+            "description": "Detalle de cualquier operación, sin restricción de dueño."
+          }
+        },
+        {
           "name": "Estado → En proceso",
           "event": [
             {
@@ -734,7 +811,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Estado En proceso\", () => pm.expect(j.estado).to.eql(\"En proceso\"));",
+                  "pm.test(\"Conserva el comprobante\", () => pm.expect(j.comprobante_url).to.include(\"https://\"));"
                 ]
               }
             }
@@ -782,7 +862,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Estado Procesada\", () => pm.expect(pm.response.json().estado).to.eql(\"Procesada\"));"
                 ]
               }
             }
@@ -823,6 +904,55 @@
           }
         },
         {
+          "name": "Estado - error: transición inválida (Procesada → En proceso)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Código de error transicion_invalida\", () => pm.expect(pm.response.json().codigo).to.eql(\"transicion_invalida\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-admin-key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/{{id_operacion}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "{{id_operacion}}",
+                "estado"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"En proceso\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Estado - error: sin clave de back-office",
           "event": [
             {
@@ -830,7 +960,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));"
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Código de error prohibido\", () => pm.expect(pm.response.json().codigo).to.eql(\"prohibido\"));"
                 ]
               }
             }
@@ -858,6 +989,438 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"estado\": \"Rechazada\",\n  \"motivo_rechazo\": \"prueba\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Listar (back-office) - error: sin clave",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Código de error prohibido\", () => pm.expect(pm.response.json().codigo).to.eql(\"prohibido\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "admin"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Listar (back-office) - error: el JWT de un cliente no basta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Código de error prohibido\", () => pm.expect(pm.response.json().codigo).to.eql(\"prohibido\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "admin"
+              ]
+            },
+            "description": "Un cliente autenticado no puede entrar al back-office: solo cuenta la cabecera x-admin-key."
+          }
+        },
+        {
+          "name": "Detalle (back-office) - error: operación inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Código de error no_encontrada\", () => pm.expect(pm.response.json().codigo).to.eql(\"no_encontrada\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-admin-key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/OP-NO-EXISTE/admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "OP-NO-EXISTE",
+                "admin"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Rechazo desde el back-office",
+      "item": [
+        {
+          "name": "Preparar - Cotizar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"id_cotizacion_rechazo\", pm.response.json().id_cotizacion);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cotizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cotizar"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modalidad\": \"casa\",\n  \"moneda_origen\": \"PEN\",\n  \"moneda_destino\": \"USD\",\n  \"monto_origen\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Preparar - Registrar operación",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"id_operacion_rechazo\", pm.response.json().id_operacion);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_cotizacion\": \"{{id_cotizacion_rechazo}}\",\n  \"origen\": {\n    \"tipo\": \"banco\",\n    \"banco\": \"BCP\"\n  },\n  \"destino\": {\n    \"tipo\": \"banco\",\n    \"banco\": \"Interbank\",\n    \"tipo_cuenta\": \"Ahorros\",\n    \"numero\": \"8983141592653\",\n    \"titular\": \"Lucía Ramírez Torres\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Preparar - Adjuntar comprobante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Queda pendiente de validación\", () => pm.expect(pm.response.json().estado).to.eql(\"Pendiente de validación\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/{{id_operacion_rechazo}}/comprobante",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "{{id_operacion_rechazo}}",
+                "comprobante"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre_archivo\": \"transferencia.png\",\n  \"content_type\": \"image/png\",\n  \"contenido_base64\": \"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==\",\n  \"numero_transferencia\": \"112233\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Rechazar - error: sin motivo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Código de error longitud_invalida\", () => pm.expect(pm.response.json().codigo).to.eql(\"longitud_invalida\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-admin-key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/{{id_operacion_rechazo}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "{{id_operacion_rechazo}}",
+                "estado"
+              ]
+            },
+            "description": "El motivo es obligatorio (3 a 300 caracteres) al rechazar.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"Rechazada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Rechazar con motivo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Estado Rechazada\", () => pm.expect(j.estado).to.eql(\"Rechazada\"));",
+                  "pm.test(\"Guarda el motivo\", () => pm.expect(j.motivo_rechazo).to.eql(\"El comprobante no coincide con el monto\"));",
+                  "pm.test(\"Conserva el comprobante\", () => pm.expect(j.comprobante_url).to.include(\"https://\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-admin-key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/{{id_operacion_rechazo}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "{{id_operacion_rechazo}}",
+                "estado"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"Rechazada\",\n  \"motivo_rechazo\": \"El comprobante no coincide con el monto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "El cliente ve el rechazo y su motivo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Estado Rechazada\", () => pm.expect(j.estado).to.eql(\"Rechazada\"));",
+                  "pm.test(\"Muestra el motivo\", () => pm.expect(j.motivo_rechazo).to.include(\"no coincide\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/{{id_operacion_rechazo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "{{id_operacion_rechazo}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Estado - error: una Rechazada no se reabre",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Código de error transicion_invalida\", () => pm.expect(pm.response.json().codigo).to.eql(\"transicion_invalida\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-admin-key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operaciones/{{id_operacion_rechazo}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operaciones",
+                "{{id_operacion_rechazo}}",
+                "estado"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"En proceso\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -896,6 +1459,14 @@
     },
     {
       "key": "id_operacion",
+      "value": ""
+    },
+    {
+      "key": "id_cotizacion_rechazo",
+      "value": ""
+    },
+    {
+      "key": "id_operacion_rechazo",
       "value": ""
     },
     {

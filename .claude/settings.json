@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m ' *)",
+      "Bash(npx -y @angular/cli@latest new frontend --routing --style=scss --ssr=false --skip-git)",
+      "Bash(chromium-cli --version)"
+    ]
+  }
+}

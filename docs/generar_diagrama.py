@@ -40,7 +40,7 @@ a('<defs><marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" ma
   '<path d="M0,0 L10,5 L0,10 z" fill="#232F3E"/></marker></defs>')
 a(f'<rect width="{W}" height="{H}" fill="#F7F9FC"/>')
 text(W / 2, 44, "Arquitectura AWS del MVP — NexoCambio", 30, True, "#0E1B33", "middle")
-text(W / 2, 72, "Microservicios serverless · AWS Academy Learner Lab · Región us-east-1 (N. Virginia)", 15, False, "#4A5568", "middle")
+text(W / 2, 72, "Microservicios serverless · AWS Academy Learner Lab · Región us-east-1 (N. Virginia) · Stack en CloudFormation", 15, False, "#4A5568", "middle")
 
 # Región
 a('<rect x="190" y="98" width="1385" height="820" rx="14" fill="#fff" stroke="#232F3E" stroke-width="1.5" stroke-dasharray="2 0"/>')
@@ -58,6 +58,8 @@ text(90, 655, "Back-office", 13, True, anchor="middle"); text(90, 671, "/admin �
 
 # Frontend + API
 box(225, 150, 230, 118, "s3", "S3", "S3 — Sitio web", ["Frontend Angular (SPA)", "Cotizador · operar · login", "registro · mis operaciones", "Back-office en /#/admin", "Servido por HTTPS"], tsize=14)
+box(225, 278, 230, 96, "api", "CF", "CloudFront (opt-in)", ["Delante de S3 — Sitio web", "UsarHttps=true · *.cloudfront.net", "Deniega en Learner Lab (voclabs)"], dash=True, tsize=13.5)
+flecha("M340,278 L340,268", "#5B6B85", dash=True)
 box(225, 385, 230, 130, "api", "API", "API Gateway", ["HTTP API · stage v1", "CORS · throttling", "11 rutas → 3 Lambdas"], tsize=14)
 flecha("M112,395 L112,210 L225,210")
 num(1, 96, 200); text(108, 200, "HTTPS (Angular)", 11, False, "#232F3E", "start", True)
@@ -117,14 +119,15 @@ text(1305, 324, "Decisiones de diseño", 13.5, True, "#3B48CC")
 notas = ["• Cada microservicio tiene su", "  propia base de datos.", "• Operaciones NO confía en la tasa", "  del navegador: la valida con", "  Cotizaciones (Lambda→Lambda).",
          "• Contraseñas con PBKDF2;", "  sesión con JWT (2 h).", "• Back-office (/admin): clave", "  compartida x-admin-key en vez", "  de JWT; aprueba o rechaza.",
          "• Comprobantes: bucket privado,", "  validación de formato real y", "  enlaces temporales.",
-         "• Pago por uso: sin servidores", "  encendidos 24×7.", "• Frontend Angular en S3, por", "  HTTPS (endpoint REST de S3)."]
+         "• Pago por uso: sin servidores", "  encendidos 24×7.", "• Frontend Angular en S3, por", "  HTTPS (endpoint REST de S3).",
+         "• Todo el stack (Lambdas, DynamoDB,", "  S3, API, CloudFront) se aprovisiona", "  con CloudFormation (deploy.sh)."]
 for i, n in enumerate(notas):
     text(1305, 348 + i * 20, n, 12, fill="#232F3E")
 
 # Opcional
-a('<rect x="20" y="705" width="150" height="200" rx="10" fill="#fff" stroke="#8A94A6" stroke-width="1.4" stroke-dasharray="6 5"/>')
-text(95, 729, "Opcional / fuera del", 11.5, True, "#5B6B85", "middle"); text(95, 745, "Learner Lab:", 11.5, True, "#5B6B85", "middle")
-for i, l in enumerate(["CloudFront (caché;", "el Lab lo deniega)", "", "Cognito (usuarios y", "roles reales)", "", "EventBridge + SES", "(avisos de estado)"]):
+a('<rect x="20" y="705" width="150" height="150" rx="10" fill="#fff" stroke="#8A94A6" stroke-width="1.4" stroke-dasharray="6 5"/>')
+text(95, 729, "Fuera de alcance", 11.5, True, "#5B6B85", "middle"); text(95, 745, "(no implementado):", 11.5, True, "#5B6B85", "middle")
+for i, l in enumerate(["Cognito (usuarios y", "roles reales)", "", "EventBridge + SES", "(avisos de estado)"]):
     text(30, 773 + i * 17, l, 11, fill="#4A5568")
 text(W / 2, 950, "Flujo MVP: cotizar → registrarse / iniciar sesión → registrar operación → adjuntar comprobante → back-office aprueba o rechaza → consultar estado", 13, True, "#0E1B33", "middle")
 a('</svg>')

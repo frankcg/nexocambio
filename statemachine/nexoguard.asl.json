@@ -1,0 +1,215 @@
+{
+  "Comment": "NexoGuard - validación inteligente de comprobantes (Nivel 4: ruta predefinida + agentes Groq + revisión humana)",
+  "StartAt": "RegistrarInicio",
+  "States": {
+    "RegistrarInicio": {
+      "Type": "Task",
+      "Comment": "API Validaciones: crea el registro de la validación (estado en_curso)",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${FnValidaciones}",
+        "Payload": {"accion": "iniciar", "operacion.$": "$.operacion", "ejecucion.$": "$$.Execution.Id"}
+      },
+      "ResultSelector": {"fecha_inicio.$": "$.Payload.fecha_inicio"},
+      "ResultPath": "$.validacion",
+      "Next": "ExtraerComprobante"
+    },
+    "ExtraerComprobante": {
+      "Type": "Task",
+      "Comment": "Agente Extractor: Groq con visión lee el comprobante desde S3 y devuelve JSON",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${FnGuardExtraer}",
+        "Payload": {"operacion.$": "$.operacion"}
+      },
+      "ResultSelector": {"datos.$": "$.Payload"},
+      "ResultPath": "$.extraccion",
+      "Retry": [
+        {"ErrorEquals": ["GroqLimite"], "IntervalSeconds": 20, "BackoffRate": 2, "MaxAttempts": 3},
+        {"ErrorEquals": ["GroqError", "Lambda.ServiceException", "Lambda.TooManyRequestsException"],
+         "IntervalSeconds": 3, "BackoffRate": 2, "MaxAttempts": 2}
+      ],
+      "Catch": [
+        {"ErrorEquals": ["States.ALL"], "ResultPath": "$.error_extraccion", "Next": "ExtraccionFallida"}
+      ],
+      "Next": "VerificarCoincidencia"
+    },
+    "ExtraccionFallida": {
+      "Type": "Pass",
+      "Comment": "Si Groq no responde, no se pierde la operación: pasa a revisión humana",
+      "Parameters": {
+        "datos": {"es_comprobante": null, "legible": false, "confianza": 0,
+                  "observaciones": "No se pudo leer el comprobante automáticamente (servicio de IA no disponible)."}
+      },
+      "ResultPath": "$.extraccion",
+      "Next": "VerificarCoincidencia"
+    },
+    "VerificarCoincidencia": {
+      "Type": "Task",
+      "Comment": "Reglas deterministas: monto, moneda, cuenta destino NexoCambio, fecha y N° de operación no reutilizado",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${FnGuardVerificar}",
+        "Payload": {"operacion.$": "$.operacion", "extraccion.$": "$.extraccion.datos"}
+      },
+      "ResultSelector": {"resultado.$": "$.Payload"},
+      "ResultPath": "$.verificacion",
+      "Next": "EvaluarRiesgo"
+    },
+    "EvaluarRiesgo": {
+      "Type": "Task",
+      "Comment": "Agente de Riesgo: Groq asigna semáforo y justificación; el código aplica las barreras y fija la ruta",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${FnGuardRiesgo}",
+        "Payload": {"operacion.$": "$.operacion", "extraccion.$": "$.extraccion.datos",
+                    "verificacion.$": "$.verificacion.resultado"}
+      },
+      "ResultSelector": {"resultado.$": "$.Payload"},
+      "ResultPath": "$.riesgo",
+      "Retry": [
+        {"ErrorEquals": ["GroqLimite"], "IntervalSeconds": 20, "BackoffRate": 2, "MaxAttempts": 3}
+      ],
+      "Catch": [
+        {"ErrorEquals": ["States.ALL"], "ResultPath": "$.error_riesgo", "Next": "RiesgoNoDisponible"}
+      ],
+      "Next": "DecidirRuta"
+    },
+    "RiesgoNoDisponible": {
+      "Type": "Pass",
+      "Parameters": {
+        "resultado": {"semaforo": "amarillo", "ruta": "revision", "alerta_cumplimiento": false,
+                      "justificacion": "No se pudo evaluar el riesgo automáticamente; se requiere revisión humana."}
+      },
+      "ResultPath": "$.riesgo",
+      "Next": "DecidirRuta"
+    },
+    "DecidirRuta": {
+      "Type": "Choice",
+      "Choices": [
+        {"Variable": "$.riesgo.resultado.ruta", "StringEquals": "aprobar", "Next": "AprobarAutomatico"},
+        {"Variable": "$.riesgo.resultado.ruta", "StringEquals": "rechazar", "Next": "RechazarAutomatico"}
+      ],
+      "Default": "NotificarRevision"
+    },
+    "AprobarAutomatico": {
+      "Type": "Pass",
+      "Parameters": {"decision": "aprobar", "decidido_por": "agente", "motivo": null},
+      "ResultPath": "$.decision",
+      "Next": "AplicarDecision"
+    },
+    "RechazarAutomatico": {
+      "Type": "Pass",
+      "Parameters": {"decision": "rechazar", "decidido_por": "agente", "motivo.$": "$.riesgo.resultado.motivo_rechazo"},
+      "ResultPath": "$.decision",
+      "Next": "AplicarDecision"
+    },
+    "NotificarRevision": {
+      "Type": "Task",
+      "Comment": "Correo al back-office: hay una operación esperando revisión",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${TemaNexoGuard}",
+        "Subject.$": "States.Format('[NexoGuard] Revisión requerida: {}', $.operacion.id_operacion)",
+        "Message.$": "States.Format('La operación {} por {} {} requiere revisión humana.\nSemáforo: {}\nMotivo: {}\nRevísala en el back-office de NexoCambio.', $.operacion.id_operacion, $.operacion.monto_origen, $.operacion.moneda_origen, $.riesgo.resultado.semaforo, $.riesgo.resultado.justificacion)"
+      },
+      "ResultPath": null,
+      "Retry": [{"ErrorEquals": ["States.ALL"], "IntervalSeconds": 2, "MaxAttempts": 2}],
+      "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": null, "Next": "EsperarRevision"}],
+      "Next": "EsperarRevision"
+    },
+    "EsperarRevision": {
+      "Type": "Task",
+      "Comment": "Human-in-the-loop: guarda el token en la API Validaciones y espera la decisión del operador",
+      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+      "Parameters": {
+        "FunctionName": "${FnValidaciones}",
+        "Payload": {
+          "accion": "registrar_espera",
+          "token.$": "$$.Task.Token",
+          "operacion.$": "$.operacion",
+          "fecha_inicio.$": "$.validacion.fecha_inicio",
+          "extraccion.$": "$.extraccion.datos",
+          "verificacion.$": "$.verificacion.resultado",
+          "riesgo.$": "$.riesgo.resultado"
+        }
+      },
+      "TimeoutSeconds": 259200,
+      "ResultPath": "$.decision",
+      "Catch": [
+        {"ErrorEquals": ["States.Timeout"], "ResultPath": "$.error_revision", "Next": "RevisionVencida"}
+      ],
+      "Next": "AplicarDecision"
+    },
+    "RevisionVencida": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${TemaNexoGuard}",
+        "Subject.$": "States.Format('[NexoGuard] Revisión vencida: {}', $.operacion.id_operacion)",
+        "Message.$": "States.Format('La operación {} lleva 72 horas sin revisión. Sigue pendiente en el back-office.', $.operacion.id_operacion)"
+      },
+      "ResultPath": null,
+      "End": true
+    },
+    "AplicarDecision": {
+      "Type": "Task",
+      "Comment": "Microservicio Operaciones (Lambda invoke interno): cambia el estado y registra quién decidió",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${FnOperaciones}",
+        "Payload": {"accion": "aplicar_decision", "id_operacion.$": "$.operacion.id_operacion",
+                    "decision.$": "$.decision.decision", "motivo.$": "$.decision.motivo",
+                    "decidido_por.$": "$.decision.decidido_por"}
+      },
+      "ResultSelector": {"estado.$": "$.Payload.estado"},
+      "ResultPath": "$.resultado_operacion",
+      "Retry": [{"ErrorEquals": ["Lambda.ServiceException", "Lambda.TooManyRequestsException"], "IntervalSeconds": 2, "MaxAttempts": 3}],
+      "Next": "GuardarValidacion"
+    },
+    "GuardarValidacion": {
+      "Type": "Task",
+      "Comment": "API Validaciones: registro auditable final (datos, verificaciones, semáforo, ruta y quién decidió)",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${FnValidaciones}",
+        "Payload": {
+          "accion": "guardar",
+          "operacion.$": "$.operacion",
+          "fecha_inicio.$": "$.validacion.fecha_inicio",
+          "extraccion.$": "$.extraccion.datos",
+          "verificacion.$": "$.verificacion.resultado",
+          "riesgo.$": "$.riesgo.resultado",
+          "decision.$": "$.decision",
+          "estado_final.$": "$.resultado_operacion.estado"
+        }
+      },
+      "ResultPath": null,
+      "Next": "AlertaCumplimiento"
+    },
+    "AlertaCumplimiento": {
+      "Type": "Choice",
+      "Choices": [
+        {"Or": [
+          {"Variable": "$.riesgo.resultado.semaforo", "StringEquals": "rojo"},
+          {"Variable": "$.riesgo.resultado.alerta_cumplimiento", "BooleanEquals": true}
+        ], "Next": "NotificarCumplimiento"}
+      ],
+      "Default": "Fin"
+    },
+    "NotificarCumplimiento": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${TemaNexoGuard}",
+        "Subject.$": "States.Format('[NexoGuard] Alerta de cumplimiento: {}', $.operacion.id_operacion)",
+        "Message.$": "States.Format('Operación {} por {} {}.\nSemáforo: {}\nResultado: {} (decidido por {}).\nJustificación: {}', $.operacion.id_operacion, $.operacion.monto_origen, $.operacion.moneda_origen, $.riesgo.resultado.semaforo, $.resultado_operacion.estado, $.decision.decidido_por, $.riesgo.resultado.justificacion)"
+      },
+      "ResultPath": null,
+      "Retry": [{"ErrorEquals": ["States.ALL"], "IntervalSeconds": 2, "MaxAttempts": 2}],
+      "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": null, "Next": "Fin"}],
+      "Next": "Fin"
+    },
+    "Fin": {"Type": "Succeed"}
+  }
+}

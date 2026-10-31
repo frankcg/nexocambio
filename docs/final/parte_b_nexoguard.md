@@ -66,11 +66,13 @@ Se eligió **Standard** (y no Express) porque `waitForTaskToken` solo existe en 
 
 **Principio de diseño:** *la IA lee y explica; las reglas deciden.* El agente de riesgo puede **escalar** una operación a revisión, pero **nunca puede aprobar** algo que las reglas no aprueban.
 
+**Criterio de autonomía:** el workflow rechaza solo cuando hay un **indicio claro de fraude** (el dinero no llegó a NexoCambio o el comprobante ya se usó). Las discrepancias que pueden ser errores del cliente, como un monto o una moneda distintos, van a un operador, porque un rechazo indebido obliga a un cliente que sí pagó a reclamar. El último paso, «Procesada» (envío del dinero al cliente), siempre lo confirma una persona.
+
 | Verificación (`guard-verificar`) | Regla | Si no cumple |
 |---|---|---|
 | Comprobante reconocido | `es_comprobante = true`, `legible = true`, confianza ≥ 0.80 | Revisión |
-| Monto | Monto leído = `monto_origen` de la operación (tolerancia 0.01) | **Rechazo** |
-| Moneda | Moneda leída = `moneda_origen` | **Rechazo** |
+| Monto | Monto leído = `monto_origen` de la operación (tolerancia 0.01) | Revisión (puede ser un error de tipeo o un pago parcial que se resuelve con el cliente) |
+| Moneda | Moneda leída = `moneda_origen` | Revisión |
 | Cuenta destino | Los dígitos visibles coinciden con una cuenta o CCI de NexoCambio para esa moneda, o el destinatario es «NexoCambio» | **Rechazo** |
 | No duplicado | El N° de operación no existe en otra validación (GSI `numero-operacion-index`) | **Rechazo** |
 | Fecha | Fecha del comprobante ≥ fecha de creación de la operación (−1 día de tolerancia) | Revisión |
@@ -78,7 +80,7 @@ Se eligió **Standard** (y no Express) porque `waitForTaskToken` solo existe en 
 
 | Situación | Semáforo | Ruta |
 |---|---|---|
-| Alguna verificación de **rechazo** no cumple, con confianza ≥ 0.80 | 🔴 Rojo | `rechazar` (motivo generado a partir de la discrepancia) |
+| Alguna verificación de **rechazo** no cumple (indicio claro de fraude: cuenta ajena o comprobante duplicado), con confianza ≥ 0.80 | 🔴 Rojo | `rechazar` (motivo generado a partir de la discrepancia) |
 | Lectura no concluyente, verificación de revisión no cumple, o el agente marca amarillo o rojo sin una discrepancia dura | 🟡 Amarillo | `revision` |
 | Monto ≥ umbral de registro (referencial US$ 10,000 o equivalente) | 🟡 Amarillo + `alerta_cumplimiento` | `revision` |
 | Todo cumple y el agente marca verde | 🟢 Verde | `aprobar` |

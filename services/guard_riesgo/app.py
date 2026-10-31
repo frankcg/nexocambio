@@ -29,8 +29,10 @@ PROMPT = """Eres el analista de riesgo de NexoCambio, una casa de cambio digital
 Evalúa si la operación puede procesarse con el comprobante presentado. Datos:
 {datos}
 
-Reglas: el semáforo mínimo calculado por el sistema es "{minimo}". Puedes subirlo (verde < amarillo < rojo)
-si ves algo sospechoso en los datos, pero NUNCA bajarlo. No inventes hechos que no estén en los datos.
+Reglas: el semáforo mínimo calculado por el sistema es "{minimo}" por estos motivos: {motivos}.
+Puedes subirlo (verde < amarillo < rojo) si ves algo sospechoso en los datos, pero NUNCA bajarlo.
+No inventes hechos que no estén en los datos. La justificación debe ser coherente con el semáforo y
+mencionar los motivos del semáforo mínimo cuando no sea verde.
 Responde SOLO con un JSON:
 {{"semaforo": "verde"|"amarillo"|"rojo",
   "justificacion": "máximo 3 oraciones en español, citando los hechos evaluados",
@@ -66,15 +68,24 @@ def evaluar(op: dict, ex: dict, ver: dict) -> dict:
         "verificaciones": [f"{r['regla']}: {r['resultado']} — {r['detalle']}" for r in ver["reglas"]],
     }
     modelo = os.environ["GROQ_MODELO_TEXTO"]
-    prompt = PROMPT.format(datos=json.dumps(datos, ensure_ascii=False, default=str), minimo=minimo)
+    motivos = list(ver["discrepancias_duras"] or ver["motivos_revision"])
+    if alerta:
+        motivos.append(f"el monto equivale a US$ {usd:,.2f}, igual o mayor al umbral de registro UIF de US$ {umbral:,.0f}")
+    prompt = PROMPT.format(datos=json.dumps(datos, ensure_ascii=False, default=str), minimo=minimo,
+                           motivos="; ".join(motivos) or "todas las verificaciones se cumplen")
     if os.environ.get("MODO_DEMO", "false") == "true":
         prompt += NOTA_DEMO
-    ia = chat_json(modelo, prompt)
+    # gpt-oss razona antes de responder: margen de tokens y razonamiento "low" (suficiente para esta tarea)
+    extra = {"reasoning_effort": "low"} if modelo.startswith("openai/gpt-oss") else {}
+    ia = chat_json(modelo, prompt, max_tokens=2048, **extra)
     propuesto = str(ia.get("semaforo", "")).lower()
     semaforo = propuesto if NIVEL.get(propuesto, -1) > NIVEL[minimo] else minimo
     if semaforo == "rojo" and minimo != "rojo":   # sin discrepancia dura el agente solo puede escalar a revisión
         semaforo = "amarillo"
     justificacion = str(ia.get("justificacion") or "").strip()[:600] or "Sin justificación del agente."
+    if minimo != "verde" and motivos:
+        # El motivo determinista va primero: el modelo no siempre menciona la regla que fijó el semáforo
+        justificacion = f"Motivo: {'; '.join(m.rstrip('.') for m in motivos)}. Análisis del agente: {justificacion}"
     motivo = None
     if semaforo == "rojo":
         motivo = (ver["discrepancias_duras"] or [None])[0] or str(ia.get("motivo_rechazo") or "").strip()[:300] \

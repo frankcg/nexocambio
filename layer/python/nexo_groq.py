@@ -22,14 +22,15 @@ class GroqError(Exception):
     pass
 
 
-def chat_json(modelo: str, contenido, timeout: int = 45, max_tokens: int = 1024) -> dict:
-    """Envía un mensaje de usuario (texto o lista multimodal) y devuelve el JSON que responde el modelo."""
+def chat_json(modelo: str, contenido, timeout: int = 45, max_tokens: int = 1024, **extra) -> dict:
+    """Envía un mensaje de usuario (texto o lista multimodal) y devuelve el JSON que responde el modelo.
+    `extra`: parámetros adicionales de la API (p. ej. reasoning_effort para modelos de razonamiento)."""
     clave = os.environ.get("GROQ_API_KEY", "")
     if not clave:
         raise GroqError("GROQ_API_KEY no configurada")
     cuerpo = {"model": modelo, "temperature": 0, "max_tokens": max_tokens,
               "response_format": {"type": "json_object"},
-              "messages": [{"role": "user", "content": contenido}]}
+              "messages": [{"role": "user", "content": contenido}], **extra}
     req = urllib.request.Request(URL, data=json.dumps(cuerpo).encode(), headers={
         "Authorization": f"Bearer {clave}", "Content-Type": "application/json", "User-Agent": "nexoguard/1.0"})
     try:

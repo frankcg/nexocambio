@@ -17,7 +17,7 @@
 | Infraestructura como código | CloudFormation: 1 tabla, 4 Lambdas, máquina de estados, SNS, 4 rutas, alarma | `template.yaml`, `scripts/deploy.sh` |
 | Frontend | Angular 22: validación en vivo para el cliente; cola y revisión asistida en el back-office | `frontend/src/app/…` (ver sección 4) |
 | Pruebas | 74 pruebas de backend (pytest + moto) y 65 de frontend (Vitest) | `tests/`, `*.spec.ts` |
-| Evidencia API | Colección Postman con la carpeta «6. NexoGuard» (30 requests) | `postman/` |
+| Evidencia API | Colección Postman con la carpeta «6. NexoGuard» (39 requests) | `postman/` |
 
 Todo el código se escribió con asistencia de IA (Claude) a partir del diseño de la Parte B, tal como permite el enunciado.
 
@@ -44,7 +44,9 @@ if semaforo == "rojo" and minimo != "rojo":        # sin una regla incumplida, l
     semaforo = "amarillo"
 ```
 
-El motivo de un rechazo automático siempre es el detalle de la regla incumplida, por ejemplo: «El comprobante indica 850.00 y la operación es por 1,000.00». Así el cliente y el auditor reciben un motivo verificable.
+El motivo de un rechazo automático siempre es el detalle de la regla incumplida, por ejemplo: «El dinero se envió a Inversiones Andinas E.I.R.L. (cuenta 7716), que no es una cuenta de NexoCambio en PEN». Así el cliente y el auditor reciben un motivo verificable.
+
+Solo se rechazan automáticamente los indicios claros de fraude (cuenta ajena o comprobante duplicado). Un monto o una moneda distintos van a revisión humana: pueden ser un error del cliente o un pago parcial, y un rechazo indebido obligaría a reclamar a un cliente que sí pagó. Cuando el semáforo no es verde, la justificación empieza con el motivo determinista («Motivo: … Análisis del agente: …»), porque en las pruebas el modelo no siempre mencionaba la regla que fijó el semáforo.
 
 ### 2.3 Catálogo de APIs nuevas
 
@@ -62,7 +64,7 @@ El motivo de un rechazo automático siempre es el detalle de la regla incumplida
 // GET /validaciones/NX-XXXXXXXX  (vista del cliente)
 { "id_operacion": "NX-XXXXXXXX", "estado": "finalizada", "fecha_inicio": "…", "fecha_fin": "…",
   "estado_final": "Rechazada", "decidido_por": "agente",
-  "motivo": "El comprobante indica 850.00 y la operación es por 1,000.00." }
+  "motivo": "El número de operación 05473215 ya se usó en la operación NX-74AZRH3W." }
 
 // POST /validaciones/NX-XXXXXXXX/decision   (cabecera x-admin-key)
 { "decision": "rechazar", "motivo": "El comprobante fue alterado." }
@@ -92,26 +94,27 @@ Groq y Step Functions se simulan en estas pruebas; no necesitan credenciales ni 
 |---|---|---|
 | 01 BCP S/ 1,000.00 | Monto, moneda, N° 04417382, destino NexoCambio · 0-39 (confianza 0.95) | 🟢 Aprobación automática |
 | 02 Interbank S/ 250.00 | Destino CCI ****0039-14 (banco de origen no leído: regla solo informativa) | 🟢 Aprobación automática |
-| 03 S/ 850.00 | Monto 850.00 | 🔴 Rechazo: monto distinto |
+| 03 S/ 850.00 | Monto 850.00 | 🟡 Revisión: monto distinto (el operador decide) |
 | 04 Cuenta ajena | Destinatario «Inversiones Andinas E.I.R.L.» · Scotiabank | 🔴 Rechazo: cuenta que no es de NexoCambio |
 | 05 Duplicado del 01 | N° 04417382 | 🔴 Rechazo: número ya usado |
 | 06 US$ 12,000.00 | Monto y moneda USD | 🟡 Revisión + alerta de cumplimiento |
 | 07 Borroso | `legible: false`, confianza 0.35 | 🟡 Revisión: lectura no concluyente |
 | 08 Ticket de cafetería | `es_comprobante: false` | 🟡 Revisión: no es un comprobante |
 
-Agente de Riesgo (`gpt-oss-20b`): con el comprobante 01 devolvió verde y la justificación «el monto de 1,000 PEN coincide con el de la operación…». Con el 03 devolvió rojo y su justificación citó «850.00 PEN, mientras la operación requiere 1,000.00 PEN». Tiempos: ~4.5 s por imagen y ~1.5–4 s por evaluación de riesgo.
+Agente de Riesgo (`gpt-oss-20b`): con el comprobante 01 devolvió verde y la justificación «el monto de 1,000 PEN coincide con el de la operación…». Con el 03 su justificación citó «850.00 PEN, mientras la operación requiere 1,000.00 PEN». Tiempos: ~4.5 s por imagen y ~1.5–4 s por evaluación de riesgo. Como `gpt-oss-20b` razona antes de responder, se usa `reasoning_effort = low` y un margen de 2,048 tokens: con 1,024 tokens, Groq a veces cortaba la respuesta antes de completar el JSON.
 
 ### 3.3 Evidencia de uso desde Postman
 
-La colección `postman/NexoCambio.postman_collection.json` incluye la carpeta **«6. NexoGuard»** (30 requests con pruebas automáticas):
+La colección `postman/NexoCambio.postman_collection.json` incluye la carpeta **«6. NexoGuard»** (39 requests con pruebas automáticas):
 
 | Escenario | Verificaciones |
 |---|---|
 | 6.1 Aprobación automática | Resultado «En proceso», `decidido_por = agente`, hito del historial con `actor = agente` |
-| 6.2 Rechazo por monto distinto | «Rechazada» y motivo que cita 850 |
-| 6.3 Rechazo por duplicado | «Rechazada» y motivo «ya se usó» |
-| 6.4 Revisión humana | Cola de revisión, semáforo amarillo, alerta de cumplimiento, errores 403/400/409, aprobación del operador → «En proceso» con `actor = operador` |
-| 6.5 Errores | 401 sin token, 404 sin validación, 403 sin clave |
+| 6.2 Rechazo automático por cuenta ajena | «Rechazada» y motivo «no es una cuenta de NexoCambio» |
+| 6.3 Rechazo automático por duplicado | «Rechazada» y motivo «ya se usó» |
+| 6.4 Revisión humana: monto alto → aprueba | Cola de revisión, semáforo amarillo, alerta de cumplimiento, errores 403/400/409, aprobación del operador → «En proceso» con `actor = operador` |
+| 6.5 Revisión humana: monto distinto → rechaza | Semáforo amarillo, regla de monto incumplida (lee S/ 850), el operador rechaza con motivo → «Rechazada» con `actor = operador` |
+| 6.6 Errores | 401 sin token, 404 sin validación, 403 sin clave |
 
 Antes de cada corrida se ejecuta `python postman/generar_nexoguard.py`, que regenera los comprobantes con la fecha de hoy y números de operación nuevos, para que la corrida no choque con la detección de duplicados. La espera del resultado usa el Collection Runner.
 
@@ -121,12 +124,15 @@ El script `python scripts/probar_nexoguard.py <ApiUrl>` recorre los mismos escen
 
 | Escenario | Operación | Resultado en AWS | Tiempo |
 |---|---|---|---|
-| Aprobación automática | NX-M6SJ6BSB | **En proceso**, decidido por el agente | 13 s |
-| Rechazo: monto distinto | NX-LDMA7X4A | **Rechazada** · «El comprobante indica 850.00 y la operación es por 1,000.00.» | 8 s |
-| Rechazo: duplicado | NX-ML9VYRGG | **Rechazada** · «El número de operación 11814066 ya se usó en la operación NX-M6SJ6BSB.» | 5 s |
-| Revisión humana: monto alto | NX-6H7Q3QFV | Semáforo **amarillo** y alerta de cumplimiento en 25 s; tras la decisión del operador, **En proceso**, decidido por el operador | 25 s + decisión |
+| Aprobación automática | NX-74AZRH3W | **En proceso**, decidido por el agente | 11 s |
+| Rechazo automático: cuenta ajena | — | **Rechazada** · «El dinero se envió a Inversiones Andinas E.I.R.L. (cuenta 7716), que no es una cuenta de NexoCambio en PEN.» | 5–67 s* |
+| Rechazo automático: duplicado | — | **Rechazada** · «El número de operación 05473215 ya se usó en la operación NX-74AZRH3W.» | 5 s |
+| Revisión humana: monto alto → aprueba | — | Semáforo **amarillo**, alerta de cumplimiento y «Motivo: el monto equivale a US$ 12,000.00, igual o mayor al umbral de registro UIF…»; el operador aprueba → **En proceso**, decidido por el operador | 5–27 s + decisión |
+| Revisión humana: monto distinto → rechaza | — | Semáforo **amarillo** · «Motivo: El comprobante indica 850.00 y la operación es por 1,000.00»; el operador rechaza → **Rechazada**, decidido por el operador | 26 s + decisión |
 
-Las 5 ejecuciones de Step Functions terminaron en `SUCCEEDED`.
+\* Los tiempos más largos corresponden al `Retry` del workflow cuando Groq responde 429 (límite de la capa gratuita): la validación se completa igual, solo que más tarde.
+
+Todas las ejecuciones de Step Functions terminaron en `SUCCEEDED`. En una corrida anterior, con el monto distinto como rechazo automático, el resultado también fue correcto. Se cambió a revisión humana por criterio de negocio (ver 2.2).
 
 **Hallazgo durante la primera prueba (el agente funcionó como debía).** En la primera corrida, el comprobante correcto cumplió las 7 reglas, pero el Agente de Riesgo lo escaló a amarillo con la justificación «el comprobante presenta una marca de agua que indica DOCUMENTO FICTICIO, lo cual es sospechoso». La barrera de diseño (el agente puede escalar, no aprobar) actuó correctamente: con un comprobante real que dijera eso, enviarlo a revisión es lo deseable. Para el entorno académico se agregó el parámetro `ModoDemo` (por defecto `true` en este stack), que le indica al agente que esa marca es propia de los comprobantes de prueba. En producción se despliega con `ModoDemo=false`.
 
@@ -192,7 +198,7 @@ Desplegado el 31-oct-2026 sobre el stack del Proyecto Parcial (actualización in
 | 1 | Historias de usuario y MVP | A | [Integrante] |
 | 2 | Arquitectura, workflow y barreras «la IA lee, las reglas deciden» | B | [Integrante] |
 | 1 | Costos (el 90% es IA) y región | B | [Integrante] |
-| 3 | **Demo en vivo:** comprobante correcto (grafo verde), monto distinto (rechazo) y monto alto (cola, revisión asistida, aprobación y correo) | C | [Integrante] |
+| 3 | **Demo en vivo:** comprobante correcto (grafo verde), cuenta ajena (rechazo automático) y monto distinto (cola, revisión asistida con motivo sugerido, decisión del operador y correo) | C | [Integrante] |
 | 1 | Postman, pruebas y repositorio | C | [Integrante] |
 
 Recomendaciones para la demo:

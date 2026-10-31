@@ -187,10 +187,15 @@ WHEN el workflow evalúa la ruta
 THEN la operación pasa automáticamente a «En proceso»
 AND el historial registra «Aprobada por validación automática»
 
-GIVEN el semáforo es Rojo por una discrepancia comprobable (monto distinto, cuenta de destino ajena o comprobante duplicado)
+GIVEN el semáforo es Rojo por un indicio claro de fraude (cuenta de destino ajena o comprobante duplicado)
 WHEN el workflow evalúa la ruta
 THEN la operación pasa a «Rechazada»
 AND el motivo de rechazo describe la discrepancia encontrada
+
+GIVEN el monto o la moneda del comprobante no coinciden con la operación
+WHEN el workflow evalúa la ruta
+THEN el semáforo es Amarillo y la operación va a revisión humana (puede ser un error de tipeo o un pago parcial)
+AND el operador ve la discrepancia con el motivo de rechazo sugerido
 
 GIVEN el semáforo es Amarillo
 WHEN el workflow evalúa la ruta
@@ -324,4 +329,4 @@ AND los motivos de rechazo más frecuentes
 | HU18 | Correo al cliente | Post-MVP | — |
 | HU19 | Panel de métricas | Post-MVP | — |
 
-**Flujo que debe funcionar al término del MVP:** el cliente adjunta su comprobante y el workflow NexoGuard se ejecuta. En los tres casos de demostración: (1) un comprobante correcto se aprueba automáticamente, (2) un monto alto o un comprobante poco legible va a revisión, el operador lo resuelve desde el back-office y el workflow termina, y (3) un comprobante con monto distinto o duplicado se rechaza con motivo. En todos los casos se envía el correo correspondiente y la validación queda consultable en la API Validaciones.
+**Flujo que debe funcionar al término del MVP:** el cliente adjunta su comprobante y el workflow NexoGuard se ejecuta. En los tres casos de demostración: (1) un comprobante correcto se aprueba automáticamente, (2) un monto alto, un monto distinto o un comprobante poco legible va a revisión, el operador lo resuelve desde el back-office y el workflow termina, y (3) un comprobante enviado a una cuenta ajena o duplicado se rechaza automáticamente con motivo. En todos los casos se envía el correo correspondiente y la validación queda consultable en la API Validaciones.

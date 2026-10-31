@@ -34,7 +34,7 @@ def ver():
 def rie(monkeypatch):
     m = _cargar("guard_riesgo")
     m.respuesta_ia = {"semaforo": "verde", "justificacion": "Todo coincide.", "motivo_rechazo": None}
-    monkeypatch.setattr(m, "chat_json", lambda modelo, prompt: m.respuesta_ia)
+    monkeypatch.setattr(m, "chat_json", lambda modelo, prompt, **kw: m.respuesta_ia)
     return m
 
 
@@ -68,14 +68,17 @@ def test_verificar_cci_interbancario_de_nexocambio(ver):
     assert res["todo_cumple"]          # el banco de origen solo es informativo
 
 
-@pytest.mark.parametrize("cambio, regla", [
-    ({"monto": 850.0}, "monto"),
-    ({"moneda": "USD"}, "moneda"),
-    ({"destinatario": "Inversiones Andinas E.I.R.L.", "cuenta_destino": "7716"}, "cuenta_destino"),
-])
-def test_verificar_discrepancias_duras(ver, cambio, regla):
+def test_verificar_cuenta_ajena_es_discrepancia_dura(ver):
+    res = ver.verificar(OP, leido(destinatario="Inversiones Andinas E.I.R.L.", cuenta_destino="7716"))
+    assert resultados(res)["cuenta_destino"] == "no_cumple" and len(res["discrepancias_duras"]) == 1
+
+
+@pytest.mark.parametrize("cambio, regla", [({"monto": 850.0}, "monto"), ({"moneda": "USD"}, "moneda")])
+def test_verificar_monto_o_moneda_distintos_van_a_revision(ver, cambio, regla):
+    """Puede ser un error de tipeo o un pago parcial: lo resuelve un operador, no se rechaza solo."""
     res = ver.verificar(OP, leido(**cambio))
-    assert resultados(res)[regla] == "no_cumple" and len(res["discrepancias_duras"]) == 1
+    assert resultados(res)[regla] == "no_cumple" and res["discrepancias_duras"] == []
+    assert any("850.00" in m or "USD" in m for m in res["motivos_revision"])
 
 
 def test_verificar_detecta_comprobante_duplicado(ver):
@@ -114,9 +117,15 @@ def test_riesgo_agente_no_puede_bajar_ni_rechazar_sin_reglas(ver, rie):
 
 
 def test_riesgo_discrepancia_dura_rechaza_con_motivo_de_la_regla(ver, rie):
-    r = rie.evaluar(OP, leido(monto=850.0), ver.verificar(OP, leido(monto=850.0)))
+    ex = leido(destinatario="Inversiones Andinas E.I.R.L.", cuenta_destino="7716")
+    r = rie.evaluar(OP, ex, ver.verificar(OP, ex))
     assert (r["semaforo"], r["ruta"]) == ("rojo", "rechazar")
-    assert "850.00" in r["motivo_rechazo"]
+    assert "Inversiones Andinas" in r["motivo_rechazo"]
+
+
+def test_riesgo_monto_distinto_va_a_revision(ver, rie):
+    r = rie.evaluar(OP, leido(monto=850.0), ver.verificar(OP, leido(monto=850.0)))
+    assert (r["semaforo"], r["ruta"], r["motivo_rechazo"]) == ("amarillo", "revision", None)
 
 
 def test_riesgo_monto_alto_alerta_cumplimiento(ver, rie):
@@ -124,6 +133,7 @@ def test_riesgo_monto_alto_alerta_cumplimiento(ver, rie):
     ex = leido(moneda="USD", monto=12000.0, cuenta_destino="****1147-17")
     r = rie.evaluar(op, ex, ver.verificar(op, ex))
     assert (r["semaforo"], r["ruta"], r["alerta_cumplimiento"]) == ("amarillo", "revision", True)
+    assert r["justificacion"].startswith("Motivo: el monto equivale a US$ 12,000.00")   # la regla se explica siempre
 
 
 # --------------------------------------------------------------------------- extractor

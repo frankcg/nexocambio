@@ -4,7 +4,9 @@ NexoGuard — Verificación de coincidencia  (AWS Lambda · Python 3.12 · paso 
 Reglas DETERMINISTAS (sin IA): compara lo que leyó el Agente Extractor con la operación registrada.
 Cada regla devuelve cumple / no_cumple / no_concluyente y su gravedad:
   rechazo     → si no cumple con buena confianza de lectura, la operación se rechaza
+                (solo fraude claro: cuenta de destino ajena o comprobante duplicado)
   revision    → si no cumple o no es concluyente, va a revisión humana
+                (monto o moneda distintos: puede ser un error o un pago parcial que se resuelve con el cliente)
   informativa → solo se muestra al operador
 
 Consulta (solo lectura) el GSI numero-operacion-index de nexo-validaciones para detectar
@@ -57,20 +59,20 @@ def r_reconocido(ex):
 
 def r_monto(ex, op):
     if ex.get("monto") is None:
-        return regla("monto", "no_concluyente", "rechazo", "No se pudo leer el monto.")
+        return regla("monto", "no_concluyente", "revision", "No se pudo leer el monto.")
     esperado = float(op["monto_origen"])
     if abs(float(ex["monto"]) - esperado) <= TOLERANCIA_MONTO:
-        return regla("monto", "cumple", "rechazo", f"Monto {ex['monto']:,.2f} coincide con la operación.")
-    return regla("monto", "no_cumple", "rechazo",
+        return regla("monto", "cumple", "revision", f"Monto {ex['monto']:,.2f} coincide con la operación.")
+    return regla("monto", "no_cumple", "revision",
                  f"El comprobante indica {ex['monto']:,.2f} y la operación es por {esperado:,.2f}.")
 
 
 def r_moneda(ex, op):
     if not ex.get("moneda"):
-        return regla("moneda", "no_concluyente", "rechazo", "No se pudo leer la moneda.")
+        return regla("moneda", "no_concluyente", "revision", "No se pudo leer la moneda.")
     if ex["moneda"] == op["moneda_origen"]:
-        return regla("moneda", "cumple", "rechazo", f"Moneda {ex['moneda']} coincide.")
-    return regla("moneda", "no_cumple", "rechazo",
+        return regla("moneda", "cumple", "revision", f"Moneda {ex['moneda']} coincide.")
+    return regla("moneda", "no_cumple", "revision",
                  f"El comprobante está en {ex['moneda']} y la operación en {op['moneda_origen']}.")
 
 

@@ -125,48 +125,67 @@ def construir(carpeta: Path) -> dict:
                 f"pm.test('El historial registra al {por}', () => pm.expect(o.historial[o.historial.length - 1].actor).to.eql('{por}'));"]),
         ]
 
-    revision = lambda vo: [
-        esperar(f"{pref(vo)} · Esperar a que pase a revisión", vo, "en_revision", [
-            "pm.test('Va a revisión humana', () => pm.expect(v.estado).to.eql('en_revision'));"]),
-        req(f"{pref(vo)} · Back-office: cola de revisión", "GET", "/validaciones/admin?estado=en_revision", token=False, admin=True, tests=[
-            "pm.test('Status 200', () => pm.response.to.have.status(200));",
-            f"pm.test('La operación está en la cola', () => pm.expect(pm.response.json().validaciones.map(x => x.id_operacion)).to.include(pm.collectionVariables.get('{vo}')));",
-            "pm.test('El token nunca sale de la API', () => pm.response.json().validaciones.forEach(x => pm.expect(x).to.not.have.property('task_token')));"]),
-        req(f"{pref(vo)} · Back-office: análisis del agente", "GET", f"/validaciones/{{{{{vo}}}}}/admin", token=False, admin=True, tests=[
-            "const v = pm.response.json().validaciones[0];",
-            "pm.test('Semáforo amarillo', () => pm.expect(v.semaforo).to.eql('amarillo'));",
-            "pm.test('Alerta de cumplimiento (monto ≥ umbral)', () => pm.expect(v.alerta_cumplimiento).to.eql(true));",
-            "pm.test('Incluye extracción, verificaciones y justificación', () => { pm.expect(v.extraccion.monto).to.eql(12000); pm.expect(v.verificaciones).to.be.an('array').that.is.not.empty; pm.expect(v.justificacion).to.be.a('string'); });"]),
-        req(f"{pref(vo)} · Decisión - error: sin clave de back-office", "POST", f"/validaciones/{{{{{vo}}}}}/decision",
-            {"decision": "aprobar"}, token=False, tests=["pm.test('Status 403', () => pm.response.to.have.status(403));"]),
-        req(f"{pref(vo)} · Decisión - error: rechazar sin motivo", "POST", f"/validaciones/{{{{{vo}}}}}/decision",
-            {"decision": "rechazar"}, token=False, admin=True, tests=["pm.test('Status 400', () => pm.response.to.have.status(400));"]),
-        req(f"{pref(vo)} · Decisión del operador: aprobar", "POST", f"/validaciones/{{{{{vo}}}}}/decision",
-            {"decision": "aprobar"}, token=False, admin=True, tests=[
-                "pm.test('Status 202', () => pm.response.to.have.status(202));",
-                "pm.collectionVariables.set('ng_intentos', 0);"],
-            desc="Reanuda el workflow (SendTaskSuccess con el task token guardado)."),
-        req(f"{pref(vo)} · Decisión - error: ya decidida", "POST", f"/validaciones/{{{{{vo}}}}}/decision",
-            {"decision": "rechazar", "motivo": "Intento duplicado"}, token=False, admin=True,
-            tests=["pm.test('Status 409', () => pm.response.to.have.status(409));"]),
-        *final("En proceso", "operador")(vo),
-    ]
+    def revision(analisis, decision, estado_final, con_errores=False):
+        """Espera la revisión, consulta la cola y el análisis del agente, y el operador decide."""
+        def pasos(vo):
+            errores = [
+                req(f"{pref(vo)} · Decisión - error: sin clave de back-office", "POST", f"/validaciones/{{{{{vo}}}}}/decision",
+                    {"decision": "aprobar"}, token=False, tests=["pm.test('Status 403', () => pm.response.to.have.status(403));"]),
+                req(f"{pref(vo)} · Decisión - error: rechazar sin motivo", "POST", f"/validaciones/{{{{{vo}}}}}/decision",
+                    {"decision": "rechazar"}, token=False, admin=True, tests=["pm.test('Status 400', () => pm.response.to.have.status(400));"]),
+            ] if con_errores else []
+            ya_decidida = [
+                req(f"{pref(vo)} · Decisión - error: ya decidida", "POST", f"/validaciones/{{{{{vo}}}}}/decision",
+                    {"decision": "rechazar", "motivo": "Intento duplicado"}, token=False, admin=True,
+                    tests=["pm.test('Status 409', () => pm.response.to.have.status(409));"]),
+            ] if con_errores else []
+            texto = "aprobar" if decision["decision"] == "aprobar" else "rechazar con motivo"
+            return [
+                esperar(f"{pref(vo)} · Esperar a que pase a revisión", vo, "en_revision", [
+                    "pm.test('Va a revisión humana', () => pm.expect(v.estado).to.eql('en_revision'));"]),
+                req(f"{pref(vo)} · Back-office: cola de revisión", "GET", "/validaciones/admin?estado=en_revision", token=False, admin=True, tests=[
+                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                    f"pm.test('La operación está en la cola', () => pm.expect(pm.response.json().validaciones.map(x => x.id_operacion)).to.include(pm.collectionVariables.get('{vo}')));",
+                    "pm.test('El token nunca sale de la API', () => pm.response.json().validaciones.forEach(x => pm.expect(x).to.not.have.property('task_token')));"]),
+                req(f"{pref(vo)} · Back-office: análisis del agente", "GET", f"/validaciones/{{{{{vo}}}}}/admin", token=False, admin=True, tests=[
+                    "const v = pm.response.json().validaciones[0];",
+                    "pm.test('Semáforo amarillo', () => pm.expect(v.semaforo).to.eql('amarillo'));",
+                    "pm.test('Incluye verificaciones y justificación', () => { pm.expect(v.verificaciones).to.be.an('array').that.is.not.empty; pm.expect(v.justificacion).to.be.a('string'); });",
+                    *analisis]),
+                *errores,
+                req(f"{pref(vo)} · Decisión del operador: {texto}", "POST", f"/validaciones/{{{{{vo}}}}}/decision",
+                    decision, token=False, admin=True, tests=[
+                        "pm.test('Status 202', () => pm.response.to.have.status(202));",
+                        "pm.collectionVariables.set('ng_intentos', 0);"],
+                    desc="Reanuda el workflow (SendTaskSuccess con el task token guardado)."),
+                *ya_decidida,
+                *final(estado_final, "operador")(vo),
+            ]
+        return pasos
 
     return {
         "name": NOMBRE, "description": DESCRIPCION,
         "item": [
             escenario("ng1", "6.1 Aprobación automática (verde)", pen_usd, bcp, dest_usd, img["01"], "ng1",
                       final("En proceso", "agente")),
-            escenario("ng2", "6.2 Rechazo automático: monto distinto (rojo)", pen_usd, bcp, dest_usd, img["03"], "ng2",
-                      final("Rechazada", "agente", "pm.test('Motivo cita el monto leído', () => pm.expect(v.motivo).to.include('850'));")),
+            escenario("ng2", "6.2 Rechazo automático: cuenta ajena (rojo)", pen_usd, bcp, dest_usd, img["04"], "ng2",
+                      final("Rechazada", "agente", "pm.test('Motivo: no es una cuenta de NexoCambio', () => pm.expect(v.motivo).to.include('no es una cuenta de NexoCambio'));")),
             escenario("ng3", "6.3 Rechazo automático: comprobante duplicado (rojo)", pen_usd, bcp, dest_usd, img["05"], "ng3",
                       final("Rechazada", "agente", "pm.test('Motivo: número ya usado', () => pm.expect(v.motivo).to.include('ya se usó'));")),
-            escenario("ng4", "6.4 Revisión humana: monto alto (amarillo)",
+            escenario("ng4", "6.4 Revisión humana: monto alto (amarillo) → el operador aprueba",
                       {"modalidad": "casa", "moneda_origen": "USD", "moneda_destino": "PEN", "monto_origen": 12000},
                       {"tipo": "banco", "banco": "Scotiabank"},
                       {"tipo": "banco", "banco": "BCP", "tipo_cuenta": "Corriente", "numero": "19324587100391", "titular": "Importaciones del Sur"},
-                      img["06"], "ng4", revision),
-            {"name": "6.5 Errores de la API Validaciones", "item": [
+                      img["06"], "ng4",
+                      revision(["pm.test('Alerta de cumplimiento (monto ≥ umbral)', () => pm.expect(v.alerta_cumplimiento).to.eql(true));",
+                                "pm.test('Leyó US$ 12,000', () => pm.expect(v.extraccion.monto).to.eql(12000));"],
+                               {"decision": "aprobar"}, "En proceso", con_errores=True)),
+            escenario("ng5", "6.5 Revisión humana: monto distinto (amarillo) → el operador rechaza", pen_usd, bcp, dest_usd, img["03"], "ng5",
+                      revision(["pm.test('La regla de monto no se cumple', () => pm.expect(v.verificaciones.find(r => r.regla === 'monto').resultado).to.eql('no_cumple'));",
+                                "pm.test('Leyó S/ 850', () => pm.expect(v.extraccion.monto).to.eql(850));"],
+                               {"decision": "rechazar", "motivo": "El monto transferido (S/ 850.00) no coincide con la operación (S/ 1,000.00)."},
+                               "Rechazada")),
+            {"name": "6.6 Errores de la API Validaciones", "item": [
                 req("Validación - error: sin token", "GET", "/validaciones/{{ng1_op}}", token=False,
                     tests=["pm.test('Status 401', () => pm.response.to.have.status(401));"]),
                 req("Validación - error: operación sin validación", "GET", "/validaciones/NX-NO-EXISTE",
@@ -187,7 +206,7 @@ def main():
     col = json.loads(COLECCION.read_text(encoding="utf-8"))
     col["item"] = [i for i in col["item"] if not i["name"].startswith("6. NexoGuard")] + [nueva]
     claves = {v["key"] for v in col.get("variable", [])}
-    for k in ["ng_intentos"] + [f"ng{i}_{s}" for i in range(1, 5) for s in ("cot", "op")]:
+    for k in ["ng_intentos"] + [f"ng{i}_{s}" for i in range(1, 6) for s in ("cot", "op")]:
         if k not in claves:
             col.setdefault("variable", []).append({"key": k, "value": ""})
     COLECCION.write_text(json.dumps(col, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

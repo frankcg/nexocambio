@@ -76,8 +76,8 @@ def main():
         dest = {"tipo": "banco", "banco": "Interbank", "tipo_cuenta": "Ahorros", "numero": "8983141592653", "titular": "Prueba NexoGuard"}
         resultados = []
         for nombre, clave, esperado in [("Aprobación automática", "01", "En proceso"),
-                                        ("Rechazo: monto distinto", "03", "Rechazada"),
-                                        ("Rechazo: duplicado", "05", "Rechazada")]:
+                                        ("Rechazo automático: cuenta ajena", "04", "Rechazada"),
+                                        ("Rechazo automático: duplicado", "05", "Rechazada")]:
             id_op = operacion(token, pen, bcp, dest, img[clave])
             v, seg = esperar(id_op, token, "finalizada")
             ok = v["estado_final"] == esperado and v["decidido_por"] == "agente"
@@ -85,20 +85,25 @@ def main():
                                + (f" · {v['motivo']}" if v.get("motivo") else "")))
             print(("OK  " if ok else "FALLA ") + resultados[-1][0], "·", resultados[-1][3], flush=True)
 
-        id_op = operacion(token, {"modalidad": "casa", "moneda_origen": "USD", "moneda_destino": "PEN", "monto_origen": 12000},
-                          {"tipo": "banco", "banco": "Scotiabank"},
-                          {"tipo": "banco", "banco": "BCP", "tipo_cuenta": "Corriente", "numero": "19324587100391", "titular": "Prueba"},
-                          img["06"])
-        v, seg = esperar(id_op, token, "en_revision")
-        s, det = llamar("GET", f"/validaciones/{id_op}/admin", admin=True)
-        a = det["validaciones"][0]
-        print(f"     revisión en {seg:.0f} s · semáforo {a.get('semaforo')} · alerta {a.get('alerta_cumplimiento')} · {a.get('justificacion')}")
-        s, r = llamar("POST", f"/validaciones/{id_op}/decision", {"decision": "aprobar"}, admin=True)
-        assert s == 202, r
-        v, seg = esperar(id_op, token, "finalizada")
-        ok = v["estado_final"] == "En proceso" and v["decidido_por"] == "operador" and a.get("semaforo") == "amarillo"
-        resultados.append(("Revisión humana: monto alto", id_op, ok, f"{v['estado_final']} por {v['decidido_por']}"))
-        print(("OK  " if ok else "FALLA ") + "Revisión humana: monto alto ·", resultados[-1][3])
+        usd = {"modalidad": "casa", "moneda_origen": "USD", "moneda_destino": "PEN", "monto_origen": 12000}
+        dest_pen = {"tipo": "banco", "banco": "BCP", "tipo_cuenta": "Corriente", "numero": "19324587100391", "titular": "Prueba"}
+        for nombre, args, decision, esperado in [
+            ("Revisión humana: monto alto → aprueba", (usd, {"tipo": "banco", "banco": "Scotiabank"}, dest_pen, img["06"]),
+             {"decision": "aprobar"}, "En proceso"),
+            ("Revisión humana: monto distinto → rechaza", (pen, bcp, dest, img["03"]),
+             {"decision": "rechazar", "motivo": "El monto transferido no coincide con la operación."}, "Rechazada"),
+        ]:
+            id_op = operacion(token, *args)
+            v, seg = esperar(id_op, token, "en_revision")
+            s, det = llamar("GET", f"/validaciones/{id_op}/admin", admin=True)
+            a = det["validaciones"][0]
+            print(f"     revisión en {seg:.0f} s · semáforo {a.get('semaforo')} · alerta {a.get('alerta_cumplimiento')} · {a.get('justificacion')}")
+            s, r = llamar("POST", f"/validaciones/{id_op}/decision", decision, admin=True)
+            assert s == 202, r
+            v, seg = esperar(id_op, token, "finalizada")
+            ok = v["estado_final"] == esperado and v["decidido_por"] == "operador" and a.get("semaforo") == "amarillo"
+            resultados.append((nombre, id_op, ok, f"{v['estado_final']} por {v['decidido_por']}"))
+            print(("OK  " if ok else "FALLA ") + nombre, "·", resultados[-1][3], flush=True)
     print(json.dumps([{"escenario": n, "operacion": o, "ok": k, "detalle": d} for n, o, k, d in resultados], ensure_ascii=False))
     sys.exit(0 if all(r[2] for r in resultados) else 1)
 

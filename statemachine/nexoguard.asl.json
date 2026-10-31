@@ -68,7 +68,9 @@
       "ResultSelector": {"resultado.$": "$.Payload"},
       "ResultPath": "$.riesgo",
       "Retry": [
-        {"ErrorEquals": ["GroqLimite"], "IntervalSeconds": 20, "BackoffRate": 2, "MaxAttempts": 3}
+        {"ErrorEquals": ["GroqLimite"], "IntervalSeconds": 20, "BackoffRate": 2, "MaxAttempts": 3},
+        {"ErrorEquals": ["GroqError", "Lambda.ServiceException", "Lambda.TooManyRequestsException"],
+         "IntervalSeconds": 2, "BackoffRate": 2, "MaxAttempts": 2}
       ],
       "Catch": [
         {"ErrorEquals": ["States.ALL"], "ResultPath": "$.error_riesgo", "Next": "RiesgoNoDisponible"}

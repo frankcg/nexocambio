@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 from xml.sax.saxutils import escape as esc
 
-W, H = 1800, 1010
+W, H = 1800, 1085
 DIR = Path(__file__).resolve().parent
 COL = {"lambda": "#ED7100", "api": "#8C4FFF", "ddb": "#3B48CC", "s3": "#3F8624", "cw": "#E7157B",
        "ext": "#5B6B85", "user": "#232F3E", "sfn": "#CD2264", "sns": "#E7157B"}
@@ -72,7 +72,7 @@ text(W / 2, 62, "Serverless · AWS Academy Learner Lab · Región us-east-1 (N. 
      13, fill="#4A5568", anchor="middle")
 
 # Nube AWS
-a('<rect x="200" y="84" width="1370" height="830" rx="14" fill="none" stroke="#232F3E" stroke-width="1.6"/>')
+a('<rect x="200" y="84" width="1370" height="905" rx="14" fill="none" stroke="#232F3E" stroke-width="1.6"/>')
 text(216, 106, "AWS Cloud — us-east-1", 13, True)
 
 # ---------------------------------------------------------------- usuarios
@@ -85,7 +85,7 @@ for y, t, s in [(150, "Cliente web", "desktop · móvil"), (455, "Back-office", 
 
 # ---------------------------------------------------------------- borde
 box(225, 125, 215, 90, "s3", "S3", "S3 — Sitio web", ["Angular (SPA) cliente", "y back-office", "+ estados NexoGuard"])
-box(225, 330, 215, 140, "api", "API", "API Gateway", ["HTTP API · stage v1", "CORS · throttling", "11 rutas + 4 rutas", "/validaciones (nuevas)"])
+box(225, 330, 215, 140, "api", "API", "API Gateway", ["HTTP API · stage v1", "CORS · throttling", "11 rutas + 8 nuevas:", "/validaciones · /banco", "/demo/reiniciar"])
 
 # ---------------------------------------------------------------- microservicios
 a('<rect x="470" y="110" width="470" height="440" rx="12" fill="#FFF8F1" stroke="#ED7100" stroke-dasharray="6 5" stroke-width="1.4"/>')
@@ -103,7 +103,7 @@ flecha([(686, 397), (730, 397)])
 flecha([(686, 486), (730, 486)])
 
 # API Validaciones (nuevo)
-box(486, 610, 220, 150, "lambda", "λ", "Validaciones (API)", ["GET /validaciones/{id}", "GET …/{id}/admin", "GET /validaciones/admin", "POST …/{id}/decision", "acciones internas del flujo"], nuevo=True)
+box(486, 610, 220, 150, "lambda", "λ", "Validaciones (API)", ["GET /validaciones/{id}", "GET …/{id}/admin", "GET /validaciones/admin", "POST …/{id}/decision", "POST /demo/reiniciar"], nuevo=True)
 box(730, 610, 210, 110, "ddb", "DB", "nexo-validaciones", ["PK id_operacion", "SK fecha_inicio", "GSI numero-operacion", "GSI estado-fecha"], nuevo=True)
 flecha([(706, 665), (730, 665)])
 
@@ -116,7 +116,7 @@ for y in (188, 296, 440):
 flecha([(440, 455), (455, 455), (455, 685), (486, 685)], color=NUEVO, label="rutas /validaciones", lx=395, ly=600)
 
 # ---------------------------------------------------------------- Step Functions
-SX, SY, SW, SH = 975, 110, 560, 790
+SX, SY, SW, SH = 975, 110, 560, 860
 a(f'<rect x="{SX}" y="{SY}" width="{SW}" height="{SH}" rx="12" fill="#FFF3F7" stroke="{NUEVO}" stroke-width="2.6"/>')
 a(f'<rect x="{SX + 12}" y="{SY + 12}" width="38" height="38" rx="8" fill="{COL["sfn"]}"/>')
 text(SX + 31, SY + 37, "SF", 15, True, "#fff", "middle")
@@ -130,6 +130,7 @@ pw = 260
 steps = [("RegistrarInicio", "API Validaciones · estado en_curso", "lambda", "λ"),
          ("ExtraerComprobante", "Agente Extractor · Groq visión (lee S3)", "lambda", "λ"),
          ("VerificarCoincidencia", "Reglas: monto, cuenta, fecha, duplicado", "lambda", "λ"),
+         ("ConciliarConBanco", "¿Llegó el depósito? · API bancaria", "lambda", "λ"),
          ("EvaluarRiesgo", "Agente de Riesgo · Groq · semáforo + barreras", "lambda", "λ")]
 y0 = SY + 70
 for i, (t, s, k, g) in enumerate(steps):
@@ -137,12 +138,19 @@ for i, (t, s, k, g) in enumerate(steps):
     if i:
         flecha([(cx + pw / 2, y0 + i * 70 - 22), (cx + pw / 2, y0 + i * 70)], COL["sfn"])
 # Choice
-dy = y0 + 4 * 70 + 10
+dy = y0 + 5 * 70 + 10
 dcx = cx + pw / 2
 a(f'<polygon points="{dcx},{dy} {dcx + 80},{dy + 32} {dcx},{dy + 64} {dcx - 80},{dy + 32}" fill="#fff" stroke="{COL["sfn"]}" stroke-width="1.8"/>')
 text(dcx, dy + 30, "DecidirRuta", 12, True, anchor="middle")
 text(dcx, dy + 45, "(Choice)", 10.5, fill="#4A5568", anchor="middle")
-flecha([(dcx, y0 + 3 * 70 + 48), (dcx, dy)], COL["sfn"])
+flecha([(dcx, y0 + 4 * 70 + 48), (dcx, dy)], COL["sfn"])
+# ciclo de espera de la conciliación (estado Wait)
+wy = y0 + 3 * 70
+a(f'<rect x="{SX + 14}" y="{wy + 4}" width="116" height="40" rx="8" fill="#fff" stroke="{COL["sfn"]}" stroke-width="1.4" stroke-dasharray="5 4"/>')
+text(SX + 72, wy + 21, "EsperarDeposito", 11, True, anchor="middle")
+text(SX + 72, wy + 36, "Wait 30 s · hasta ×4", 10, fill="#4A5568", anchor="middle")
+flecha([(cx, wy + 16), (SX + 130, wy + 16)], COL["sfn"], w=1.3)
+flecha([(SX + 130, wy + 34), (cx, wy + 34)], COL["sfn"], w=1.3)
 by = dy + 100
 ramas = [(SX + 18, "🟢 AprobarAutomatico", "→ En proceso", "#12A150"),
          (SX + 200, "🟡 NotificarRevision", "SNS → EsperarRevision (token)", "#C48A00"),
@@ -168,34 +176,38 @@ text(SX + SW / 2, SY + SH - 16, "Retry/Catch por estado · si Groq falla, la ope
 # ---------------------------------------------------------------- servicios a la derecha
 box(1590, 230, 190, 100, "ext", "AI", "API Groq", ["qwen3.8-27b (visión)", "gpt-oss-20b (texto)", "sin memoria · HTTPS"], dash=True)
 box(1590, 560, 190, 90, "sns", "SNS", "SNS nexoguard", ["correo a back-office", "y cumplimiento"], nuevo=True)
-box(1590, 760, 190, 100, "cw", "CW", "CloudWatch", ["logs de Lambdas y", "ejecuciones · alarmas", "+ SNS alertas"])
+box(1590, 375, 190, 125, "ext", "BK", "Banco simulado", ["sistema externo", "/banco · x-banco-key", "nexo-banco-", "movimientos"], nuevo=True, dash=True)
+box(1590, 830, 190, 100, "cw", "CW", "CloudWatch", ["logs de Lambdas y", "ejecuciones · alarmas", "+ SNS alertas"])
 
 # conexiones del workflow
 flecha([(686, 441), (952, 441), (952, y0 + 24), (cx, y0 + 24)], NUEVO, label="3 StartExecution", lx=830, ly=436, lsize=10.5)
 flecha([(cx, y0 + 70 + 24), (945, y0 + 94), (945, 500), (926, 500)], COL["s3"], label="lee comprobante", lx=1060, ly=y0 + 88, dash=True, lsize=10.5)
 flecha([(cx + pw, y0 + 70 + 24), (1590, 260)], COL["ext"], label="4 visión", lx=1490, ly=225)
-flecha([(cx + pw, y0 + 210 + 24), (1590, 300)], COL["ext"], label="5 riesgo", lx=1510, ly=330)
+flecha([(cx + pw, y0 + 280 + 24), (1590, 310)], COL["ext"], label="5 riesgo", lx=1520, ly=345)
+flecha([(cx + pw, y0 + 210 + 24), (1590, 430)], COL["ext"], label="¿depósito? HTTPS", lx=1478, ly=420, lsize=10.5)
 flecha([(cx, ay + 24), (959, ay + 24), (959, 540), (600, 540), (600, 522)], COL["sfn"], label="aplicar_decision", lx=760, ly=535, dash=True, lsize=10.5)
 flecha([(cx, ay + 94), (966, ay + 94), (966, 785), (640, 785), (640, 760)], COL["sfn"], label="iniciar · registrar_espera · guardar", lx=820, ly=780, dash=True, lsize=10.5)
 flecha([(SX + 280, by + 52), (SX + 280, by + 60), (1560, by + 60), (1560, 590), (1590, 590)], COL["sns"], dash=True)
 flecha([(cx + pw, ay + 164), (1560, ay + 164), (1560, 630), (1590, 630)], COL["sns"], label="alerta", lx=1500, ly=ay + 158)
-flecha([(1590, 640), (1575, 640), (1575, 928), (190, 928), (190, 842), (174, 842)], COL["sns"], label="6 correo", lx=1300, ly=922, dash=True)
+flecha([(1590, 640), (1575, 640), (1575, 1000), (190, 1000), (190, 842), (174, 842)], COL["sns"], label="6 correo", lx=1300, ly=994, dash=True)
 flecha([(190, 842), (190, 580), (174, 580)], COL["sns"], dash=True)
 # decisión humana
 flecha([(174, 520), (186, 520), (186, 760), (486, 760)], NUEVO, label="7 Aprobar / Rechazar", lx=330, ly=778)
 flecha([(596, 610), (596, 590), (970, 590), (970, by + 66), (SX + 240, by + 66), (SX + 240, by + 52)], NUEVO, label="SendTaskSuccess", lx=780, ly=584, lsize=10.5)
 
 # leyenda / decisiones
-a('<rect x="225" y="800" width="720" height="104" rx="10" fill="#F4F7FF" stroke="#8FA6E8"/>')
+a('<rect x="225" y="800" width="720" height="146" rx="10" fill="#F4F7FF" stroke="#8FA6E8"/>')
 notas = ["• La IA extrae datos y explica; las reglas deterministas deciden. El agente puede escalar a revisión, nunca aprobar lo que las reglas no aprueban.",
          "• Cada microservicio mantiene su propia BD: el workflow cambia operaciones solo vía Operaciones y guarda el análisis solo vía Validaciones.",
          "• Groq reemplaza a Amazon Bedrock (no disponible en AWS Academy). El nombre del modelo es un parámetro del template.",
-         "• Duplicados: GSI numero-operacion en nexo-validaciones. Clave Groq como parámetro NoEcho (en producción: Secrets Manager)."]
+         "• Duplicados: GSI numero-operacion en nexo-validaciones. Clave Groq como parámetro NoEcho (en producción: Secrets Manager).",
+         "• Conciliación: el workflow pregunta a la API bancaria (simulada; en producción, la del banco) si llegó el",
+         "  depósito; si no aparece, espera (Wait) y reintenta antes de enviar a revisión. POST /demo/reiniciar limpia los datos de prueba."]
 for i, n in enumerate(notas):
     text(237, 824 + i * 21, n, 11.5)
-text(W / 2, 950, "Flujo NexoGuard: cliente adjunta comprobante → StartExecution → extraer (IA) → verificar (reglas) → riesgo (IA + barreras) →",
+text(W / 2, 1030, "Flujo NexoGuard: cliente adjunta comprobante → StartExecution → extraer (IA) → verificar (reglas) → conciliar con el banco (Wait/reintentos) → riesgo (IA + barreras) →",
      13, True, "#0E1B33", "middle")
-text(W / 2, 972, "aprobar automático | revisión humana (waitForTaskToken) | rechazar → aplicar decisión → registro auditable → alertas por correo",
+text(W / 2, 1052, "aprobar automático | revisión humana (waitForTaskToken) | rechazar → aplicar decisión → registro auditable → alertas por correo",
      13, True, "#0E1B33", "middle")
 a('</svg>')
 

@@ -38,6 +38,13 @@ export class ValidacionesService {
     });
   }
 
+  /** Entorno académico: borra validaciones, depósitos de prueba y operaciones para repetir la demo. */
+  reiniciarDemo(incluirOperaciones = true): Observable<{ mensaje: string }> {
+    return this.http.post<{ mensaje: string }>(`${this.config.apiBaseUrl()}/demo/reiniciar`, { incluir_operaciones: incluirOperaciones }, {
+      headers: this.cabecerasAdmin(),
+    });
+  }
+
   decidir(idOperacion: string, decision: 'aprobar' | 'rechazar', motivo?: string): Observable<{ mensaje: string }> {
     const cuerpo: { decision: string; motivo?: string } = { decision };
     if (motivo) cuerpo.motivo = motivo;

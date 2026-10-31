@@ -109,8 +109,8 @@ def casos():  # se evalúa al generar: usa DIA y SEMILLA
         banco="Interbank", tipo="TRANS. INTERBANCARIA", monto="S/ 250.00", fecha=fecha("11:42 am"),
         filas=filas("NexoCambio S.A.C.", "CCI ****0039-14", "BCP - Soles", "S/ 250.00", "Cuenta Simple Soles", "****9177", nro("000552318")),
         mensaje="Cambio de soles a dólares"),
-    # Rojo: el monto (S/ 850.00) no coincide con una operación de S/ 1,000.00.
-    "03_rojo_monto_distinto": dict(
+    # Amarillo: el monto (S/ 850.00) no coincide con una operación de S/ 1,000.00 (revisión, no rechazo).
+    "03_amarillo_monto_distinto": dict(
         banco="BCP", tipo="TRANSFERENCIA A TERCEROS", monto="S/ 850.00", fecha=fecha("12:03 pm"),
         filas=filas("NexoCambio S.A.C.", "**** 0-39", "BCP - Soles", "S/ 850.00", "Cuenta Digital Soles", "****4821", nro("04419056"))),
     # Rojo: transferido a una cuenta que no es de NexoCambio.
@@ -134,7 +134,52 @@ def casos():  # se evalúa al generar: usa DIA y SEMILLA
         banco="Interbank", tipo="TRANS. INTERBANCARIA", monto="S/ 500.00", fecha=fecha("04:05 pm"),
         filas=filas("NexoCambio S.A.C.", "CCI ****0039-14", "BCP - Soles", "S/ 500.00", "Cuenta Simple Soles", "****2290", nro("000561904")),
         borroso=True),
+    # Amarillo: "falsificado" — se ve perfecto, pero el depósito NUNCA llegó al banco (la conciliación no lo encuentra).
+    "09_amarillo_sin_deposito": dict(
+        banco="BCP", tipo="TRANSFERENCIA A TERCEROS", monto="S/ 1,000.00", fecha=fecha("05:10 pm"),
+        filas=filas("NexoCambio S.A.C.", "**** 0-39", "BCP - Soles", "S/ 1,000.00", "Cuenta Digital Soles", "****7350", nro("06620934")),
+        mensaje="Operación de cambio NexoCambio"),
+    # Verde tardío: el depósito llega al banco DESPUÉS de subir el comprobante (registrarlo a mano mientras espera).
+    "10_verde_deposito_tardio": dict(
+        banco="Interbank", tipo="TRANS. INTERBANCARIA", monto="S/ 1,000.00", fecha=fecha("05:40 pm"),
+        filas=filas("NexoCambio S.A.C.", "CCI ****0039-14", "BCP - Soles", "S/ 1,000.00", "Cuenta Simple Soles", "****5518", nro("07731045")),
+        mensaje="Cambio de soles a dólares"),
 }
+
+
+def depositos():
+    """Depósitos que el banco simulado debe tener para cada comprobante (mismos datos que la imagen).
+    `tardio`: no se registra con los demás; se registra a mano para mostrar la espera del workflow.
+    Sin depósito: 04 (fue a otra cuenta), 05 (duplicado del 01), 08 (no es comprobante), 09 (falsificado)."""
+    return {  # clave: (cuenta de destino, monto, moneda, número, banco de origen, ordenante, tardío)
+        "01": ("**** 0-39", 1000, "PEN", nro("04417382"), "BCP", "Lucía Ramírez Torres", False),
+        "02": ("CCI ****0039-14", 250, "PEN", nro("000552318"), "Interbank", "Carlos Quispe Rojas", False),
+        "03": ("**** 0-39", 850, "PEN", nro("04419056"), "BCP", "Ana Torres Díaz", False),
+        "06": ("CCI ****1147-17", 12000, "USD", nro("90034417"), "Scotiabank", "Importaciones del Sur S.A.C.", False),
+        "07": ("CCI ****0039-14", 500, "PEN", nro("000561904"), "Interbank", "Rosa Huamán Paz", False),
+        "10": ("CCI ****0039-14", 1000, "PEN", nro("07731045"), "Interbank", "Jorge Salas Vega", True),
+    }
+
+
+def registrar_depositos(api_url, clave, claves=None, incluir_tardio=False):
+    """Registra en el banco simulado los depósitos de los comprobantes generados ("el cliente transfirió")."""
+    import json
+    import urllib.error
+    import urllib.request
+    hechos = []
+    for k, (cuenta, monto, moneda, numero, banco, ordenante, tardio) in depositos().items():
+        if (claves and k not in claves) or (tardio and not incluir_tardio and not claves):
+            continue
+        cuerpo = {"cuenta_destino": cuenta, "monto": monto, "moneda": moneda, "numero_operacion": numero,
+                  "banco_origen": banco, "ordenante": ordenante, "fecha": DIA.isoformat(), "origen_datos": "prueba"}
+        req = urllib.request.Request(api_url.rstrip("/") + "/banco/depositos", data=json.dumps(cuerpo).encode(),
+                                     method="POST", headers={"Content-Type": "application/json", "x-banco-key": clave})
+        try:
+            with urllib.request.urlopen(req, timeout=20) as r:
+                hechos.append((k, numero, r.status))
+        except urllib.error.HTTPError as e:   # 409: ya estaba registrado
+            hechos.append((k, numero, e.code))
+    return hechos
 
 
 def no_comprobante():
@@ -166,11 +211,23 @@ def generar(salida=SALIDA, dia=None, semilla=0):
 
 
 def main():
+    """python scripts/generar_comprobantes.py [AAAA-MM-DD] [--semilla N] [--registrar-banco <ApiUrl>]
+    python scripts/generar_comprobantes.py --semilla N --deposito-tardio <ApiUrl>   (registra solo el depósito del 10)"""
     args = sys.argv[1:]
     semilla = int(args[args.index("--semilla") + 1]) if "--semilla" in args else 0
-    fechas = [a for a in args if "-" in a and a[:4].isdigit()]
+    fechas = [a for a in args if "-" in a and a[:4].isdigit() and len(a) == 10]
+    clave = lambda: (Path(__file__).resolve().parent.parent / ".secrets" / "banco_key").read_text().strip()  # noqa: E731
+    if "--deposito-tardio" in args:
+        global DIA, SEMILLA
+        DIA, SEMILLA = date.fromisoformat(fechas[0]) if fechas else date.today(), semilla
+        print("Depósito tardío:", registrar_depositos(args[args.index("--deposito-tardio") + 1], clave(), claves={"10"}))
+        return
     generar(SALIDA, date.fromisoformat(fechas[0]) if fechas else None, semilla)
-    print(f"8 comprobantes en {SALIDA}")
+    print(f"10 comprobantes en {SALIDA} (semilla {semilla})")
+    if "--registrar-banco" in args:
+        for k, numero, estado in registrar_depositos(args[args.index("--registrar-banco") + 1], clave()):
+            print(f"  depósito del comprobante {k} · N° {numero} → HTTP {estado}")
+        print("  (sin depósito: 04 cuenta ajena, 05 duplicado, 08 ticket, 09 falsificado; el 10 se registra después con --deposito-tardio)")
 
 
 if __name__ == "__main__":

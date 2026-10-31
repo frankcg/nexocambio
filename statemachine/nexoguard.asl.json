@@ -8,9 +8,15 @@
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
         "FunctionName": "${FnValidaciones}",
-        "Payload": {"accion": "iniciar", "operacion.$": "$.operacion", "ejecucion.$": "$$.Execution.Id"}
+        "Payload": {
+          "accion": "iniciar",
+          "operacion.$": "$.operacion",
+          "ejecucion.$": "$$.Execution.Id"
+        }
       },
-      "ResultSelector": {"fecha_inicio.$": "$.Payload.fecha_inicio"},
+      "ResultSelector": {
+        "fecha_inicio.$": "$.Payload.fecha_inicio"
+      },
       "ResultPath": "$.validacion",
       "Next": "ExtraerComprobante"
     },
@@ -20,17 +26,42 @@
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
         "FunctionName": "${FnGuardExtraer}",
-        "Payload": {"operacion.$": "$.operacion"}
+        "Payload": {
+          "operacion.$": "$.operacion"
+        }
       },
-      "ResultSelector": {"datos.$": "$.Payload"},
+      "ResultSelector": {
+        "datos.$": "$.Payload"
+      },
       "ResultPath": "$.extraccion",
       "Retry": [
-        {"ErrorEquals": ["GroqLimite"], "IntervalSeconds": 20, "BackoffRate": 2, "MaxAttempts": 3},
-        {"ErrorEquals": ["GroqError", "Lambda.ServiceException", "Lambda.TooManyRequestsException"],
-         "IntervalSeconds": 3, "BackoffRate": 2, "MaxAttempts": 2}
+        {
+          "ErrorEquals": [
+            "GroqLimite"
+          ],
+          "IntervalSeconds": 20,
+          "BackoffRate": 2,
+          "MaxAttempts": 3
+        },
+        {
+          "ErrorEquals": [
+            "GroqError",
+            "Lambda.ServiceException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 3,
+          "BackoffRate": 2,
+          "MaxAttempts": 2
+        }
       ],
       "Catch": [
-        {"ErrorEquals": ["States.ALL"], "ResultPath": "$.error_extraccion", "Next": "ExtraccionFallida"}
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error_extraccion",
+          "Next": "ExtraccionFallida"
+        }
       ],
       "Next": "VerificarCoincidencia"
     },
@@ -38,8 +69,12 @@
       "Type": "Pass",
       "Comment": "Si Groq no responde, no se pierde la operación: pasa a revisión humana",
       "Parameters": {
-        "datos": {"es_comprobante": null, "legible": false, "confianza": 0,
-                  "observaciones": "No se pudo leer el comprobante automáticamente (servicio de IA no disponible)."}
+        "datos": {
+          "es_comprobante": null,
+          "legible": false,
+          "confianza": 0,
+          "observaciones": "No se pudo leer el comprobante automáticamente (servicio de IA no disponible)."
+        }
       },
       "ResultPath": "$.extraccion",
       "Next": "VerificarCoincidencia"
@@ -50,11 +85,114 @@
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
         "FunctionName": "${FnGuardVerificar}",
-        "Payload": {"operacion.$": "$.operacion", "extraccion.$": "$.extraccion.datos"}
+        "Payload": {
+          "operacion.$": "$.operacion",
+          "extraccion.$": "$.extraccion.datos"
+        }
       },
-      "ResultSelector": {"resultado.$": "$.Payload"},
+      "ResultSelector": {
+        "resultado.$": "$.Payload"
+      },
       "ResultPath": "$.verificacion",
+      "Next": "PrepararConciliacion"
+    },
+    "PrepararConciliacion": {
+      "Type": "Pass",
+      "Result": {
+        "coincidencia": "no_consultado",
+        "intento": 0
+      },
+      "ResultPath": "$.conciliacion",
+      "Next": "ConsultarBanco?"
+    },
+    "ConsultarBanco?": {
+      "Type": "Choice",
+      "Comment": "Si ya hay un indicio claro de fraude (cuenta ajena o duplicado) no hace falta consultar al banco",
+      "Choices": [
+        {
+          "Variable": "$.verificacion.resultado.discrepancias_duras[0]",
+          "IsPresent": true,
+          "Next": "EvaluarRiesgo"
+        }
+      ],
+      "Default": "ConciliarConBanco"
+    },
+    "ConciliarConBanco": {
+      "Type": "Task",
+      "Comment": "Consulta la API del banco (simulada) por HTTPS: ¿llegó el depósito a una cuenta de NexoCambio?",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${FnGuardConciliar}",
+        "Payload": {
+          "operacion.$": "$.operacion",
+          "extraccion.$": "$.extraccion.datos",
+          "intento.$": "$.conciliacion.intento"
+        }
+      },
+      "ResultSelector": {
+        "coincidencia.$": "$.Payload.coincidencia",
+        "encontrado.$": "$.Payload.encontrado",
+        "detalle.$": "$.Payload.detalle",
+        "deposito.$": "$.Payload.deposito",
+        "intento.$": "$.Payload.intento",
+        "max_intentos.$": "$.Payload.max_intentos",
+        "espera_seg.$": "$.Payload.espera_seg"
+      },
+      "ResultPath": "$.conciliacion",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error_conciliacion",
+          "Next": "BancoNoDisponible"
+        }
+      ],
+      "Next": "DepositoEncontrado?"
+    },
+    "BancoNoDisponible": {
+      "Type": "Pass",
+      "Parameters": {
+        "coincidencia": "error",
+        "encontrado": false,
+        "detalle": "No se pudo consultar al banco.",
+        "deposito": null,
+        "intento": 1
+      },
+      "ResultPath": "$.conciliacion",
       "Next": "EvaluarRiesgo"
+    },
+    "DepositoEncontrado?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.conciliacion.encontrado",
+          "BooleanEquals": true,
+          "Next": "EvaluarRiesgo"
+        },
+        {
+          "Variable": "$.conciliacion.intento",
+          "NumericLessThanPath": "$.conciliacion.max_intentos",
+          "Next": "EsperarDeposito"
+        }
+      ],
+      "Default": "EvaluarRiesgo"
+    },
+    "EsperarDeposito": {
+      "Type": "Wait",
+      "Comment": "Una interbancaria puede tardar: espera y vuelve a consultar al banco",
+      "SecondsPath": "$.conciliacion.espera_seg",
+      "Next": "ConciliarConBanco"
     },
     "EvaluarRiesgo": {
       "Type": "Task",
@@ -62,26 +200,57 @@
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
         "FunctionName": "${FnGuardRiesgo}",
-        "Payload": {"operacion.$": "$.operacion", "extraccion.$": "$.extraccion.datos",
-                    "verificacion.$": "$.verificacion.resultado"}
+        "Payload": {
+          "operacion.$": "$.operacion",
+          "extraccion.$": "$.extraccion.datos",
+          "verificacion.$": "$.verificacion.resultado",
+          "conciliacion.$": "$.conciliacion"
+        }
       },
-      "ResultSelector": {"resultado.$": "$.Payload"},
+      "ResultSelector": {
+        "resultado.$": "$.Payload"
+      },
       "ResultPath": "$.riesgo",
       "Retry": [
-        {"ErrorEquals": ["GroqLimite"], "IntervalSeconds": 20, "BackoffRate": 2, "MaxAttempts": 3},
-        {"ErrorEquals": ["GroqError", "Lambda.ServiceException", "Lambda.TooManyRequestsException"],
-         "IntervalSeconds": 2, "BackoffRate": 2, "MaxAttempts": 2}
+        {
+          "ErrorEquals": [
+            "GroqLimite"
+          ],
+          "IntervalSeconds": 20,
+          "BackoffRate": 2,
+          "MaxAttempts": 3
+        },
+        {
+          "ErrorEquals": [
+            "GroqError",
+            "Lambda.ServiceException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "BackoffRate": 2,
+          "MaxAttempts": 2
+        }
       ],
       "Catch": [
-        {"ErrorEquals": ["States.ALL"], "ResultPath": "$.error_riesgo", "Next": "RiesgoNoDisponible"}
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error_riesgo",
+          "Next": "RiesgoNoDisponible"
+        }
       ],
       "Next": "DecidirRuta"
     },
     "RiesgoNoDisponible": {
       "Type": "Pass",
       "Parameters": {
-        "resultado": {"semaforo": "amarillo", "ruta": "revision", "alerta_cumplimiento": false,
-                      "justificacion": "No se pudo evaluar el riesgo automáticamente; se requiere revisión humana."}
+        "resultado": {
+          "semaforo": "amarillo",
+          "ruta": "revision",
+          "alerta_cumplimiento": false,
+          "justificacion": "No se pudo evaluar el riesgo automáticamente; se requiere revisión humana."
+        }
       },
       "ResultPath": "$.riesgo",
       "Next": "DecidirRuta"
@@ -89,20 +258,36 @@
     "DecidirRuta": {
       "Type": "Choice",
       "Choices": [
-        {"Variable": "$.riesgo.resultado.ruta", "StringEquals": "aprobar", "Next": "AprobarAutomatico"},
-        {"Variable": "$.riesgo.resultado.ruta", "StringEquals": "rechazar", "Next": "RechazarAutomatico"}
+        {
+          "Variable": "$.riesgo.resultado.ruta",
+          "StringEquals": "aprobar",
+          "Next": "AprobarAutomatico"
+        },
+        {
+          "Variable": "$.riesgo.resultado.ruta",
+          "StringEquals": "rechazar",
+          "Next": "RechazarAutomatico"
+        }
       ],
       "Default": "NotificarRevision"
     },
     "AprobarAutomatico": {
       "Type": "Pass",
-      "Parameters": {"decision": "aprobar", "decidido_por": "agente", "motivo": null},
+      "Parameters": {
+        "decision": "aprobar",
+        "decidido_por": "agente",
+        "motivo": null
+      },
       "ResultPath": "$.decision",
       "Next": "AplicarDecision"
     },
     "RechazarAutomatico": {
       "Type": "Pass",
-      "Parameters": {"decision": "rechazar", "decidido_por": "agente", "motivo.$": "$.riesgo.resultado.motivo_rechazo"},
+      "Parameters": {
+        "decision": "rechazar",
+        "decidido_por": "agente",
+        "motivo.$": "$.riesgo.resultado.motivo_rechazo"
+      },
       "ResultPath": "$.decision",
       "Next": "AplicarDecision"
     },
@@ -116,8 +301,24 @@
         "Message.$": "States.Format('La operación {} por {} {} requiere revisión humana.\nSemáforo: {}\nMotivo: {}\nRevísala en el back-office de NexoCambio.', $.operacion.id_operacion, $.operacion.monto_origen, $.operacion.moneda_origen, $.riesgo.resultado.semaforo, $.riesgo.resultado.justificacion)"
       },
       "ResultPath": null,
-      "Retry": [{"ErrorEquals": ["States.ALL"], "IntervalSeconds": 2, "MaxAttempts": 2}],
-      "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": null, "Next": "EsperarRevision"}],
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": null,
+          "Next": "EsperarRevision"
+        }
+      ],
       "Next": "EsperarRevision"
     },
     "EsperarRevision": {
@@ -133,13 +334,20 @@
           "fecha_inicio.$": "$.validacion.fecha_inicio",
           "extraccion.$": "$.extraccion.datos",
           "verificacion.$": "$.verificacion.resultado",
-          "riesgo.$": "$.riesgo.resultado"
+          "riesgo.$": "$.riesgo.resultado",
+          "conciliacion.$": "$.conciliacion"
         }
       },
       "TimeoutSeconds": 259200,
       "ResultPath": "$.decision",
       "Catch": [
-        {"ErrorEquals": ["States.Timeout"], "ResultPath": "$.error_revision", "Next": "RevisionVencida"}
+        {
+          "ErrorEquals": [
+            "States.Timeout"
+          ],
+          "ResultPath": "$.error_revision",
+          "Next": "RevisionVencida"
+        }
       ],
       "Next": "AplicarDecision"
     },
@@ -160,13 +368,28 @@
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
         "FunctionName": "${FnOperaciones}",
-        "Payload": {"accion": "aplicar_decision", "id_operacion.$": "$.operacion.id_operacion",
-                    "decision.$": "$.decision.decision", "motivo.$": "$.decision.motivo",
-                    "decidido_por.$": "$.decision.decidido_por"}
+        "Payload": {
+          "accion": "aplicar_decision",
+          "id_operacion.$": "$.operacion.id_operacion",
+          "decision.$": "$.decision.decision",
+          "motivo.$": "$.decision.motivo",
+          "decidido_por.$": "$.decision.decidido_por"
+        }
       },
-      "ResultSelector": {"estado.$": "$.Payload.estado"},
+      "ResultSelector": {
+        "estado.$": "$.Payload.estado"
+      },
       "ResultPath": "$.resultado_operacion",
-      "Retry": [{"ErrorEquals": ["Lambda.ServiceException", "Lambda.TooManyRequestsException"], "IntervalSeconds": 2, "MaxAttempts": 3}],
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3
+        }
+      ],
       "Next": "GuardarValidacion"
     },
     "GuardarValidacion": {
@@ -183,7 +406,8 @@
           "verificacion.$": "$.verificacion.resultado",
           "riesgo.$": "$.riesgo.resultado",
           "decision.$": "$.decision",
-          "estado_final.$": "$.resultado_operacion.estado"
+          "estado_final.$": "$.resultado_operacion.estado",
+          "conciliacion.$": "$.conciliacion"
         }
       },
       "ResultPath": null,
@@ -192,10 +416,19 @@
     "AlertaCumplimiento": {
       "Type": "Choice",
       "Choices": [
-        {"Or": [
-          {"Variable": "$.riesgo.resultado.semaforo", "StringEquals": "rojo"},
-          {"Variable": "$.riesgo.resultado.alerta_cumplimiento", "BooleanEquals": true}
-        ], "Next": "NotificarCumplimiento"}
+        {
+          "Or": [
+            {
+              "Variable": "$.riesgo.resultado.semaforo",
+              "StringEquals": "rojo"
+            },
+            {
+              "Variable": "$.riesgo.resultado.alerta_cumplimiento",
+              "BooleanEquals": true
+            }
+          ],
+          "Next": "NotificarCumplimiento"
+        }
       ],
       "Default": "Fin"
     },
@@ -208,10 +441,28 @@
         "Message.$": "States.Format('Operación {} por {} {}.\nSemáforo: {}\nResultado: {} (decidido por {}).\nJustificación: {}', $.operacion.id_operacion, $.operacion.monto_origen, $.operacion.moneda_origen, $.riesgo.resultado.semaforo, $.resultado_operacion.estado, $.decision.decidido_por, $.riesgo.resultado.justificacion)"
       },
       "ResultPath": null,
-      "Retry": [{"ErrorEquals": ["States.ALL"], "IntervalSeconds": 2, "MaxAttempts": 2}],
-      "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": null, "Next": "Fin"}],
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": null,
+          "Next": "Fin"
+        }
+      ],
       "Next": "Fin"
     },
-    "Fin": {"Type": "Succeed"}
+    "Fin": {
+      "Type": "Succeed"
+    }
   }
 }

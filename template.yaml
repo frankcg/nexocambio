@@ -71,6 +71,22 @@ Parameters:
     Default: "true"
     AllowedValues: ["true", "false"]
     Description: Entorno académico - el Agente de Riesgo ignora la marca de agua DOCUMENTO FICTICIO de los comprobantes de prueba.
+  BancoKey:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+    Description: Clave de la API bancaria simulada (cabecera x-banco-key). Generada por deploy.sh.
+  EsperaConciliacionSeg:
+    Type: Number
+    Default: 30
+    MinValue: 5
+    Description: Segundos que NexoGuard espera antes de volver a consultar al banco si el depósito aún no aparece.
+  IntentosConciliacion:
+    Type: Number
+    Default: 4
+    MinValue: 1
+    MaxValue: 20
+    Description: Consultas al banco antes de enviar la operación a revisión por depósito no encontrado.
   UmbralUsd:
     Type: Number
     Default: 10000
@@ -146,6 +162,23 @@ Resources:
           KeySchema:
             - {AttributeName: estado, KeyType: HASH}
             - {AttributeName: fecha_inicio, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
+
+  TablaBanco:            # Banco simulado (sistema externo)
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub nexo-${Stage}-banco-movimientos
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - {AttributeName: cuenta, AttributeType: S}
+        - {AttributeName: mov, AttributeType: S}
+        - {AttributeName: numero_operacion, AttributeType: S}
+      KeySchema:
+        - {AttributeName: cuenta, KeyType: HASH}
+        - {AttributeName: mov, KeyType: RANGE}
+      GlobalSecondaryIndexes:
+        - IndexName: numero-operacion-index
+          KeySchema: [{AttributeName: numero_operacion, KeyType: HASH}]
           Projection: {ProjectionType: ALL}
 
   BucketComprobantes:    # Microservicio Operaciones (privado)
@@ -264,6 +297,12 @@ Resources:
   LogsGuardRiesgo:
     Type: AWS::Logs::LogGroup
     Properties: {LogGroupName: !Sub "/aws/lambda/nexo-${Stage}-guard-riesgo", RetentionInDays: 14}
+  LogsGuardConciliar:
+    Type: AWS::Logs::LogGroup
+    Properties: {LogGroupName: !Sub "/aws/lambda/nexo-${Stage}-guard-conciliar", RetentionInDays: 14}
+  LogsBanco:
+    Type: AWS::Logs::LogGroup
+    Properties: {LogGroupName: !Sub "/aws/lambda/nexo-${Stage}-banco-simulado", RetentionInDays: 14}
 
   FnCotizaciones:
     Type: AWS::Lambda::Function
@@ -346,6 +385,10 @@ Resources:
           TABLE_VALIDACIONES: !Ref TablaValidaciones
           JWT_SECRET: !Ref JwtSecret
           ADMIN_KEY: !Ref AdminKey
+          FN_OPERACIONES: !Ref FnOperaciones
+          BANCO_API_URL: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/v1/banco"
+          BANCO_KEY: !Ref BancoKey
+          STATE_MACHINE_ARN: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:nexo-${Stage}-nexoguard"
 
   FnGuardExtraer:
     Type: AWS::Lambda::Function
@@ -402,6 +445,44 @@ Resources:
           UMBRAL_USD: !Ref UmbralUsd
           MODO_DEMO: !Ref ModoDemo
 
+  FnGuardConciliar:
+    Type: AWS::Lambda::Function
+    DependsOn: LogsGuardConciliar
+    Properties:
+      FunctionName: !Sub nexo-${Stage}-guard-conciliar
+      Description: NexoGuard - conciliación con la API bancaria (llegó el depósito)
+      Runtime: python3.12
+      Handler: app.handler
+      Code: services/guard_conciliar
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/${RoleName}
+      MemorySize: 256
+      Timeout: 20
+      Layers: [!Ref CapaComun]
+      Environment:
+        Variables:
+          BANCO_API_URL: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/v1/banco"
+          BANCO_KEY: !Ref BancoKey
+          ESPERA_SEG: !Ref EsperaConciliacionSeg
+          MAX_INTENTOS: !Ref IntentosConciliacion
+
+  FnBanco:
+    Type: AWS::Lambda::Function
+    DependsOn: LogsBanco
+    Properties:
+      FunctionName: !Sub nexo-${Stage}-banco-simulado
+      Description: Banco simulado (sistema externo) - depósitos en las cuentas de NexoCambio
+      Runtime: python3.12
+      Handler: app.handler
+      Code: services/banco_simulado
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/${RoleName}
+      MemorySize: 256
+      Timeout: 20
+      Layers: [!Ref CapaComun]
+      Environment:
+        Variables:
+          TABLE_BANCO: !Ref TablaBanco
+          BANCO_KEY: !Ref BancoKey
+
   # =========================================================== NEXOGUARD (Step Functions)
   TemaNexoGuard:
     Type: AWS::SNS::Topic
@@ -424,6 +505,7 @@ Resources:
         FnGuardExtraer: !GetAtt FnGuardExtraer.Arn
         FnGuardVerificar: !GetAtt FnGuardVerificar.Arn
         FnGuardRiesgo: !GetAtt FnGuardRiesgo.Arn
+        FnGuardConciliar: !GetAtt FnGuardConciliar.Arn
         FnOperaciones: !GetAtt FnOperaciones.Arn
         TemaNexoGuard: !Ref TemaNexoGuard
 
@@ -437,7 +519,7 @@ Resources:
       CorsConfiguration:
         AllowOrigins: ["*"]
         AllowMethods: [GET, POST, PATCH, OPTIONS]
-        AllowHeaders: [content-type, authorization, x-admin-key]
+        AllowHeaders: [content-type, authorization, x-admin-key, x-banco-key]
         MaxAge: 3600
 
   IntCotizaciones:
@@ -460,6 +542,13 @@ Resources:
       ApiId: !Ref Api
       IntegrationType: AWS_PROXY
       IntegrationUri: !GetAtt FnOperaciones.Arn
+      PayloadFormatVersion: "2.0"
+  IntBanco:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref Api
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt FnBanco.Arn
       PayloadFormatVersion: "2.0"
   IntValidaciones:
     Type: AWS::ApiGatewayV2::Integration
@@ -514,6 +603,18 @@ Resources:
   RutaValidacionDecision:
     Type: AWS::ApiGatewayV2::Route
     Properties: {ApiId: !Ref Api, RouteKey: "POST /validaciones/{id_operacion}/decision", Target: !Sub "integrations/${IntValidaciones}"}
+  RutaDemoReiniciar:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "POST /demo/reiniciar", Target: !Sub "integrations/${IntValidaciones}"}
+  RutaBancoRegistrar:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "POST /banco/depositos", Target: !Sub "integrations/${IntBanco}"}
+  RutaBancoConsultar:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "GET /banco/depositos", Target: !Sub "integrations/${IntBanco}"}
+  RutaBancoReiniciar:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "POST /banco/reiniciar", Target: !Sub "integrations/${IntBanco}"}
 
   EtapaV1:
     Type: AWS::ApiGatewayV2::Stage
@@ -554,6 +655,14 @@ Resources:
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref FnValidaciones
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*/*
+
+  PermisoApiBanco:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FnBanco
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*/*
 
@@ -684,3 +793,6 @@ Outputs:
     Value: !Ref MaquinaNexoGuard
   TemaNexoGuard:
     Value: !Ref TemaNexoGuard
+  BancoApiUrl:
+    Description: URL de la API bancaria simulada (cabecera x-banco-key)
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/v1/banco"

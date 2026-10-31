@@ -19,12 +19,18 @@ Rutas HTTP:
   POST /validaciones/{id_operacion}/decision   [x-admin-key] {decision: aprobar|rechazar, motivo?}
                                                → SendTaskSuccess (reanuda Step Functions)
 
+  POST /demo/reiniciar                         [x-admin-key] {incluir_operaciones?} reinicia los datos de prueba:
+                                               detiene ejecuciones en curso, vacía nexo-validaciones,
+                                               reinicia el banco simulado y (opcional) las operaciones
+
 Acciones internas (invocadas por Step Functions, no expuestas en internet):
   {"accion": "iniciar" | "registrar_espera" | "guardar", ...}
 """
 import hmac
 import json
 import os
+import urllib.error
+import urllib.request
 from decimal import Decimal
 
 import boto3
@@ -69,7 +75,9 @@ def _ultima(id_op: str):
 def _analisis(ev: dict) -> dict:
     """Campos del análisis que se guardan al esperar revisión y al finalizar."""
     ex, ver, rie = ev.get("extraccion") or {}, ev.get("verificacion") or {}, ev.get("riesgo") or {}
-    sets = {"extraccion": _ddb(ex), "verificaciones": _ddb(ver.get("reglas", [])),
+    conc = ev.get("conciliacion") or {}
+    sets = {"extraccion": _ddb(ex), "verificaciones": _ddb(rie.get("verificaciones") or ver.get("reglas", [])),
+            "conciliacion": _ddb({k: conc.get(k) for k in ("coincidencia", "detalle", "deposito", "intento")}),
             "semaforo": rie.get("semaforo"), "justificacion": rie.get("justificacion"), "ruta": rie.get("ruta"),
             "alerta_cumplimiento": bool(rie.get("alerta_cumplimiento")),
             "monto_usd": _ddb(rie.get("monto_usd")), "motivo_sugerido": rie.get("motivo_rechazo"),
@@ -205,11 +213,71 @@ def decidir(event):
                  "id_operacion": id_op, "decision": decision}
 
 
+def _detener_ejecuciones() -> int:
+    """Detiene las ejecuciones de NexoGuard en curso (p. ej. revisiones que esperan un token)."""
+    arn = os.environ.get("STATE_MACHINE_ARN")
+    if not arn:
+        return 0
+    sfn, detenidas = _sfn(), 0
+    for pagina in sfn.get_paginator("list_executions").paginate(stateMachineArn=arn, statusFilter="RUNNING"):
+        for e in pagina["executions"]:
+            sfn.stop_execution(executionArn=e["executionArn"], cause="Reinicio de datos de prueba")
+            detenidas += 1
+    return detenidas
+
+
+def _vaciar_validaciones() -> int:
+    tabla, borradas, kwargs = _tabla(), 0, {"ProjectionExpression": "id_operacion, fecha_inicio"}
+    with tabla.batch_writer() as lote:
+        while True:
+            r = tabla.scan(**kwargs)
+            for i in r["Items"]:
+                lote.delete_item(Key={"id_operacion": i["id_operacion"], "fecha_inicio": i["fecha_inicio"]})
+                borradas += 1
+            if "LastEvaluatedKey" not in r:
+                break
+            kwargs["ExclusiveStartKey"] = r["LastEvaluatedKey"]
+    return borradas
+
+
+def _reiniciar_banco() -> dict:
+    """El banco es un sistema externo: se reinicia por su propia API, con su propia clave."""
+    url = os.environ.get("BANCO_API_URL", "").rstrip("/") + "/reiniciar"
+    req = urllib.request.Request(url, data=b"{}", method="POST", headers={
+        "x-banco-key": os.environ.get("BANCO_KEY", ""), "Content-Type": "application/json", "User-Agent": "nexoguard/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.load(r)
+    except (urllib.error.URLError, TimeoutError, ValueError) as e:
+        log("banco_no_reiniciado", error=str(e)[:200])
+        return {"error": "No se pudo reiniciar el banco simulado."}
+
+
+def _reiniciar_operaciones() -> dict:
+    """Operaciones es dueño de su tabla y sus comprobantes: se le pide por invocación interna."""
+    r = boto3.client("lambda").invoke(FunctionName=os.environ["FN_OPERACIONES"], InvocationType="RequestResponse",
+                                      Payload=json.dumps({"accion": "reiniciar_pruebas"}).encode())
+    return json.loads(r["Payload"].read())
+
+
+def reiniciar_demo(event):
+    """Deja el entorno listo para repetir la demo con los mismos comprobantes (evita el «número ya usado»)."""
+    _exigir_admin(event)
+    d = cuerpo_json(event) if event.get("body") else {}
+    res = {"ejecuciones_detenidas": _detener_ejecuciones(), "validaciones_borradas": _vaciar_validaciones(),
+           "banco": _reiniciar_banco()}
+    if d.get("incluir_operaciones"):
+        res["operaciones"] = _reiniciar_operaciones()
+    log("demo_reiniciada", **{k: v for k, v in res.items() if not isinstance(v, dict)})
+    return 200, {"mensaje": "Datos de prueba reiniciados.", **res}
+
+
 _http = manejar({
     "GET /validaciones/admin": listar_admin,
     "GET /validaciones/{id_operacion}": obtener_cliente,
     "GET /validaciones/{id_operacion}/admin": obtener_admin,
     "POST /validaciones/{id_operacion}/decision": decidir,
+    "POST /demo/reiniciar": reiniciar_demo,
 })
 
 

@@ -62,6 +62,13 @@ export interface Validacion {
   fecha_fin?: string;
   estado_final?: EstadoOperacion;
   decision?: { decision: 'aprobar' | 'rechazar'; decidido_por: DecididoPor; motivo: string | null; fecha: string };
+  /** Conciliación con la API bancaria (simulada): ¿llegó el depósito a una cuenta de NexoCambio? */
+  conciliacion?: {
+    coincidencia: 'total' | 'parcial' | 'ninguna' | 'error' | 'no_aplica' | 'no_consultado' | null;
+    detalle?: string | null;
+    intento?: number | null;
+    deposito?: { monto: number; moneda: string; numero_operacion: string; fecha: string; banco_origen: string; ordenante: string } | null;
+  };
   modelos?: { vision: string | null; texto: string | null };
 }
 

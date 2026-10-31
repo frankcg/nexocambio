@@ -109,4 +109,18 @@ describe('AdminLista', () => {
     expect(component['enRevision']().length).toBe(1);
     expect(fixture.nativeElement.textContent).toContain('Alerta de cumplimiento');
   });
+
+  it('reinicia los datos de prueba tras confirmar y recarga la lista', () => {
+    colaNexoguard();
+    httpMock.expectOne((r) => r.url.endsWith('/operaciones/admin')).flush(RESPUESTA);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    component['reiniciarDemo']();
+    const solicitud = httpMock.expectOne((r) => r.url.endsWith('/demo/reiniciar') && r.method === 'POST');
+    expect(solicitud.request.headers.get('x-admin-key')).toBe('clave-admin-pruebas');
+    expect(solicitud.request.body).toEqual({ incluir_operaciones: true });
+    solicitud.flush({ mensaje: 'Datos de prueba reiniciados.' });
+    colaNexoguard();
+    httpMock.expectOne((r) => r.url.endsWith('/operaciones/admin')).flush({ operaciones: [], total: 0 });
+    expect(component['operaciones']().length).toBe(0);
+  });
 });

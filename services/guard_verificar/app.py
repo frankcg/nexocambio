@@ -20,23 +20,12 @@ from datetime import date, timedelta
 import boto3
 from boto3.dynamodb.conditions import Key
 
+import nexo_cuentas
 from nexo_common import log
 
 CONFIANZA_MINIMA = 0.80
 TOLERANCIA_MONTO = 0.01
-
-# Cuentas y CCI de NexoCambio — FICTICIAS (misma fuente que frontend/src/app/features/operar/cuentas-nexo.ts)
-CUENTAS_NEXO = {
-    "PEN": ["193-2458710-0-39", "002-193-002458710039-14", "200-3001845527", "003-200-003001845527-38",
-            "0011-0174-0100073152", "011-174-000100073152-86", "000-4127785", "009-170-000004127785-52"],
-    "USD": ["193-2458711-1-47", "002-193-002458711147-17", "200-3001845534", "003-200-003001845534-31",
-            "0011-0174-0100073160", "011-174-000100073160-81", "000-4127793", "009-170-000004127793-56"],
-    "EUR": ["193-2458712-2-55", "002-193-002458712255-10"],
-}
-
-
-def _digitos(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+_digitos = nexo_cuentas.digitos
 
 
 def _plano(s) -> str:
@@ -81,8 +70,7 @@ def r_cuenta_destino(ex, op):
         return regla("cuenta_destino", "no_concluyente", "rechazo", "Transferencia cripto: se verifica manualmente.")
     visibles = _digitos(ex.get("cuenta_destino"))
     es_nexo = "nexocambio" in _plano(ex.get("destinatario"))
-    cuentas = [_digitos(c) for c in CUENTAS_NEXO.get(op["moneda_origen"], [])]
-    coincide = len(visibles) >= 2 and any(c.endswith(visibles) for c in cuentas)
+    coincide = nexo_cuentas.cuenta_de(visibles, op["moneda_origen"]) is not None
     if coincide or (es_nexo and not visibles):
         return regla("cuenta_destino", "cumple", "rechazo", "El destino es una cuenta de NexoCambio.")
     if not visibles and not ex.get("destinatario"):

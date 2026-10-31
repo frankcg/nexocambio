@@ -4,6 +4,14 @@
       <h1>Revisión de operaciones</h1>
       <p>Aprueba o rechaza las transferencias reportadas por los clientes.</p>
     </div>
+    <button class="btn btn-ghost" type="button" [disabled]="reiniciando()" (click)="reiniciarDemo()"
+            title="Entorno académico: borra operaciones, validaciones y depósitos de prueba">
+      @if (reiniciando()) {
+        <span class="spinner" aria-hidden="true"></span>Reiniciando…
+      } @else {
+        Reiniciar datos de prueba
+      }
+    </button>
   </div>
 
   @if (cargando()) {

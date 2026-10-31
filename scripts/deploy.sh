@@ -13,8 +13,9 @@ ARTIFACTS="nexo-${STAGE}-artifacts-${ACCOUNT}-${REGION}"
 mkdir -p .secrets
 [ -f .secrets/jwt_secret ] || openssl rand -hex 32 > .secrets/jwt_secret   # estable entre despliegues
 [ -f .secrets/admin_key ]  || openssl rand -hex 12 > .secrets/admin_key
+[ -f .secrets/banco_key ]  || openssl rand -hex 16 > .secrets/banco_key   # API bancaria simulada
 JWT_SECRET="$(cat .secrets/jwt_secret)"; ADMIN_KEY="$(cat .secrets/admin_key)"
-GROQ_API_KEY="$(cat .secrets/groq_api_key 2>/dev/null || true)"
+GROQ_API_KEY="$(cat .secrets/groq_api_key 2>/dev/null || true)"; BANCO_KEY="$(cat .secrets/banco_key)"
 [ -n "$GROQ_API_KEY" ] || echo "    AVISO: falta .secrets/groq_api_key; los agentes de NexoGuard enviarán todo a revisión humana."
 
 echo "==> Bucket de artefactos: s3://${ARTIFACTS}"
@@ -34,11 +35,17 @@ aws cloudformation deploy --template-file .packaged.yaml --stack-name "$STACK" -
     --no-fail-on-empty-changeset \
     --parameter-overrides "Stage=${STAGE}" "JwtSecret=${JWT_SECRET}" "AdminKey=${ADMIN_KEY}" \
                           "AlertEmail=${ALERT_EMAIL:-}" "UsarTasasEnVivo=${USAR_TASAS_EN_VIVO:-true}" \
-                          "UsarHttps=${USAR_HTTPS:-false}" "GroqApiKey=${GROQ_API_KEY}"
+                          "UsarHttps=${USAR_HTTPS:-false}" "GroqApiKey=${GROQ_API_KEY}" "BancoKey=${BANCO_KEY}"
 
 out() { aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
         --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
 API_URL="$(out ApiUrl)"; WEB_BUCKET="$(out BucketWeb)"; WEB_URL="$(out SitioWebUrl)"; WEB_HTTPS_URL="$(out SitioWebHttpsUrl)"
+
+echo "==> Banco simulado: datos semilla (solo si está vacío)"
+BANCO_URL="$(out BancoApiUrl)"
+if curl -s "${BANCO_URL}/depositos?numero_operacion=90100001" -H "x-banco-key: ${BANCO_KEY}" | grep -q '"total": 0'; then
+  curl -s -X POST "${BANCO_URL}/reiniciar" -H "x-banco-key: ${BANCO_KEY}" -H "content-type: application/json" -d "{}"; echo
+fi
 
 echo "==> Compilando frontend Angular"
 ( cd frontend && npm ci && npx ng build )

@@ -52,7 +52,38 @@ def semaforo_minimo(ver: dict, alerta: bool) -> str:
     return "amarillo" if (not ver["todo_cumple"] or alerta) else "verde"
 
 
-def evaluar(op: dict, ex: dict, ver: dict) -> dict:
+def regla_conciliacion(conc):
+    """Convierte el resultado de ConciliarConBanco en una regla más (gravedad revisión: un depósito que
+    no aparece puede ser una interbancaria aún no acreditada, no basta para rechazar)."""
+    c = (conc or {}).get("coincidencia")
+    if c in (None, "no_consultado"):
+        return None
+    detalle = conc.get("detalle") or ""
+    if c == "total":
+        return {"regla": "deposito_banco", "resultado": "cumple", "gravedad": "revision", "detalle": detalle}
+    if c == "parcial":
+        return {"regla": "deposito_banco", "resultado": "no_cumple", "gravedad": "revision", "detalle": detalle}
+    if c == "ninguna":
+        return {"regla": "deposito_banco", "resultado": "no_cumple", "gravedad": "revision",
+                "detalle": f"{detalle.rstrip('.')} (tras {conc.get('intento', 1)} consulta(s) al banco)."}
+    if c == "no_aplica":
+        return {"regla": "deposito_banco", "resultado": "no_concluyente", "gravedad": "informativa", "detalle": detalle}
+    return {"regla": "deposito_banco", "resultado": "no_concluyente", "gravedad": "revision",
+            "detalle": "No se pudo consultar al banco; confirmar el depósito manualmente."}
+
+
+def con_conciliacion(ver: dict, conc) -> dict:
+    r = regla_conciliacion(conc)
+    if not r:
+        return ver
+    ver = {**ver, "reglas": [*ver["reglas"], r]}
+    if r["gravedad"] == "revision" and r["resultado"] != "cumple":
+        ver.update(todo_cumple=False, motivos_revision=[*ver["motivos_revision"], r["detalle"]])
+    return ver
+
+
+def evaluar(op: dict, ex: dict, ver: dict, conc=None) -> dict:
+    ver = con_conciliacion(ver, conc)
     umbral = float(os.environ.get("UMBRAL_USD", "10000"))
     usd = monto_usd(op)
     alerta = usd >= umbral
@@ -92,11 +123,12 @@ def evaluar(op: dict, ex: dict, ver: dict) -> dict:
             or "El comprobante no corresponde a la operación registrada."
     return {"semaforo": semaforo, "semaforo_minimo": minimo, "semaforo_agente": propuesto or None,
             "ruta": RUTA[semaforo], "justificacion": justificacion, "motivo_rechazo": motivo,
-            "alerta_cumplimiento": alerta, "monto_usd": usd, "modelo": modelo}
+            "alerta_cumplimiento": alerta, "monto_usd": usd, "modelo": modelo,
+            "verificaciones": ver["reglas"]}   # incluye la regla del depósito en el banco
 
 
 def handler(event, context=None):
-    res = evaluar(event["operacion"], event["extraccion"], event["verificacion"])
+    res = evaluar(event["operacion"], event["extraccion"], event["verificacion"], event.get("conciliacion"))
     log("riesgo_evaluado", id_operacion=event["operacion"].get("id_operacion"), semaforo=res["semaforo"],
         minimo=res["semaforo_minimo"], agente=res["semaforo_agente"], ruta=res["ruta"])
     return res

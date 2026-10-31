@@ -69,6 +69,24 @@ export class AdminDetalle {
     ];
   });
 
+  /** Fila de la conciliación con el banco: lo que realmente llegó a la cuenta de NexoCambio. */
+  protected readonly deposito = computed(() => {
+    const c = this.validacion()?.conciliacion;
+    if (!c?.coincidencia || c.coincidencia === 'no_consultado') return null;
+    const d = c.deposito;
+    const etiqueta: Record<string, string> = {
+      total: 'Confirmado en el banco', parcial: 'Coincidencia parcial', ninguna: 'No encontrado en el banco',
+      error: 'Banco no disponible', no_aplica: 'No aplica (cripto)',
+    };
+    return {
+      etiqueta: etiqueta[c.coincidencia] ?? c.coincidencia,
+      clase: c.coincidencia === 'total' ? 'si' : c.coincidencia === 'ninguna' || c.coincidencia === 'parcial' ? 'no' : 'nc',
+      resumen: d ? `${this.monto(d.monto, d.moneda)} · N.º ${d.numero_operacion} · ${d.ordenante}` : null,
+      detalle: c.detalle ?? '',
+      intentos: c.intento ?? 1,
+    };
+  });
+
   protected readonly puedeAccionar = computed(() => this.siguienteAprobado() !== null && !this.guardEnCurso());
 
   private recarga: ReturnType<typeof setTimeout> | null = null;

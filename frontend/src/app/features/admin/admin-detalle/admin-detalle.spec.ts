@@ -137,4 +137,9 @@ describe('AdminDetalle', () => {
     cargar(OPERACION, { ...VALIDACION, estado: 'en_curso' });
     expect(component['puedeAccionar']()).toBe(false);
   });
+
+  it('muestra el resultado de la conciliación con el banco', () => {
+    cargar(OPERACION, { ...VALIDACION, conciliacion: { coincidencia: 'ninguna', detalle: 'No hay depósito.', intento: 4, deposito: null } });
+    expect(component['deposito']()).toEqual(expect.objectContaining({ etiqueta: 'No encontrado en el banco', clase: 'no', intentos: 4 }));
+  });
 });

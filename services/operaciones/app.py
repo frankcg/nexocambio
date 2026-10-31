@@ -422,7 +422,32 @@ _http = manejar({
 })
 
 
+def reiniciar_pruebas() -> dict:
+    """Acción interna (POST /demo/reiniciar con incluir_operaciones): borra todas las operaciones y sus
+    comprobantes en S3. Solo para el entorno académico; los clientes registrados se conservan."""
+    tabla, borradas, kwargs = _tabla(), 0, {"ProjectionExpression": "id_operacion"}
+    with tabla.batch_writer() as lote:
+        while True:
+            r = tabla.scan(**kwargs)
+            for i in r["Items"]:
+                lote.delete_item(Key={"id_operacion": i["id_operacion"]})
+                borradas += 1
+            if "LastEvaluatedKey" not in r:
+                break
+            kwargs["ExclusiveStartKey"] = r["LastEvaluatedKey"]
+    s3, bucket, archivos = _s3(), os.environ["BUCKET_COMPROBANTES"], 0
+    for pagina in s3.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix="comprobantes/"):
+        claves = [{"Key": o["Key"]} for o in pagina.get("Contents", [])]
+        if claves:
+            s3.delete_objects(Bucket=bucket, Delete={"Objects": claves, "Quiet": True})
+            archivos += len(claves)
+    log("operaciones_reiniciadas", operaciones=borradas, comprobantes=archivos)
+    return {"operaciones_borradas": borradas, "comprobantes_borrados": archivos}
+
+
 def handler(event, context=None):
     if event.get("accion") == "aplicar_decision":  # Step Functions → Lambda (NexoGuard)
         return aplicar_decision(event)
+    if event.get("accion") == "reiniciar_pruebas":  # POST /demo/reiniciar (Validaciones → Lambda)
+        return reiniciar_pruebas()
     return _http(event, context)

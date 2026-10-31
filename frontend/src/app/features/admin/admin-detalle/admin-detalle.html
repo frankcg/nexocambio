@@ -83,6 +83,20 @@
             @if (v.alerta_cumplimiento) {
               <p class="form-err">Alerta de cumplimiento: el monto (≈ US$ {{ v.monto_usd }}) supera el umbral de registro.</p>
             }
+            @if (deposito(); as d) {
+              <div class="justif" style="display: flex; flex-direction: column; gap: 4px">
+                <b>
+                  Depósito en el banco:
+                  <span [style.color]="d.clase === 'si' ? 'var(--ok)' : d.clase === 'no' ? 'var(--bad)' : 'var(--warn)'">
+                    {{ d.clase === 'si' ? '✓' : d.clase === 'no' ? '✗' : '?' }} {{ d.etiqueta }}
+                  </span>
+                </b>
+                @if (d.resumen) {
+                  <span class="mono" style="font-size: 13px">{{ d.resumen }}</span>
+                }
+                <small class="muted">{{ d.detalle }} · {{ d.intentos }} consulta(s) a la API bancaria</small>
+              </div>
+            }
             @if (comparativa().length) {
               <table class="cmp">
                 <thead><tr><th>Dato</th><th>Declarado en la operación</th><th>Leído por el agente</th><th></th></tr></thead>

@@ -76,6 +76,25 @@ export class AdminLista {
     });
   }
 
+  protected readonly reiniciando = signal(false);
+
+  /** Entorno académico: deja la demo lista para repetirse con los mismos comprobantes. */
+  protected reiniciarDemo(): void {
+    const mensaje = 'Se borrarán TODAS las operaciones, validaciones y depósitos de prueba (los clientes se conservan). ¿Continuar?';
+    if (!window.confirm(mensaje)) return;
+    this.reiniciando.set(true);
+    this.validacionesSvc.reiniciarDemo(true).subscribe({
+      next: () => {
+        this.reiniciando.set(false);
+        this.cargar();
+      },
+      error: (e: HttpErrorResponse) => {
+        this.reiniciando.set(false);
+        this.error.set((e.error as ErrorApi | undefined)?.mensaje ?? 'No se pudo reiniciar los datos de prueba.');
+      },
+    });
+  }
+
   protected elegirFiltro(f: Filtro): void {
     this.filtro.set(f);
   }

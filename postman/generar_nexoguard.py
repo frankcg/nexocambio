@@ -29,7 +29,10 @@ DESCRIPCION = (
     "la clave de Groq). Antes, ejecutar la carpeta 2 (registro y login) para tener {{token}}.\n\n"
     "Cada escenario: cotiza → registra la operación → adjunta un comprobante ficticio → espera el resultado "
     "consultando GET /validaciones/{id} cada 4 s (usar el Collection Runner: la espera usa setNextRequest).\n\n"
-    "Regenerar antes de cada corrida: `python postman/generar_nexoguard.py` (números de operación nuevos).")
+    "Los escenarios legítimos registran primero el depósito en el banco simulado (POST /banco/depositos con "
+    "{{bancoKey}}), como si el cliente hubiera transferido; NexoGuard lo concilia. La carpeta empieza con "
+    "POST /demo/reiniciar, así se puede repetir con los mismos comprobantes.\n\n"
+    "Regenerar antes de cada corrida: `python postman/generar_nexoguard.py` (fecha de hoy y números nuevos).")
 
 
 def b64(ruta: Path) -> str:
@@ -46,12 +49,14 @@ def url(ruta: str) -> dict:
     return u
 
 
-def req(nombre, metodo, ruta, cuerpo=None, tests=(), pre=(), token=True, admin=False, desc=""):
+def req(nombre, metodo, ruta, cuerpo=None, tests=(), pre=(), token=True, admin=False, desc="", banco=False):
     headers = [{"key": "Content-Type", "value": "application/json"}] if cuerpo is not None else []
     if token:
         headers.append({"key": "Authorization", "value": "Bearer {{token}}"})
     if admin:
         headers.append({"key": "x-admin-key", "value": "{{adminKey}}"})
+    if banco:
+        headers.append({"key": "x-banco-key", "value": "{{bancoKey}}"})
     item = {"name": nombre, "event": [], "request": {"method": metodo, "header": headers, "url": url(ruta), "description": desc}}
     if pre:
         item["event"].append({"listen": "prerequest", "script": {"type": "text/javascript", "exec": list(pre)}})
@@ -86,7 +91,17 @@ def pref(var: str) -> str:
     return f"6.{var[2]}"
 
 
-def escenario(n, titulo, cotizacion, origen, destino, imagen, var, resultado_tests, extra=(), numero=None):
+def transferir(n, clave, sufijo="2b"):
+    """El cliente transfiere desde su banco: el banco simulado registra el depósito (mismos datos que el comprobante)."""
+    cuenta, monto, moneda, numero, banco, ordenante, _ = gc.depositos()[clave]
+    return req(f"{pref(n)}.{sufijo} El cliente transfiere (el banco registra el depósito)", "POST", "/banco/depositos",
+               {"cuenta_destino": cuenta, "monto": monto, "moneda": moneda, "numero_operacion": numero,
+                "banco_origen": banco, "ordenante": ordenante, "fecha": gc.DIA.isoformat()},
+               token=False, banco=True, tests=["pm.test('Depósito registrado', () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"],
+               desc="Banco simulado (sistema externo, cabecera x-banco-key).")
+
+
+def escenario(n, titulo, cotizacion, origen, destino, imagen, var, resultado_tests, extra=(), numero=None, deposito=None):
     vc, vo = f"{n}_cot", f"{n}_op"
     items = [
         req(f"{pref(n)}.1 Cotizar", "POST", "/cotizar", cotizacion, token=False, tests=[
@@ -96,6 +111,7 @@ def escenario(n, titulo, cotizacion, origen, destino, imagen, var, resultado_tes
             {"id_cotizacion": f"{{{{{vc}}}}}", "origen": origen, "destino": destino}, tests=[
                 "pm.test('Status 201', () => pm.response.to.have.status(201));",
                 f"pm.collectionVariables.set('{vo}', pm.response.json().id_operacion);"]),
+        *([transferir(n, deposito)] if deposito else []),
         req(f"{pref(n)}.3 Adjuntar comprobante (inicia NexoGuard)", "POST", f"/operaciones/{{{{{vo}}}}}/comprobante",
             {"nombre_archivo": imagen.name, "content_type": "image/png", "contenido_base64": b64(imagen),
              **({"numero_transferencia": numero} if numero else {})}, tests=[
@@ -164,11 +180,26 @@ def construir(carpeta: Path) -> dict:
             ]
         return pasos
 
+    # 6.8: el comprobante se sube ANTES de que el depósito llegue; llega mientras el workflow espera
+    tardio = escenario("ng8", "6.8 Aprobación automática con depósito tardío (verde)", pen_usd,
+                       {"tipo": "banco", "banco": "Interbank"}, dest_usd, img["10"], "ng8",
+                       lambda vo: [
+                           req(f"{pref(vo)} · Pasan 25 s: el workflow espera al banco", "GET", f"/validaciones/{{{{{vo}}}}}",
+                               pre=["setTimeout(() => {}, 25000);"],
+                               tests=["pm.test('Sigue validando (esperando el depósito)', () => pm.expect(pm.response.json().estado).to.eql('en_curso'));"]),
+                           transferir(vo, "10", sufijo="5"),
+                           *final("En proceso", "agente")(vo),
+                       ])
+    reinicio = req("6.0 Reiniciar datos de prueba", "POST", "/demo/reiniciar", {"incluir_operaciones": False}, token=False, admin=True,
+                   tests=["pm.test('Status 200', () => pm.response.to.have.status(200));",
+                          "pm.test('Banco reiniciado con su semilla', () => pm.expect(pm.response.json().banco.semilla).to.eql(20));"],
+                   desc="Vacía las validaciones y reinicia el banco simulado: permite repetir la carpeta con los mismos comprobantes.")
     return {
         "name": NOMBRE, "description": DESCRIPCION,
         "item": [
+            reinicio,
             escenario("ng1", "6.1 Aprobación automática (verde)", pen_usd, bcp, dest_usd, img["01"], "ng1",
-                      final("En proceso", "agente"), numero=gc.nro("04417382")),
+                      final("En proceso", "agente"), numero=gc.nro("04417382"), deposito="01"),
             escenario("ng2", "6.2 Rechazo automático: cuenta ajena (rojo)", pen_usd, bcp, dest_usd, img["04"], "ng2",
                       final("Rechazada", "agente", "pm.test('Motivo: no es una cuenta de NexoCambio', () => pm.expect(v.motivo).to.include('no es una cuenta de NexoCambio'));")),
             escenario("ng3", "6.3 Rechazo automático: comprobante duplicado (rojo)", pen_usd, bcp, dest_usd, img["05"], "ng3",
@@ -180,18 +211,24 @@ def construir(carpeta: Path) -> dict:
                       img["06"], "ng4",
                       revision(["pm.test('Alerta de cumplimiento (monto ≥ umbral)', () => pm.expect(v.alerta_cumplimiento).to.eql(true));",
                                 "pm.test('Leyó US$ 12,000', () => pm.expect(v.extraccion.monto).to.eql(12000));"],
-                               {"decision": "aprobar"}, "En proceso", con_errores=True)),
+                               {"decision": "aprobar"}, "En proceso", con_errores=True), deposito="06"),
             escenario("ng5", "6.5 Revisión humana: monto distinto (amarillo) → el operador rechaza", pen_usd, bcp, dest_usd, img["03"], "ng5",
                       revision(["pm.test('La regla de monto no se cumple', () => pm.expect(v.verificaciones.find(r => r.regla === 'monto').resultado).to.eql('no_cumple'));",
                                 "pm.test('Leyó S/ 850', () => pm.expect(v.extraccion.monto).to.eql(850));"],
                                {"decision": "rechazar", "motivo": "El monto transferido (S/ 850.00) no coincide con la operación (S/ 1,000.00)."},
-                               "Rechazada")),
+                               "Rechazada"), deposito="03"),
             escenario("ng6", "6.6 Revisión humana: número declarado distinto (amarillo) → el operador aprueba",
                       {**pen_usd, "monto_origen": 250}, {"tipo": "banco", "banco": "Interbank"}, dest_usd, img["02"], "ng6",
                       revision(["pm.test('El número declarado no coincide', () => pm.expect(v.verificaciones.find(r => r.regla === 'numero_declarado').resultado).to.eql('no_cumple'));"],
                                {"decision": "aprobar"}, "En proceso"),
-                      numero="11111111"),
-            {"name": "6.7 Errores de la API Validaciones", "item": [
+                      numero="11111111", deposito="02"),
+            escenario("ng7", "6.7 Revisión humana: comprobante sin depósito en el banco (amarillo) → el operador rechaza",
+                      pen_usd, bcp, dest_usd, img["09"], "ng7",
+                      revision(["pm.test('El banco no tiene el depósito', () => pm.expect(v.conciliacion.coincidencia).to.eql('ninguna'));",
+                                "pm.test('Consultó al banco varias veces', () => pm.expect(v.conciliacion.intento).to.be.above(1));"],
+                               {"decision": "rechazar", "motivo": "El depósito no llegó a la cuenta de NexoCambio."}, "Rechazada")),
+            tardio,
+            {"name": "6.9 Errores de la API Validaciones", "item": [
                 req("Validación - error: sin token", "GET", "/validaciones/{{ng1_op}}", token=False,
                     tests=["pm.test('Status 401', () => pm.response.to.have.status(401));"]),
                 req("Validación - error: operación sin validación", "GET", "/validaciones/NX-NO-EXISTE",
@@ -212,11 +249,11 @@ def main():
     col = json.loads(COLECCION.read_text(encoding="utf-8"))
     col["item"] = [i for i in col["item"] if not i["name"].startswith("6. NexoGuard")] + [nueva]
     claves = {v["key"] for v in col.get("variable", [])}
-    for k in ["ng_intentos"] + [f"ng{i}_{s}" for i in range(1, 7) for s in ("cot", "op")]:
+    for k in ["ng_intentos", "bancoKey"] + [f"ng{i}_{s}" for i in range(1, 9) for s in ("cot", "op")]:
         if k not in claves:
             col.setdefault("variable", []).append({"key": k, "value": ""})
     COLECCION.write_text(json.dumps(col, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    total = sum(len(e.get("item", [])) for e in nueva["item"])
+    total = sum(len(e.get("item", [])) or 1 for e in nueva["item"])
     print(f"Carpeta «{NOMBRE}» con {total} requests (semilla {semilla}) → {COLECCION.name}")
 
 

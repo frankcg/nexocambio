@@ -21,6 +21,8 @@ ENTORNO = {
     "PBKDF2_ITER": "1000", "USAR_TASAS_EN_VIVO": "false",
     "TABLE_VALIDACIONES": "nexo-test-validaciones", "GROQ_API_KEY": "gsk-pruebas",
     "GROQ_MODELO_VISION": "modelo-vision", "GROQ_MODELO_TEXTO": "modelo-texto", "UMBRAL_USD": "10000",
+    "TABLE_BANCO": "nexo-test-banco", "BANCO_KEY": "clave-banco-pruebas",
+    "BANCO_API_URL": "https://banco.test/v1/banco", "FN_OPERACIONES": "nexo-test-operaciones",
 }
 
 
@@ -66,6 +68,13 @@ def aws(monkeypatch):
                             {"IndexName": "estado-fecha-index", "Projection": {"ProjectionType": "ALL"},
                              "KeySchema": [{"AttributeName": "estado", "KeyType": "HASH"},
                                            {"AttributeName": "fecha_inicio", "KeyType": "RANGE"}]}])
+        db.create_table(TableName="nexo-test-banco", BillingMode="PAY_PER_REQUEST",
+                        AttributeDefinitions=[{"AttributeName": n, "AttributeType": "S"} for n in
+                                              ("cuenta", "mov", "numero_operacion")],
+                        KeySchema=[{"AttributeName": "cuenta", "KeyType": "HASH"},
+                                   {"AttributeName": "mov", "KeyType": "RANGE"}],
+                        GlobalSecondaryIndexes=[{"IndexName": "numero-operacion-index", "Projection": {"ProjectionType": "ALL"},
+                                                 "KeySchema": [{"AttributeName": "numero_operacion", "KeyType": "HASH"}]}])
         boto3.client("s3").create_bucket(Bucket="nexo-test-comprobantes")
         yield
 

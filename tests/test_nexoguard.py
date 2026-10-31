@@ -14,7 +14,7 @@ OP = {"id_operacion": "NX-PRUEBA01", "id_cliente": "CLI-AAA", "modalidad": "casa
       "moneda_destino": "USD", "monto_origen": 1000.0, "monto_destino": 294.07, "tasa": 0.29407,
       "origen": {"tipo": "banco", "banco": "BCP"}, "destino": {"tipo": "banco", "banco": "Interbank"},
       "fecha_operacion": f"{HOY}T10:00:00.000Z", "ruta_comprobante": "s3://nexo-test-comprobantes/c/x.png",
-      "comprobante_tipo": "image/png", "comprobante_nombre": "x.png"}
+      "comprobante_tipo": "image/png", "comprobante_nombre": "x.png", "numero_transferencia": "04417382"}
 
 
 def leido(**kw):
@@ -94,6 +94,20 @@ def test_verificar_lectura_no_confiable_no_rechaza(ver):
     res = ver.verificar(OP, leido(legible=False, confianza=0.35, monto=500.0, numero_operacion=None))
     assert not res["lectura_confiable"] and res["discrepancias_duras"] == []   # va a revisión, no a rechazo
     assert res["motivos_revision"]
+
+
+@pytest.mark.parametrize("declarado, leido_nro, resultado, revisa", [
+    ("04417382", "04417382", "cumple", False),
+    ("4417382", "04417382", "cumple", False),          # ceros a la izquierda
+    ("N° 0441-7382", "04417382", "cumple", False),     # solo cuentan los dígitos
+    ("04417832", "04417382", "no_cumple", True),       # dígitos cambiados → revisión, no rechazo
+    (None, "04417382", "no_concluyente", False),       # no declaró: solo informativa
+    ("04417382", None, "no_concluyente", True),        # el agente no leyó el número (la regla de duplicado ya pide revisión)
+])
+def test_verificar_numero_declarado(ver, declarado, leido_nro, resultado, revisa):
+    res = ver.verificar({**OP, "numero_transferencia": declarado}, leido(numero_operacion=leido_nro))
+    assert resultados(res)["numero_declarado"] == resultado
+    assert res["discrepancias_duras"] == [] and res["todo_cumple"] is (not revisa)
 
 
 def test_verificar_fecha_anterior_a_la_operacion(ver):

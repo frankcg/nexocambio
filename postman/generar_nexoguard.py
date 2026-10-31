@@ -86,7 +86,7 @@ def pref(var: str) -> str:
     return f"6.{var[2]}"
 
 
-def escenario(n, titulo, cotizacion, origen, destino, imagen, var, resultado_tests, extra=()):
+def escenario(n, titulo, cotizacion, origen, destino, imagen, var, resultado_tests, extra=(), numero=None):
     vc, vo = f"{n}_cot", f"{n}_op"
     items = [
         req(f"{pref(n)}.1 Cotizar", "POST", "/cotizar", cotizacion, token=False, tests=[
@@ -97,11 +97,12 @@ def escenario(n, titulo, cotizacion, origen, destino, imagen, var, resultado_tes
                 "pm.test('Status 201', () => pm.response.to.have.status(201));",
                 f"pm.collectionVariables.set('{vo}', pm.response.json().id_operacion);"]),
         req(f"{pref(n)}.3 Adjuntar comprobante (inicia NexoGuard)", "POST", f"/operaciones/{{{{{vo}}}}}/comprobante",
-            {"nombre_archivo": imagen.name, "content_type": "image/png", "contenido_base64": b64(imagen)}, tests=[
+            {"nombre_archivo": imagen.name, "content_type": "image/png", "contenido_base64": b64(imagen),
+             **({"numero_transferencia": numero} if numero else {})}, tests=[
                 "pm.test('Status 200', () => pm.response.to.have.status(200));",
                 "pm.test('Queda pendiente de validación', () => pm.expect(pm.response.json().estado).to.eql('Pendiente de validación'));",
                 "pm.collectionVariables.set('ng_intentos', 0);"],
-            desc=f"Comprobante ficticio: {imagen.name}"),
+            desc=f"Comprobante ficticio: {imagen.name}" + (f" · número declarado {numero}" if numero else "")),
         *resultado_tests(vo),
         *extra,
     ]
@@ -167,7 +168,7 @@ def construir(carpeta: Path) -> dict:
         "name": NOMBRE, "description": DESCRIPCION,
         "item": [
             escenario("ng1", "6.1 Aprobación automática (verde)", pen_usd, bcp, dest_usd, img["01"], "ng1",
-                      final("En proceso", "agente")),
+                      final("En proceso", "agente"), numero=gc.nro("04417382")),
             escenario("ng2", "6.2 Rechazo automático: cuenta ajena (rojo)", pen_usd, bcp, dest_usd, img["04"], "ng2",
                       final("Rechazada", "agente", "pm.test('Motivo: no es una cuenta de NexoCambio', () => pm.expect(v.motivo).to.include('no es una cuenta de NexoCambio'));")),
             escenario("ng3", "6.3 Rechazo automático: comprobante duplicado (rojo)", pen_usd, bcp, dest_usd, img["05"], "ng3",
@@ -185,7 +186,12 @@ def construir(carpeta: Path) -> dict:
                                 "pm.test('Leyó S/ 850', () => pm.expect(v.extraccion.monto).to.eql(850));"],
                                {"decision": "rechazar", "motivo": "El monto transferido (S/ 850.00) no coincide con la operación (S/ 1,000.00)."},
                                "Rechazada")),
-            {"name": "6.6 Errores de la API Validaciones", "item": [
+            escenario("ng6", "6.6 Revisión humana: número declarado distinto (amarillo) → el operador aprueba",
+                      {**pen_usd, "monto_origen": 250}, {"tipo": "banco", "banco": "Interbank"}, dest_usd, img["02"], "ng6",
+                      revision(["pm.test('El número declarado no coincide', () => pm.expect(v.verificaciones.find(r => r.regla === 'numero_declarado').resultado).to.eql('no_cumple'));"],
+                               {"decision": "aprobar"}, "En proceso"),
+                      numero="11111111"),
+            {"name": "6.7 Errores de la API Validaciones", "item": [
                 req("Validación - error: sin token", "GET", "/validaciones/{{ng1_op}}", token=False,
                     tests=["pm.test('Status 401', () => pm.response.to.have.status(401));"]),
                 req("Validación - error: operación sin validación", "GET", "/validaciones/NX-NO-EXISTE",
@@ -206,7 +212,7 @@ def main():
     col = json.loads(COLECCION.read_text(encoding="utf-8"))
     col["item"] = [i for i in col["item"] if not i["name"].startswith("6. NexoGuard")] + [nueva]
     claves = {v["key"] for v in col.get("variable", [])}
-    for k in ["ng_intentos"] + [f"ng{i}_{s}" for i in range(1, 6) for s in ("cot", "op")]:
+    for k in ["ng_intentos"] + [f"ng{i}_{s}" for i in range(1, 7) for s in ("cot", "op")]:
         if k not in claves:
             col.setdefault("variable", []).append({"key": k, "value": ""})
     COLECCION.write_text(json.dumps(col, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

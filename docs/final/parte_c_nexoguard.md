@@ -9,7 +9,7 @@
 |---|---|---|
 | Workflow agéntico | AWS Step Functions **Standard**, 17 estados: ruta predefinida, `Retry`/`Catch` por estado, revisión humana con `waitForTaskToken` e integraciones directas con SNS | `statemachine/nexoguard.asl.json` |
 | Agente Extractor | Lambda Python 3.12 + Groq `qwen/qwen3.8-27b` (visión, sin memoria) | `services/guard_extraer/app.py` |
-| Verificación | Lambda Python 3.12 con 7 reglas deterministas y detección de duplicados (GSI) | `services/guard_verificar/app.py` |
+| Verificación | Lambda Python 3.12 con 8 reglas deterministas (incluido el contraste con el número declarado por el cliente) y detección de duplicados (GSI) | `services/guard_verificar/app.py` |
 | Agente de Riesgo | Lambda Python 3.12 + Groq `openai/gpt-oss-20b` (texto, sin memoria) con barreras de decisión | `services/guard_riesgo/app.py` |
 | API Validaciones | Microservicio nuevo (4 rutas + 3 acciones internas) con su BD `nexo-validaciones` | `services/validaciones/app.py` |
 | Cambios en Operaciones | `StartExecution` al adjuntar el comprobante y acción interna `aplicar_decision` (historial con actor) | `services/operaciones/app.py` |
@@ -17,7 +17,7 @@
 | Infraestructura como código | CloudFormation: 1 tabla, 4 Lambdas, máquina de estados, SNS, 4 rutas, alarma | `template.yaml`, `scripts/deploy.sh` |
 | Frontend | Angular 22: validación en vivo para el cliente; cola y revisión asistida en el back-office | `frontend/src/app/…` (ver sección 4) |
 | Pruebas | 74 pruebas de backend (pytest + moto) y 65 de frontend (Vitest) | `tests/`, `*.spec.ts` |
-| Evidencia API | Colección Postman con la carpeta «6. NexoGuard» (39 requests) | `postman/` |
+| Evidencia API | Colección Postman con la carpeta «6. NexoGuard» (48 requests) | `postman/` |
 
 Todo el código se escribió con asistencia de IA (Claude) a partir del diseño de la Parte B, tal como permite el enunciado.
 
@@ -105,7 +105,7 @@ Agente de Riesgo (`gpt-oss-20b`): con el comprobante 01 devolvió verde y la jus
 
 ### 3.3 Evidencia de uso desde Postman
 
-La colección `postman/NexoCambio.postman_collection.json` incluye la carpeta **«6. NexoGuard»** (39 requests con pruebas automáticas):
+La colección `postman/NexoCambio.postman_collection.json` incluye la carpeta **«6. NexoGuard»** (48 requests con pruebas automáticas):
 
 | Escenario | Verificaciones |
 |---|---|
@@ -114,7 +114,8 @@ La colección `postman/NexoCambio.postman_collection.json` incluye la carpeta **
 | 6.3 Rechazo automático por duplicado | «Rechazada» y motivo «ya se usó» |
 | 6.4 Revisión humana: monto alto → aprueba | Cola de revisión, semáforo amarillo, alerta de cumplimiento, errores 403/400/409, aprobación del operador → «En proceso» con `actor = operador` |
 | 6.5 Revisión humana: monto distinto → rechaza | Semáforo amarillo, regla de monto incumplida (lee S/ 850), el operador rechaza con motivo → «Rechazada» con `actor = operador` |
-| 6.6 Errores | 401 sin token, 404 sin validación, 403 sin clave |
+| 6.6 Revisión humana: número declarado distinto → aprueba | El cliente declara 11111111 y el comprobante dice otro número: regla `numero_declarado` incumplida, semáforo amarillo, el operador aprueba → «En proceso» |
+| 6.7 Errores | 401 sin token, 404 sin validación, 403 sin clave |
 
 Antes de cada corrida se ejecuta `python postman/generar_nexoguard.py`, que regenera los comprobantes con la fecha de hoy y números de operación nuevos, para que la corrida no choque con la detección de duplicados. La espera del resultado usa el Collection Runner.
 
@@ -128,6 +129,7 @@ El script `python scripts/probar_nexoguard.py <ApiUrl>` recorre los mismos escen
 | Rechazo automático: cuenta ajena | — | **Rechazada** · «El dinero se envió a Inversiones Andinas E.I.R.L. (cuenta 7716), que no es una cuenta de NexoCambio en PEN.» | 5–67 s* |
 | Rechazo automático: duplicado | — | **Rechazada** · «El número de operación 05473215 ya se usó en la operación NX-74AZRH3W.» | 5 s |
 | Revisión humana: monto alto → aprueba | — | Semáforo **amarillo**, alerta de cumplimiento y «Motivo: el monto equivale a US$ 12,000.00, igual o mayor al umbral de registro UIF…»; el operador aprueba → **En proceso**, decidido por el operador | 5–27 s + decisión |
+| Revisión humana: número declarado distinto → aprueba | — | Semáforo **amarillo** · «Motivo: El cliente declaró el número 11111111, pero el comprobante indica 008394373»; el operador aprueba → **En proceso** | 31 s + decisión |
 | Revisión humana: monto distinto → rechaza | — | Semáforo **amarillo** · «Motivo: El comprobante indica 850.00 y la operación es por 1,000.00»; el operador rechaza → **Rechazada**, decidido por el operador | 26 s + decisión |
 
 \* Los tiempos más largos corresponden al `Retry` del workflow cuando Groq responde 429 (límite de la capa gratuita): la validación se completa igual, solo que más tarde.

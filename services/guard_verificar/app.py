@@ -129,9 +129,29 @@ def r_banco_origen(ex, op):
                  f"Se declaró {declarado} pero el comprobante es de {ex['banco_origen']}.")
 
 
+def r_numero_declarado(ex, op):
+    """Contrasta el número que escribió el cliente (opcional) con el que leyó el agente.
+    Una diferencia no prueba fraude (puede ser un error de lectura o de tipeo): va a revisión, nunca a rechazo."""
+    declarado = _digitos(op.get("numero_transferencia"))
+    if not declarado:
+        return regla("numero_declarado", "no_concluyente", "informativa", "El cliente no declaró número de operación.")
+    if (op.get("origen") or {}).get("tipo") == "wallet":
+        return regla("numero_declarado", "no_concluyente", "informativa",
+                     f"Hash declarado: {op.get('numero_transferencia')} (se verifica manualmente).")
+    leido = ex.get("numero_operacion")
+    if not leido:
+        return regla("numero_declarado", "no_concluyente", "informativa",
+                     f"El cliente declaró {declarado}; el agente no pudo leer el número del comprobante.")
+    # Algunos bancos anteponen ceros: se comparan sin ceros a la izquierda
+    if declarado.lstrip("0") == leido.lstrip("0"):
+        return regla("numero_declarado", "cumple", "revision", f"El número declarado {declarado} coincide con el comprobante.")
+    return regla("numero_declarado", "no_cumple", "revision",
+                 f"El cliente declaró el número {declarado}, pero el comprobante indica {leido}.")
+
+
 def verificar(op: dict, ex: dict) -> dict:
     reglas = [r_reconocido(ex), r_monto(ex, op), r_moneda(ex, op), r_cuenta_destino(ex, op),
-              r_duplicado(ex, op), r_fecha(ex, op), r_banco_origen(ex, op)]
+              r_duplicado(ex, op), r_numero_declarado(ex, op), r_fecha(ex, op), r_banco_origen(ex, op)]
     confiable = reglas[0]["resultado"] == "cumple"
     duras = [r for r in reglas if r["gravedad"] == "rechazo" and r["resultado"] == "no_cumple"]
     revisar = [r for r in reglas if r["gravedad"] in ("rechazo", "revision") and r["resultado"] != "cumple"]

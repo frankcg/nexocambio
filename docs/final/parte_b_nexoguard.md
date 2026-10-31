@@ -75,6 +75,7 @@ Se eligió **Standard** (y no Express) porque `waitForTaskToken` solo existe en 
 | Moneda | Moneda leída = `moneda_origen` | Revisión |
 | Cuenta destino | Los dígitos visibles coinciden con una cuenta o CCI de NexoCambio para esa moneda, o el destinatario es «NexoCambio» | **Rechazo** |
 | No duplicado | El N° de operación no existe en otra validación (GSI `numero-operacion-index`) | **Rechazo** |
+| Número declarado | Si el cliente escribió el N° de operación (campo opcional), coincide con el leído por el agente (solo dígitos, sin ceros a la izquierda) | Revisión (si no lo declaró o no se leyó: solo informativa) |
 | Fecha | Fecha del comprobante ≥ fecha de creación de la operación (−1 día de tolerancia) | Revisión |
 | Banco de origen | Coincide con el banco declarado (si se pudo leer) | Solo informativa |
 

@@ -61,7 +61,9 @@ export class AdminDetalle {
       { campo: 'Monto', declarado: this.monto(o.monto_origen, o.moneda_origen), leido: ex.monto != null ? `${ex.monto.toFixed(2)} ${ex.moneda ?? ''}` : '—', resultado: res('monto') },
       { campo: 'Moneda', declarado: o.moneda_origen, leido: ex.moneda ?? '—', resultado: res('moneda') },
       { campo: 'Destino', declarado: destino, leido: [ex.destinatario, ex.cuenta_destino].filter(Boolean).join(' · ') || '—', resultado: res('cuenta_destino') },
-      { campo: 'N.º de operación', declarado: o.numero_transferencia || '—', leido: ex.numero_operacion ?? '—', resultado: res('numero_operacion_unico') },
+      // ✗ si no coincide con lo declarado por el cliente o si ya se usó en otra operación
+      { campo: 'N.º de operación', declarado: o.numero_transferencia || '—', leido: ex.numero_operacion ?? '—',
+        resultado: [res('numero_declarado'), res('numero_operacion_unico')].includes('no_cumple') ? 'no_cumple' : res('numero_operacion_unico') },
       { campo: 'Fecha', declarado: o.fecha_operacion.slice(0, 10), leido: ex.fecha ?? '—', resultado: res('fecha') },
       { campo: 'Banco de origen', declarado: this.origenTexto(), leido: ex.banco_origen ?? '—', resultado: res('banco_origen') },
     ];

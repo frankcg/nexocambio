@@ -48,14 +48,15 @@ def esperar(id_op, token, hasta, max_seg=240):
     raise TimeoutError(f"{id_op} no llegó a {hasta}")
 
 
-def operacion(token, cot, origen, destino, imagen):
+def operacion(token, cot, origen, destino, imagen, numero=None):
     s, q = llamar("POST", "/cotizar", cot)
     assert s == 201, q
     s, op = llamar("POST", "/operaciones", {"id_cotizacion": q["id_cotizacion"], "origen": origen, "destino": destino}, token)
     assert s == 201, op
     s, r = llamar("POST", f"/operaciones/{op['id_operacion']}/comprobante",
                   {"nombre_archivo": imagen.name, "content_type": "image/png",
-                   "contenido_base64": base64.b64encode(imagen.read_bytes()).decode()}, token)
+                   "contenido_base64": base64.b64encode(imagen.read_bytes()).decode(),
+                   **({"numero_transferencia": numero} if numero else {})}, token)
     assert s == 200 and r["estado"] == "Pendiente de validación", r
     return op["id_operacion"]
 
@@ -75,10 +76,10 @@ def main():
         bcp = {"tipo": "banco", "banco": "BCP"}
         dest = {"tipo": "banco", "banco": "Interbank", "tipo_cuenta": "Ahorros", "numero": "8983141592653", "titular": "Prueba NexoGuard"}
         resultados = []
-        for nombre, clave, esperado in [("Aprobación automática", "01", "En proceso"),
-                                        ("Rechazo automático: cuenta ajena", "04", "Rechazada"),
-                                        ("Rechazo automático: duplicado", "05", "Rechazada")]:
-            id_op = operacion(token, pen, bcp, dest, img[clave])
+        for nombre, clave, esperado, numero in [("Aprobación automática (con número declarado)", "01", "En proceso", gc.nro("04417382")),
+                                                ("Rechazo automático: cuenta ajena", "04", "Rechazada", None),
+                                                ("Rechazo automático: duplicado", "05", "Rechazada", None)]:
+            id_op = operacion(token, pen, bcp, dest, img[clave], numero)
             v, seg = esperar(id_op, token, "finalizada")
             ok = v["estado_final"] == esperado and v["decidido_por"] == "agente"
             resultados.append((nombre, id_op, ok, f"{v['estado_final']} por {v['decidido_por']} en {seg:.0f} s"
@@ -92,6 +93,9 @@ def main():
              {"decision": "aprobar"}, "En proceso"),
             ("Revisión humana: monto distinto → rechaza", (pen, bcp, dest, img["03"]),
              {"decision": "rechazar", "motivo": "El monto transferido no coincide con la operación."}, "Rechazada"),
+            ("Revisión humana: número declarado distinto → aprueba",
+             ({**pen, "monto_origen": 250}, {"tipo": "banco", "banco": "Interbank"}, dest, img["02"], "11111111"),
+             {"decision": "aprobar"}, "En proceso"),
         ]:
             id_op = operacion(token, *args)
             v, seg = esperar(id_op, token, "en_revision")

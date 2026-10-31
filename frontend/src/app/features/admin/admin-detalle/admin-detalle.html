@@ -141,8 +141,7 @@
           <p class="muted" style="margin: 0">NexoGuard envió esta operación a revisión. Tu decisión reanudará el workflow.</p>
         }
         @if (guardEnCurso()) {
-          <p class="muted" style="margin: 0">NexoGuard está validando el comprobante. Actualiza en unos segundos.</p>
-          <button class="btn btn-ghost" type="button" (click)="cargar()" style="align-self: flex-start">Actualizar</button>
+          <p class="muted" style="margin: 0"><span class="spinner" aria-hidden="true"></span> NexoGuard está validando el comprobante. La pantalla se actualizará sola.</p>
         }
 
         @if (puedeAccionar()) {

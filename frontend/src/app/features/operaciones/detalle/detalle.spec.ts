@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { Detalle } from './detalle';
@@ -52,5 +53,21 @@ describe('Detalle', () => {
     expect(component['estaHecho']('En proceso')).toBe(true);
     expect(component['estaHecho']('Procesada')).toBe(false);
     expect(fixture.nativeElement.textContent).toContain('NX-0001');
+  });
+
+  it('se actualiza sola mientras la operación no termina y se detiene al llegar a Procesada', () => {
+    vi.useFakeTimers();
+    try {
+      const detalle = (r: { url: string; method: string }) => r.url.endsWith('/operaciones/NX-0001') && r.method === 'GET';
+      httpMock.expectOne(detalle).flush(OPERACION); // En proceso
+      vi.advanceTimersByTime(10000);
+      httpMock.expectOne(detalle).flush({ ...OPERACION, estado: 'Procesada' });
+      fixture.detectChanges();
+      expect(component['operacion']()?.estado).toBe('Procesada');
+      vi.advanceTimersByTime(30000);
+      httpMock.expectNone(detalle); // estado final: ya no consulta
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

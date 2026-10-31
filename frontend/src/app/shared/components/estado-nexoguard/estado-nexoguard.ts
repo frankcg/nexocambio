@@ -4,6 +4,7 @@ import { ValidacionesService } from '../../../core/services/validaciones.service
 import { ValidacionCliente } from '../../../core/models/validacion.model';
 
 const INTERVALO_MS = 3000;
+const INTERVALO_REVISION_MS = 10000;
 const MAX_CONSULTAS = 40; // ~2 minutos; luego el cliente ve el resultado en Mis operaciones
 const PASOS = ['Leyendo tu comprobante', 'Verificando los datos', 'Evaluando la operación'];
 
@@ -53,18 +54,19 @@ export class EstadoNexoguard implements OnInit {
           if (anterior !== 'finalizada') this.terminada.emit(v);
           return;
         }
-        this.programar();
+        this.programar(v.estado === 'en_revision');
       },
       // 404: todavía no se registró (el workflow tarda ~1 s en iniciar) o la operación no tiene validación
       error: (e: HttpErrorResponse) => (e.status === 404 && this.consultas <= 3 ? this.programar() : undefined),
     });
   }
 
-  private programar(): void {
-    if (this.consultas >= MAX_CONSULTAS) {
+  /** En curso: cada 3 s hasta ~2 min. En revisión (puede tardar lo que tarde el operador): cada 10 s sin límite. */
+  private programar(enRevision = false): void {
+    if (!enRevision && this.consultas >= MAX_CONSULTAS) {
       this.agotado.set(true);
       return;
     }
-    this.temporizador = setTimeout(() => this.consultar(), INTERVALO_MS);
+    this.temporizador = setTimeout(() => this.consultar(), enRevision ? INTERVALO_REVISION_MS : INTERVALO_MS);
   }
 }

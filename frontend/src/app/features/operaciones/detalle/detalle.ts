@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { OperacionesService } from '../../../core/services/operaciones.service';
@@ -9,6 +9,7 @@ import { MONEDAS_CASA } from '../../../core/models/catalogos.model';
 import { EstadoNexoguard } from '../../../shared/components/estado-nexoguard/estado-nexoguard';
 
 const FIAT = MONEDAS_CASA as readonly string[];
+const INTERVALO_ACTUALIZACION_MS = 10000;
 
 const DESCRIPCION_ESTADO: Record<string, string> = {
   'Pendiente de validación': 'Recibimos tu comprobante.',
@@ -37,8 +38,10 @@ export class Detalle {
   );
 
   private readonly id = this.ruta.snapshot.paramMap.get('id')!;
+  private temporizador: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.temporizador && clearTimeout(this.temporizador));
     this.cargar();
   }
 
@@ -55,16 +58,32 @@ export class Detalle {
   }
 
   private cargar(): void {
+    if (this.temporizador) clearTimeout(this.temporizador);
+    const primeraCarga = this.operacion() === null;
     this.operacionesSvc.obtener(this.id).subscribe({
       next: (o) => {
+        const previa = this.operacion();
+        // La URL firmada del comprobante cambia en cada consulta: se conserva para que la imagen no parpadee
+        if (previa?.ruta_comprobante && previa.ruta_comprobante === o.ruta_comprobante) o = { ...o, comprobante_url: previa.comprobante_url };
         this.operacion.set(o);
         this.cargando.set(false);
+        this.programarActualizacion(o.estado);
       },
       error: (e: HttpErrorResponse) => {
+        if (!primeraCarga) {
+          this.programarActualizacion(this.operacion()!.estado); // falla puntual de red: se reintenta en silencio
+          return;
+        }
         this.error.set((e.error as ErrorApi | undefined)?.mensaje ?? 'No encontramos esta operación en tu cuenta.');
         this.cargando.set(false);
       },
     });
+  }
+
+  /** Mientras la operación no termine, se vuelve a consultar sola (p. ej. cuando el back-office la marca Procesada). */
+  private programarActualizacion(estado: EstadoOperacion): void {
+    if (estado === 'Procesada' || estado === 'Rechazada') return;
+    this.temporizador = setTimeout(() => this.cargar(), INTERVALO_ACTUALIZACION_MS);
   }
 
   protected textoTasa(): string {

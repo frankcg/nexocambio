@@ -76,11 +76,17 @@ export class AdminDetalle {
     this.cargar();
   }
 
-  protected cargar(): void {
-    this.cargando.set(true);
+  /** `silencioso`: refresco automático, sin esqueleto de carga. */
+  protected cargar(silencioso = false): void {
+    if (!silencioso) this.cargando.set(true);
     this.error.set(null);
+    if (this.recarga) clearTimeout(this.recarga);
     this.validacionesSvc.obtenerAdmin(this.id).subscribe({
-      next: (r) => this.validacion.set(r.validaciones[0] ?? null),
+      next: (r) => {
+        this.validacion.set(r.validaciones[0] ?? null);
+        // Mientras NexoGuard valida, la pantalla se actualiza sola hasta tener el análisis
+        if (this.validacion()?.estado === 'en_curso') this.recarga = setTimeout(() => this.cargar(true), 4000);
+      },
       error: () => this.validacion.set(null), // 404: operación sin validación automática
     });
     this.admin.obtener(this.id).subscribe({
@@ -130,7 +136,7 @@ export class AdminDetalle {
         this.mostrandoMotivo.set(false);
         this.motivo.set('');
         this.toast.mostrar('Decisión registrada', r.mensaje);
-        this.recarga = setTimeout(() => this.cargar(), 3000); // el workflow aplica la decisión en ~1-2 s
+        this.recarga = setTimeout(() => this.cargar(true), 3000); // el workflow aplica la decisión en ~1-2 s
       },
       error: (e: HttpErrorResponse) => {
         this.enviando.set(false);

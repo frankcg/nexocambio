@@ -105,19 +105,30 @@ Agente de Riesgo (`gpt-oss-20b`): con el comprobante 01 devolvió verde y la jus
 
 ### 3.3 Evidencia de uso desde Postman
 
-La colección `postman/NexoCambio.postman_collection.json` incluye la carpeta **«6. NexoGuard»** (48 requests con pruebas automáticas):
+La colección `postman/NexoCambio.postman_collection.json` incluye la carpeta **«6. NexoGuard»** (69 requests con pruebas automáticas). Requiere las variables `adminKey` y `bancoKey` (`.secrets/admin_key` y `.secrets/banco_key`):
 
 | Escenario | Verificaciones |
 |---|---|
-| 6.1 Aprobación automática | Resultado «En proceso», `decidido_por = agente`, hito del historial con `actor = agente` |
+| 6.0 Reiniciar datos de prueba | `POST /demo/reiniciar`: validaciones vacías y banco con sus 20 depósitos semilla |
+| 6.1 Aprobación automática | El cliente transfiere (depósito en el banco simulado) → resultado «En proceso», `decidido_por = agente`, hito del historial con `actor = agente` |
 | 6.2 Rechazo automático por cuenta ajena | «Rechazada» y motivo «no es una cuenta de NexoCambio» |
 | 6.3 Rechazo automático por duplicado | «Rechazada» y motivo «ya se usó» |
 | 6.4 Revisión humana: monto alto → aprueba | Cola de revisión, semáforo amarillo, alerta de cumplimiento, errores 403/400/409, aprobación del operador → «En proceso» con `actor = operador` |
 | 6.5 Revisión humana: monto distinto → rechaza | Semáforo amarillo, regla de monto incumplida (lee S/ 850), el operador rechaza con motivo → «Rechazada» con `actor = operador` |
 | 6.6 Revisión humana: número declarado distinto → aprueba | El cliente declara 11111111 y el comprobante dice otro número: regla `numero_declarado` incumplida, semáforo amarillo, el operador aprueba → «En proceso» |
-| 6.7 Errores | 401 sin token, 404 sin validación, 403 sin clave |
+| 6.7 Revisión humana: sin depósito en el banco → rechaza | Comprobante «perfecto» sin depósito: conciliación `ninguna` tras varias consultas al banco, el operador rechaza |
+| 6.8 Aprobación con depósito tardío | Se sube el comprobante, el workflow espera, llega el depósito y se aprueba solo |
+| 6.9 Errores | 401 sin token, 404 sin validación, 403 sin clave |
 
-Antes de cada corrida se ejecuta `python postman/generar_nexoguard.py`, que regenera los comprobantes con la fecha de hoy y números de operación nuevos, para que la corrida no choque con la detección de duplicados. La espera del resultado usa el Collection Runner.
+Antes de cada corrida se ejecuta `python postman/generar_nexoguard.py`, que regenera los comprobantes con la fecha de hoy y números de operación nuevos. La espera del resultado usa el Collection Runner.
+
+### 3.3b Datos de prueba y reinicio
+
+| Herramienta | Uso |
+|---|---|
+| `POST /demo/reiniciar` y botón «Reiniciar datos de prueba» del back-office | Detiene ejecuciones, vacía validaciones, reinicia el banco simulado y (opcional) borra operaciones y comprobantes. Permite reutilizar los mismos comprobantes. |
+| `python scripts/cargar_demo.py <ApiUrl>` | Reinicia y deja con el cliente `demo@nexocambio.pe` 2 operaciones 🟢 aprobadas, 2 🔴 rechazadas y 4 🟡 en revisión (monto alto, monto distinto, sin depósito, imagen borrosa). Verificado en AWS el 31-oct-2026: las 8 con el resultado esperado. |
+| `python scripts/generar_comprobantes.py --semilla N --registrar-banco <ApiUrl>` | Comprobantes para la demo en vivo, con sus depósitos registrados en el banco simulado. `--deposito-tardio` registra después el del comprobante 10. |
 
 ### 3.4 Prueba de punta a punta en AWS (31-oct-2026)
 
@@ -135,6 +146,8 @@ El script `python scripts/probar_nexoguard.py <ApiUrl>` recorre los mismos escen
 \* Los tiempos más largos corresponden al `Retry` del workflow cuando Groq responde 429 (límite de la capa gratuita): la validación se completa igual, solo que más tarde.
 
 Todas las ejecuciones de Step Functions terminaron en `SUCCEEDED`. En una corrida anterior, con el monto distinto como rechazo automático, el resultado también fue correcto. Se cambió a revisión humana por criterio de negocio (ver 2.2).
+
+**Con la conciliación bancaria (corrida final, 8 escenarios, todos OK):** además de los anteriores, el **depósito tardío** se aprobó solo en 28 s tras 2 consultas al banco, y el **comprobante sin depósito** pasó a revisión a los 97 s con «No hay ningún depósito con el N° … en las cuentas de NexoCambio (tras 4 consultas al banco)». En el caso de monto distinto, el banco confirmó que llegaron S/ 850.00, y el operador lo vio junto al motivo.
 
 **Hallazgo durante la primera prueba (el agente funcionó como debía).** En la primera corrida, el comprobante correcto cumplió las 7 reglas, pero el Agente de Riesgo lo escaló a amarillo con la justificación «el comprobante presenta una marca de agua que indica DOCUMENTO FICTICIO, lo cual es sospechoso». La barrera de diseño (el agente puede escalar, no aprobar) actuó correctamente: con un comprobante real que dijera eso, enviarlo a revisión es lo deseable. Para el entorno académico se agregó el parámetro `ModoDemo` (por defecto `true` en este stack), que le indica al agente que esa marca es propia de los comprobantes de prueba. En producción se despliega con `ModoDemo=false`.
 

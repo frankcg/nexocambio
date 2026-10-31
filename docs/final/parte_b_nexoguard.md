@@ -49,6 +49,7 @@ El workflow se inicia desde el microservicio Operaciones (`states:StartExecution
 | 1 | `RegistrarInicio` | Task → Lambda Validaciones (`iniciar`) | Crea el registro de la validación con estado `en_curso`. | — |
 | 2 | `ExtraerComprobante` | Task → Lambda `guard-extraer` | **Agente Extractor.** Descarga el comprobante de S3 y llama a Groq `qwen/qwen3.8-27b` (visión) con salida JSON. Si es PDF, convierte la 1.ª página a imagen. | `Retry` ante límite de Groq (429): 20 s, ×2, 3 intentos. `Catch` → `ExtraccionFallida` (lectura no concluyente → revisión). |
 | 3 | `VerificarCoincidencia` | Task → Lambda `guard-verificar` | Reglas deterministas (ver 2.2). Consulta duplicados en el GSI `numero-operacion-index`. | — |
+| 3b | `ConciliarConBanco` ↔ `EsperarDeposito` | Task → Lambda `guard-conciliar` + **Wait** | Pregunta a la **API bancaria (simulada)** por HTTPS si el depósito llegó a una cuenta de NexoCambio. Si no aparece, espera 30 s y vuelve a consultar (hasta 4 veces; parámetros del template), porque una interbancaria puede tardar. Se omite si ya hay un indicio claro de fraude. | `Catch` → `BancoNoDisponible` (revisión). |
 | 4 | `EvaluarRiesgo` | Task → Lambda `guard-riesgo` | **Agente de Riesgo.** Groq `openai/gpt-oss-20b` asigna semáforo y redacta la justificación; luego el código aplica las barreras y fija la `ruta`. | `Retry` ante 429. `Catch` → `RiesgoNoDisponible` (amarillo → revisión). |
 | 5 | `DecidirRuta` | Choice | `aprobar` → `AprobarAutomatico`; `rechazar` → `RechazarAutomatico`; otro → `NotificarRevision`. | — |
 | 6a | `AprobarAutomatico` / `RechazarAutomatico` | Pass | Arma la decisión con `decidido_por = agente` y el motivo sugerido. | — |
@@ -75,6 +76,7 @@ Se eligió **Standard** (y no Express) porque `waitForTaskToken` solo existe en 
 | Moneda | Moneda leída = `moneda_origen` | Revisión |
 | Cuenta destino | Los dígitos visibles coinciden con una cuenta o CCI de NexoCambio para esa moneda, o el destinatario es «NexoCambio» | **Rechazo** |
 | No duplicado | El N° de operación no existe en otra validación (GSI `numero-operacion-index`) | **Rechazo** |
+| Depósito en el banco | El depósito existe en una cuenta de NexoCambio (conciliación, ver 2.5b) | Revisión |
 | Número declarado | Si el cliente escribió el N° de operación (campo opcional), coincide con el leído por el agente (solo dígitos, sin ceros a la izquierda) | Revisión (si no lo declaró o no se leyó: solo informativa) |
 | Fecha | Fecha del comprobante ≥ fecha de creación de la operación (−1 día de tolerancia) | Revisión |
 | Banco de origen | Coincide con el banco declarado (si se pudo leer) | Solo informativa |
@@ -138,6 +140,29 @@ Se eligió **Standard** (y no Express) porque `waitForTaskToken` solo existe en 
 | Consulta del cliente | Query por `id_operacion`, la más reciente (ScanIndexForward = false, Limit 1) + verificación de `id_cliente` |
 
 **Cambio en `nexo-<stage>-operaciones`:** ninguno en las claves. Solo se agrega el atributo `actor` dentro de cada hito de `historial`.
+
+### 2.5b Conciliación con el banco (API bancaria simulada)
+
+Groq solo ve la imagen: no puede saber si el dinero llegó, y un comprobante falsificado bien hecho pasaría todas las reglas. Por eso NexoGuard **concilia con el banco**, como hacen las casas de cambio reales. En producción sería la API corporativa del banco (BCP, Interbank…) o un agregador como Prometeo; en el MVP es un **banco simulado**, tratado como sistema externo:
+
+| Elemento | Definición |
+|---|---|
+| Lambda | `banco-simulado`, con su propia clave `x-banco-key` (no usa el JWT de NexoCambio ni la clave del back-office). NexoGuard la consulta por HTTPS, como a un banco real. |
+| Tabla `nexo-banco-movimientos` | PK `cuenta` (número de cuenta de NexoCambio), SK `mov` (`<fecha>#<numero_operacion>`), GSI `numero-operacion-index` |
+| Rutas | `POST /banco/depositos` (registra un depósito: «el cliente transfirió»), `GET /banco/depositos?numero_operacion=…` o `?cuenta=…&fecha=…`, `POST /banco/reiniciar` (borra los depósitos de prueba y recarga 20 depósitos semilla de otros clientes) |
+
+| Resultado de la conciliación | Significado | Efecto |
+|---|---|---|
+| `total` | Existe el depósito con ese N°, mismo monto y moneda | La regla `deposito_banco` se cumple |
+| `parcial` | Existe con ese N° pero otro monto, o no se leyó el N° y hay un depósito de la fecha por el mismo monto | Revisión |
+| `ninguna` | No hay depósito tras todas las consultas (comprobante falso o transferencia no acreditada) | Revisión (no rechazo: puede ser una demora) |
+| `error` | El banco no respondió | Revisión |
+
+**¿Cuándo se registra un depósito?** En la realidad, lo registra el banco cuando el cliente transfiere. En la simulación, el generador de comprobantes registra el depósito **en el mismo momento en que crea cada comprobante legítimo** (mismos datos). El comprobante «falsificado» (09) no tiene depósito y el «tardío» (10) se registra a mano mientras el workflow espera.
+
+### 2.5c Reinicio de los datos de prueba
+
+`POST /demo/reiniciar` (x-admin-key, también disponible como botón en el back-office): detiene las ejecuciones en curso, vacía `nexo-validaciones`, reinicia el banco simulado y, con `incluir_operaciones: true`, borra las operaciones y sus comprobantes (los clientes se conservan). Permite repetir la demo con los mismos comprobantes sin que la detección de duplicados los rechace.
 
 ### 2.6 Seguridad y decisiones de diseño
 

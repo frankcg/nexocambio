@@ -73,3 +73,8 @@ La operación conserva sus 4 estados; los subestados vienen de la API Validacion
 - GET /validaciones/{id}/admin, GET /validaciones/admin?estado=en_revision [x-admin-key]
 - POST /validaciones/{id}/decision [x-admin-key] {decision: aprobar|rechazar, motivo?} -> 202 (SendTaskSuccess)
 Comprobantes de prueba: `python scripts/generar_comprobantes.py` (fecha de hoy; regenerar el día de la demo).
+Conciliación: paso ConciliarConBanco (guard-conciliar) consulta por HTTPS al banco simulado
+(services/banco_simulado, rutas /banco/*, clave x-banco-key en .secrets/banco_key); si no hay depósito espera
+(Wait) y reintenta. POST /demo/reiniciar [x-admin-key] {incluir_operaciones?} reinicia los datos de prueba.
+Datos demo: `python scripts/cargar_demo.py <ApiUrl>`; E2E: `python scripts/probar_nexoguard.py <ApiUrl> --reiniciar`.
+Cuentas de NexoCambio (ficticias) en layer/python/nexo_cuentas.py.

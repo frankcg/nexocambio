@@ -19,6 +19,8 @@ ENTORNO = {
     "BUCKET_COMPROBANTES": "nexo-test-comprobantes", "FN_COTIZACIONES": "nexo-test-cotizaciones",
     "JWT_SECRET": "secreto-de-pruebas-0123456789", "ADMIN_KEY": "clave-admin-pruebas",
     "PBKDF2_ITER": "1000", "USAR_TASAS_EN_VIVO": "false",
+    "TABLE_VALIDACIONES": "nexo-test-validaciones", "GROQ_API_KEY": "gsk-pruebas",
+    "GROQ_MODELO_VISION": "modelo-vision", "GROQ_MODELO_TEXTO": "modelo-texto", "UMBRAL_USD": "10000",
 }
 
 
@@ -53,6 +55,17 @@ def aws(monkeypatch):
                                                  "KeySchema": [{"AttributeName": "id_cliente", "KeyType": "HASH"},
                                                                {"AttributeName": "fecha_operacion", "KeyType": "RANGE"}],
                                                  "Projection": {"ProjectionType": "ALL"}}])
+        db.create_table(TableName="nexo-test-validaciones", BillingMode="PAY_PER_REQUEST",
+                        AttributeDefinitions=[{"AttributeName": n, "AttributeType": "S"} for n in
+                                              ("id_operacion", "fecha_inicio", "numero_operacion", "estado")],
+                        KeySchema=[{"AttributeName": "id_operacion", "KeyType": "HASH"},
+                                   {"AttributeName": "fecha_inicio", "KeyType": "RANGE"}],
+                        GlobalSecondaryIndexes=[
+                            {"IndexName": "numero-operacion-index", "Projection": {"ProjectionType": "KEYS_ONLY"},
+                             "KeySchema": [{"AttributeName": "numero_operacion", "KeyType": "HASH"}]},
+                            {"IndexName": "estado-fecha-index", "Projection": {"ProjectionType": "ALL"},
+                             "KeySchema": [{"AttributeName": "estado", "KeyType": "HASH"},
+                                           {"AttributeName": "fecha_inicio", "KeyType": "RANGE"}]}])
         boto3.client("s3").create_bucket(Bucket="nexo-test-comprobantes")
         yield
 

@@ -1,7 +1,8 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
   NexoCambio - MVP serverless (AWS Academy Learner Lab).
-  API Gateway (HTTP API) + 3 microservicios AWS Lambda (Python 3.12) + DynamoDB + S3 + CloudWatch.
+  API Gateway (HTTP API) + 4 microservicios AWS Lambda (Python 3.12) + DynamoDB + S3 + CloudWatch.
+  NexoGuard: workflow agéntico en AWS Step Functions (agentes Groq + revisión humana) + SNS.
   Usa el rol pre-creado LabRole (en Learner Lab no se pueden crear roles IAM).
 
 Parameters:
@@ -52,6 +53,24 @@ Parameters:
       voclabs NO tiene cloudfront:CreateDistribution (AccessDenied), por eso es opt-in: con "false"
       el sitio se sirve por HTTPS desde el endpoint REST de S3 (ver output SitioWebHttpsUrl).
 
+  GroqApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Clave de la API de Groq para los agentes de NexoGuard (leída de .secrets/groq_api_key por deploy.sh).
+  GroqModeloVision:
+    Type: String
+    Default: qwen/qwen3.8-27b
+    Description: Modelo de Groq con visión del Agente Extractor (Groq retira modelos; cambiarlo aquí sin tocar código).
+  GroqModeloTexto:
+    Type: String
+    Default: openai/gpt-oss-20b
+    Description: Modelo de texto de Groq del Agente de Riesgo.
+  UmbralUsd:
+    Type: Number
+    Default: 10000
+    Description: Monto (equivalente en USD) desde el cual la operación va a revisión y alerta a cumplimiento.
+
 Conditions:
   ConCorreo: !Not [!Equals [!Ref AlertEmail, ""]]
   ConSitioWeb: !Equals [!Ref CrearSitioWeb, "true"]
@@ -99,6 +118,29 @@ Resources:
           KeySchema:
             - {AttributeName: id_cliente, KeyType: HASH}
             - {AttributeName: fecha_operacion, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
+
+  TablaValidaciones:     # Microservicio Validaciones (NexoGuard)
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub nexo-${Stage}-validaciones
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - {AttributeName: id_operacion, AttributeType: S}
+        - {AttributeName: fecha_inicio, AttributeType: S}
+        - {AttributeName: numero_operacion, AttributeType: S}
+        - {AttributeName: estado, AttributeType: S}
+      KeySchema:
+        - {AttributeName: id_operacion, KeyType: HASH}
+        - {AttributeName: fecha_inicio, KeyType: RANGE}
+      GlobalSecondaryIndexes:
+        - IndexName: numero-operacion-index      # comprobantes duplicados (índice disperso)
+          KeySchema: [{AttributeName: numero_operacion, KeyType: HASH}]
+          Projection: {ProjectionType: KEYS_ONLY}
+        - IndexName: estado-fecha-index          # cola de revisión del back-office
+          KeySchema:
+            - {AttributeName: estado, KeyType: HASH}
+            - {AttributeName: fecha_inicio, KeyType: RANGE}
           Projection: {ProjectionType: ALL}
 
   BucketComprobantes:    # Microservicio Operaciones (privado)
@@ -205,6 +247,18 @@ Resources:
   LogsOperaciones:
     Type: AWS::Logs::LogGroup
     Properties: {LogGroupName: !Sub "/aws/lambda/nexo-${Stage}-operaciones", RetentionInDays: 14}
+  LogsValidaciones:
+    Type: AWS::Logs::LogGroup
+    Properties: {LogGroupName: !Sub "/aws/lambda/nexo-${Stage}-validaciones", RetentionInDays: 14}
+  LogsGuardExtraer:
+    Type: AWS::Logs::LogGroup
+    Properties: {LogGroupName: !Sub "/aws/lambda/nexo-${Stage}-guard-extraer", RetentionInDays: 14}
+  LogsGuardVerificar:
+    Type: AWS::Logs::LogGroup
+    Properties: {LogGroupName: !Sub "/aws/lambda/nexo-${Stage}-guard-verificar", RetentionInDays: 14}
+  LogsGuardRiesgo:
+    Type: AWS::Logs::LogGroup
+    Properties: {LogGroupName: !Sub "/aws/lambda/nexo-${Stage}-guard-riesgo", RetentionInDays: 14}
 
   FnCotizaciones:
     Type: AWS::Lambda::Function
@@ -266,6 +320,106 @@ Resources:
           JWT_SECRET: !Ref JwtSecret
           ADMIN_KEY: !Ref AdminKey
           GRACIA_SEG: "600"
+          # ARN armado (no !Ref) para evitar una dependencia circular con la máquina de estados
+          STATE_MACHINE_ARN: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:nexo-${Stage}-nexoguard"
+
+  FnValidaciones:
+    Type: AWS::Lambda::Function
+    DependsOn: LogsValidaciones
+    Properties:
+      FunctionName: !Sub nexo-${Stage}-validaciones
+      Description: Microservicio Validaciones (NexoGuard) - registro auditable y decisión del operador
+      Runtime: python3.12
+      Handler: app.handler
+      Code: services/validaciones
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/${RoleName}
+      MemorySize: 256
+      Timeout: 15
+      Layers: [!Ref CapaComun]
+      Environment:
+        Variables:
+          TABLE_VALIDACIONES: !Ref TablaValidaciones
+          JWT_SECRET: !Ref JwtSecret
+          ADMIN_KEY: !Ref AdminKey
+
+  FnGuardExtraer:
+    Type: AWS::Lambda::Function
+    DependsOn: LogsGuardExtraer
+    Properties:
+      FunctionName: !Sub nexo-${Stage}-guard-extraer
+      Description: NexoGuard - Agente Extractor (Groq con visión lee el comprobante)
+      Runtime: python3.12
+      Handler: app.handler
+      Code: services/guard_extraer
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/${RoleName}
+      MemorySize: 256
+      Timeout: 60
+      Layers: [!Ref CapaComun]
+      Environment:
+        Variables:
+          GROQ_API_KEY: !Ref GroqApiKey
+          GROQ_MODELO_VISION: !Ref GroqModeloVision
+
+  FnGuardVerificar:
+    Type: AWS::Lambda::Function
+    DependsOn: LogsGuardVerificar
+    Properties:
+      FunctionName: !Sub nexo-${Stage}-guard-verificar
+      Description: NexoGuard - reglas deterministas de coincidencia y duplicados
+      Runtime: python3.12
+      Handler: app.handler
+      Code: services/guard_verificar
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/${RoleName}
+      MemorySize: 256
+      Timeout: 15
+      Layers: [!Ref CapaComun]
+      Environment:
+        Variables:
+          TABLE_VALIDACIONES: !Ref TablaValidaciones
+
+  FnGuardRiesgo:
+    Type: AWS::Lambda::Function
+    DependsOn: LogsGuardRiesgo
+    Properties:
+      FunctionName: !Sub nexo-${Stage}-guard-riesgo
+      Description: NexoGuard - Agente de Riesgo (semáforo + justificación con Groq)
+      Runtime: python3.12
+      Handler: app.handler
+      Code: services/guard_riesgo
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/${RoleName}
+      MemorySize: 256
+      Timeout: 45
+      Layers: [!Ref CapaComun]
+      Environment:
+        Variables:
+          GROQ_API_KEY: !Ref GroqApiKey
+          GROQ_MODELO_TEXTO: !Ref GroqModeloTexto
+          UMBRAL_USD: !Ref UmbralUsd
+
+  # =========================================================== NEXOGUARD (Step Functions)
+  TemaNexoGuard:
+    Type: AWS::SNS::Topic
+    Properties: {TopicName: !Sub "nexo-${Stage}-nexoguard", DisplayName: NexoGuard}
+
+  SuscripcionNexoGuard:
+    Type: AWS::SNS::Subscription
+    Condition: ConCorreo
+    Properties: {TopicArn: !Ref TemaNexoGuard, Protocol: email, Endpoint: !Ref AlertEmail}
+
+  MaquinaNexoGuard:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub nexo-${Stage}-nexoguard
+      StateMachineType: STANDARD      # waitForTaskToken (revisión humana) solo existe en Standard
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/${RoleName}
+      DefinitionS3Location: statemachine/nexoguard.asl.json   # lo sube `aws cloudformation package`
+      DefinitionSubstitutions:
+        FnValidaciones: !GetAtt FnValidaciones.Arn
+        FnGuardExtraer: !GetAtt FnGuardExtraer.Arn
+        FnGuardVerificar: !GetAtt FnGuardVerificar.Arn
+        FnGuardRiesgo: !GetAtt FnGuardRiesgo.Arn
+        FnOperaciones: !GetAtt FnOperaciones.Arn
+        TemaNexoGuard: !Ref TemaNexoGuard
 
   # =========================================================== API GATEWAY (HTTP API)
   Api:
@@ -301,6 +455,13 @@ Resources:
       IntegrationType: AWS_PROXY
       IntegrationUri: !GetAtt FnOperaciones.Arn
       PayloadFormatVersion: "2.0"
+  IntValidaciones:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref Api
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt FnValidaciones.Arn
+      PayloadFormatVersion: "2.0"
 
   RutaCotizar:
     Type: AWS::ApiGatewayV2::Route
@@ -335,6 +496,18 @@ Resources:
   RutaEstado:
     Type: AWS::ApiGatewayV2::Route
     Properties: {ApiId: !Ref Api, RouteKey: "PATCH /operaciones/{id_operacion}/estado", Target: !Sub "integrations/${IntOperaciones}"}
+  RutaValidacionCliente:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "GET /validaciones/{id_operacion}", Target: !Sub "integrations/${IntValidaciones}"}
+  RutaValidacionAdmin:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "GET /validaciones/{id_operacion}/admin", Target: !Sub "integrations/${IntValidaciones}"}
+  RutaValidacionesCola:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "GET /validaciones/admin", Target: !Sub "integrations/${IntValidaciones}"}
+  RutaValidacionDecision:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref Api, RouteKey: "POST /validaciones/{id_operacion}/decision", Target: !Sub "integrations/${IntValidaciones}"}
 
   EtapaV1:
     Type: AWS::ApiGatewayV2::Stage
@@ -367,6 +540,14 @@ Resources:
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref FnOperaciones
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*/*
+
+  PermisoApiValidaciones:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FnValidaciones
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*/*
 
@@ -441,6 +622,22 @@ Resources:
       TreatMissingData: notBreaching
       AlarmActions: [!Ref TemaAlertas]
 
+  AlarmaNexoGuardFallos:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub nexo-${Stage}-nexoguard-fallos
+      AlarmDescription: Una ejecución del workflow NexoGuard falló
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions: [{Name: StateMachineArn, Value: !Ref MaquinaNexoGuard}]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref TemaAlertas]
+
 Outputs:
   ApiUrl:
     Description: URL base de la API (úsala en el frontend y en Postman)
@@ -474,3 +671,10 @@ Outputs:
     Value: !Ref FnClientes
   FuncionOperaciones:
     Value: !Ref FnOperaciones
+  FuncionValidaciones:
+    Value: !Ref FnValidaciones
+  MaquinaNexoGuard:
+    Description: ARN del workflow NexoGuard (consola de Step Functions)
+    Value: !Ref MaquinaNexoGuard
+  TemaNexoGuard:
+    Value: !Ref TemaNexoGuard

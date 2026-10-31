@@ -14,6 +14,8 @@ mkdir -p .secrets
 [ -f .secrets/jwt_secret ] || openssl rand -hex 32 > .secrets/jwt_secret   # estable entre despliegues
 [ -f .secrets/admin_key ]  || openssl rand -hex 12 > .secrets/admin_key
 JWT_SECRET="$(cat .secrets/jwt_secret)"; ADMIN_KEY="$(cat .secrets/admin_key)"
+GROQ_API_KEY="$(cat .secrets/groq_api_key 2>/dev/null || true)"
+[ -n "$GROQ_API_KEY" ] || echo "    AVISO: falta .secrets/groq_api_key; los agentes de NexoGuard enviarán todo a revisión humana."
 
 echo "==> Bucket de artefactos: s3://${ARTIFACTS}"
 aws s3api head-bucket --bucket "$ARTIFACTS" --region "$REGION" 2>/dev/null || aws s3 mb "s3://${ARTIFACTS}" --region "$REGION"
@@ -32,7 +34,7 @@ aws cloudformation deploy --template-file .packaged.yaml --stack-name "$STACK" -
     --no-fail-on-empty-changeset \
     --parameter-overrides "Stage=${STAGE}" "JwtSecret=${JWT_SECRET}" "AdminKey=${ADMIN_KEY}" \
                           "AlertEmail=${ALERT_EMAIL:-}" "UsarTasasEnVivo=${USAR_TASAS_EN_VIVO:-true}" \
-                          "UsarHttps=${USAR_HTTPS:-false}"
+                          "UsarHttps=${USAR_HTTPS:-false}" "GroqApiKey=${GROQ_API_KEY}"
 
 out() { aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
         --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
@@ -58,6 +60,8 @@ else
 fi
 cat <<MSG
 Clave back-office:       ${ADMIN_KEY}   (cabecera x-admin-key)
+Workflow NexoGuard:      $(out MaquinaNexoGuard)
+  (primer despliegue: confirma en el correo ${ALERT_EMAIL:-indicado} la suscripción al tema SNS de NexoGuard)
 Prueba rápida:           curl -s -X POST ${API_URL}/cotizar -H 'content-type: application/json' \\
                            -d '{"modalidad":"casa","moneda_origen":"PEN","moneda_destino":"USD","monto_origen":1000}'
 =======================================================

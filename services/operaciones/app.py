@@ -23,6 +23,10 @@ Rutas HTTP (todas requieren JWT salvo las de back-office, que usan x-admin-key):
   GET   /operaciones/admin                    [back-office simulado] lista TODAS las operaciones
   GET   /operaciones/{id_operacion}/admin     [back-office simulado] detalle de cualquier operación
 
+NexoGuard (proyecto final): al adjuntar el comprobante inicia el workflow de validación en
+Step Functions (StartExecution). El workflow aplica su decisión con la acción interna
+{"accion": "aplicar_decision", ...} (Lambda invoke), que registra en el historial quién decidió.
+
 Comunicación entre microservicios: invoca a Cotizaciones (Lambda → Lambda) para
 validar la cotización y NO confía en tasa/montos enviados por el navegador.
 """
@@ -32,6 +36,7 @@ import hmac
 import json
 import os
 import re
+import time
 from decimal import Decimal
 
 import boto3
@@ -264,7 +269,64 @@ def subir_comprobante(event):
             raise ApiError(409, "La operación cambió de estado. Actualiza e inténtalo otra vez.", "conflicto")
         raise
     log("comprobante_registrado", id_operacion=id_op, bytes=len(datos), tipo=tipo)
+    iniciar_nexoguard(r["Attributes"])
     return 200, _publico(r["Attributes"])
+
+
+# ------------------------------------------------------ NexoGuard (Step Functions)
+def _snapshot(op: dict) -> dict:
+    """Copia de la operación que viaja como entrada del workflow (JSON puro, sin Decimal)."""
+    campos = ("id_operacion", "id_cliente", "modalidad", "moneda_origen", "moneda_destino", "monto_origen",
+              "monto_destino", "tasa", "origen", "destino", "fecha_operacion", "ruta_comprobante",
+              "comprobante_nombre", "comprobante_tipo", "numero_transferencia")
+    return json.loads(json.dumps({k: op.get(k) for k in campos},
+                                 default=lambda o: float(o) if isinstance(o, Decimal) else str(o)))
+
+
+def iniciar_nexoguard(op: dict) -> None:
+    """Inicia la validación automática. Si falla, la operación queda «Pendiente de validación»
+    y el back-office puede revisarla manualmente como antes: nunca se pierde el comprobante."""
+    arn = os.environ.get("STATE_MACHINE_ARN")
+    if not arn:
+        return
+    try:
+        boto3.client("stepfunctions").start_execution(
+            stateMachineArn=arn, name=f"{op['id_operacion']}-{int(time.time() * 1000)}",
+            input=json.dumps({"operacion": _snapshot(op)}, ensure_ascii=False))
+        log("nexoguard_iniciado", id_operacion=op["id_operacion"])
+    except Exception as e:  # noqa: BLE001
+        log("nexoguard_no_iniciado", id_operacion=op["id_operacion"], error=type(e).__name__)
+
+
+def aplicar_decision(ev: dict) -> dict:
+    """Acción interna (Step Functions → Lambda): aprobar → En proceso · rechazar → Rechazada.
+    Solo actúa sobre operaciones «Pendiente de validación»; si ya cambió (p. ej. el back-office la
+    resolvió a mano), no la toca y devuelve su estado actual."""
+    id_op = str(ev.get("id_operacion", ""))
+    nuevo = {"aprobar": PROC, "rechazar": RECH}.get(ev.get("decision"))
+    actor = ev.get("decidido_por") if ev.get("decidido_por") in ("agente", "operador") else "agente"
+    op = _tabla().get_item(Key={"id_operacion": id_op}).get("Item")
+    if not op or not nuevo:
+        return {"ok": False, "aplicado": False, "estado": op["estado"] if op else None}
+    if op["estado"] != PEND:
+        return {"ok": True, "aplicado": False, "estado": op["estado"]}
+    sets = "SET #e = :n, #h = list_append(#h, :hito)"
+    hito = {"estado": nuevo, "fecha": iso(ahora()), "actor": actor, "origen": "nexoguard"}
+    valores = {":n": nuevo, ":hito": [hito], ":actual": PEND}
+    if nuevo == RECH:
+        sets += ", motivo_rechazo = :m"
+        valores[":m"] = str(ev.get("motivo") or "El comprobante no corresponde a la operación registrada.")[:300]
+    try:
+        _tabla().update_item(Key={"id_operacion": id_op}, UpdateExpression=sets, ConditionExpression="#e = :actual",
+                             ExpressionAttributeNames={"#e": "estado", "#h": "historial"},
+                             ExpressionAttributeValues=valores)
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            actual = _tabla().get_item(Key={"id_operacion": id_op}).get("Item", {}).get("estado")
+            return {"ok": True, "aplicado": False, "estado": actual}
+        raise
+    log("decision_nexoguard_aplicada", id_operacion=id_op, estado=nuevo, actor=actor)
+    return {"ok": True, "aplicado": True, "estado": nuevo}
 
 
 # ----------------------------------------------------------- GET /operaciones
@@ -332,7 +394,8 @@ def cambiar_estado(event):
         raise ApiError(409, f"No se puede pasar de '{op['estado']}' a '{nuevo}'.", "transicion_invalida")
     sets = "SET #e = :n, #h = list_append(#h, :hito)"
     nombres = {"#e": "estado", "#h": "historial"}
-    valores = {":n": nuevo, ":hito": [{"estado": nuevo, "fecha": iso(ahora())}], ":actual": op["estado"]}
+    valores = {":n": nuevo, ":hito": [{"estado": nuevo, "fecha": iso(ahora()), "actor": "operador"}],
+               ":actual": op["estado"]}
     if nuevo == RECH:
         sets += ", motivo_rechazo = :m"
         valores[":m"] = texto(d.get("motivo_rechazo", ""), "motivo_rechazo", 3, 300)
@@ -348,7 +411,7 @@ def cambiar_estado(event):
     return 200, _con_comprobante(r["Attributes"], _cfg())
 
 
-handler = manejar({
+_http = manejar({
     "POST /operaciones": crear_operacion,
     "GET /operaciones": listar_operaciones,
     "GET /operaciones/admin": listar_operaciones_admin,
@@ -357,3 +420,9 @@ handler = manejar({
     "POST /operaciones/{id_operacion}/comprobante": subir_comprobante,
     "PATCH /operaciones/{id_operacion}/estado": cambiar_estado,
 })
+
+
+def handler(event, context=None):
+    if event.get("accion") == "aplicar_decision":  # Step Functions → Lambda (NexoGuard)
+        return aplicar_decision(event)
+    return _http(event, context)

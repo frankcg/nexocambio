@@ -3,8 +3,12 @@
 Cada imagen lleva la marca de agua "DOCUMENTO FICTICIO" y no usa logos de bancos.
 Las cuentas de destino son las cuentas demo de NexoCambio (frontend/.../cuentas-nexo.ts).
 
-Uso: python scripts/generar_comprobantes.py  ->  tests/fixtures/comprobantes/*.png
+Uso: python scripts/generar_comprobantes.py [AAAA-MM-DD]  ->  tests/fixtures/comprobantes/*.png
+La fecha por defecto es HOY: regenerarlos el día de la demo (NexoGuard revisa que el comprobante
+no sea anterior a la operación).
 """
+import sys
+from datetime import date
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -12,6 +16,16 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 SALIDA = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "comprobantes"
 FUENTES = Path("C:/Windows/Fonts")
 W, H = 420, 760
+
+DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre",
+         "Octubre", "Noviembre", "Diciembre"]
+DIA = date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 else date.today()
+
+
+def fecha(hora):
+    return f"{DIAS[DIA.weekday()]} {DIA.day} {MESES[DIA.month - 1]} {DIA.year} - {hora}"
+
 
 COLORES = {"BCP": "#0A4FA6", "Interbank": "#05A660", "BBVA": "#072146", "Scotiabank": "#C8102E"}
 
@@ -79,37 +93,37 @@ def filas(destino, cuenta, banco_dest, total, origen, cuenta_origen, n_op):
 CASOS = {
     # Verde: S/ 1,000.00 a la cuenta BCP soles de NexoCambio (mismo monto que el ejemplo del cotizador).
     "01_ok_bcp_pen_1000": dict(
-        banco="BCP", tipo="TRANSFERENCIA A TERCEROS", monto="S/ 1,000.00", fecha="Martes 10 Noviembre 2026 - 10:15 am",
+        banco="BCP", tipo="TRANSFERENCIA A TERCEROS", monto="S/ 1,000.00", fecha=fecha("10:15 am"),
         filas=filas("NexoCambio S.A.C.", "**** 0-39", "BCP - Soles", "S/ 1,000.00", "Cuenta Digital Soles", "****4821", "04417382"),
         mensaje="Operación de cambio NexoCambio"),
     # Verde: interbancaria Interbank -> BCP de NexoCambio, S/ 250.00.
     "02_ok_interbank_pen_250": dict(
-        banco="Interbank", tipo="TRANS. INTERBANCARIA", monto="S/ 250.00", fecha="Martes 10 Noviembre 2026 - 11:42 am",
+        banco="Interbank", tipo="TRANS. INTERBANCARIA", monto="S/ 250.00", fecha=fecha("11:42 am"),
         filas=filas("NexoCambio S.A.C.", "CCI ****0039-14", "BCP - Soles", "S/ 250.00", "Cuenta Simple Soles", "****9177", "000552318"),
         mensaje="Cambio de soles a dólares"),
     # Rojo: el monto (S/ 850.00) no coincide con una operación de S/ 1,000.00.
     "03_rojo_monto_distinto": dict(
-        banco="BCP", tipo="TRANSFERENCIA A TERCEROS", monto="S/ 850.00", fecha="Martes 10 Noviembre 2026 - 12:03 pm",
+        banco="BCP", tipo="TRANSFERENCIA A TERCEROS", monto="S/ 850.00", fecha=fecha("12:03 pm"),
         filas=filas("NexoCambio S.A.C.", "**** 0-39", "BCP - Soles", "S/ 850.00", "Cuenta Digital Soles", "****4821", "04419056")),
     # Rojo: transferido a una cuenta que no es de NexoCambio.
     "04_rojo_cuenta_ajena": dict(
-        banco="BBVA", tipo="TRANSFERENCIA A OTROS BANCOS", monto="S/ 1,000.00", fecha="Martes 10 Noviembre 2026 - 12:30 pm",
+        banco="BBVA", tipo="TRANSFERENCIA A OTROS BANCOS", monto="S/ 1,000.00", fecha=fecha("12:30 pm"),
         filas=filas("Inversiones Andinas E.I.R.L.", "**** 7716", "Scotiabank - Soles", "S/ 1,000.00", "Cuenta Ganadora", "****3305", "7781200345")),
     # Rojo: reutiliza el N° de operación 04417382 del caso 01 (comprobante duplicado).
     "05_rojo_duplicado_de_01": dict(
-        banco="BCP", tipo="TRANSFERENCIA A TERCEROS", monto="S/ 1,000.00", fecha="Martes 10 Noviembre 2026 - 10:15 am",
+        banco="BCP", tipo="TRANSFERENCIA A TERCEROS", monto="S/ 1,000.00", fecha=fecha("10:15 am"),
         filas=filas("NexoCambio S.A.C.", "**** 0-39", "BCP - Soles", "S/ 1,000.00", "Cuenta Digital Soles", "****4821", "04417382"),
         mensaje="Operación de cambio NexoCambio"),
     # Amarillo: monto alto (US$ 12,000.00), supera el umbral de registro UIF.
     "06_amarillo_monto_alto_usd": dict(
-        banco="Scotiabank", tipo="TRANSFERENCIA INTERBANCARIA", monto="US$ 12,000.00", fecha="Martes 10 Noviembre 2026 - 03:20 pm",
+        banco="Scotiabank", tipo="TRANSFERENCIA INTERBANCARIA", monto="US$ 12,000.00", fecha=fecha("03:20 pm"),
         filas=[("Enviado a", ["NexoCambio S.A.C.", "CCI ****1147-17", "BCP - Dólares"]), ("Comisión", ["US$ 0.00"]),
                ("Total cobrado", ["US$ 12,000.00"]), ("Desde", ["Cuenta Empresa Dólares", "****6620"]),
                ("Número de operación", ["90034417"])],
         mensaje="Importaciones del Sur S.A.C. - cambio"),
     # Amarillo: imagen borrosa / ilegible.
     "07_amarillo_borroso": dict(
-        banco="Interbank", tipo="TRANS. INTERBANCARIA", monto="S/ 500.00", fecha="Martes 10 Noviembre 2026 - 04:05 pm",
+        banco="Interbank", tipo="TRANS. INTERBANCARIA", monto="S/ 500.00", fecha=fecha("04:05 pm"),
         filas=filas("NexoCambio S.A.C.", "CCI ****0039-14", "BCP - Soles", "S/ 500.00", "Cuenta Simple Soles", "****2290", "000561904"),
         borroso=True),
 }

@@ -21,6 +21,10 @@ RUTA = {"verde": "aprobar", "amarillo": "revision", "rojo": "rechazar"}
 # Equivalencias referenciales para estimar el monto en USD cuando ninguna moneda es USD
 USD_POR = {"USD": 1.0, "USDT": 1.0, "USDC": 1.0, "PEN": 1 / 3.4, "EUR": 1.08}
 
+# Entorno académico: los comprobantes de prueba llevan la marca de agua «DOCUMENTO FICTICIO»
+NOTA_DEMO = ("\nContexto: este es un entorno académico de demostración. Todos los comprobantes llevan la marca de agua "
+             "'DOCUMENTO FICTICIO · SOLO PRUEBAS'; esa marca NO es un indicio de riesgo y no debes mencionarla.")
+
 PROMPT = """Eres el analista de riesgo de NexoCambio, una casa de cambio digital peruana (sujeto obligado ante la UIF-Perú).
 Evalúa si la operación puede procesarse con el comprobante presentado. Datos:
 {datos}
@@ -62,7 +66,10 @@ def evaluar(op: dict, ex: dict, ver: dict) -> dict:
         "verificaciones": [f"{r['regla']}: {r['resultado']} — {r['detalle']}" for r in ver["reglas"]],
     }
     modelo = os.environ["GROQ_MODELO_TEXTO"]
-    ia = chat_json(modelo, PROMPT.format(datos=json.dumps(datos, ensure_ascii=False, default=str), minimo=minimo))
+    prompt = PROMPT.format(datos=json.dumps(datos, ensure_ascii=False, default=str), minimo=minimo)
+    if os.environ.get("MODO_DEMO", "false") == "true":
+        prompt += NOTA_DEMO
+    ia = chat_json(modelo, prompt)
     propuesto = str(ia.get("semaforo", "")).lower()
     semaforo = propuesto if NIVEL.get(propuesto, -1) > NIVEL[minimo] else minimo
     if semaforo == "rojo" and minimo != "rojo":   # sin discrepancia dura el agente solo puede escalar a revisión

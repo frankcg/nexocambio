@@ -66,6 +66,11 @@ Parameters:
     Type: String
     Default: openai/gpt-oss-20b
     Description: Modelo de texto de Groq del Agente de Riesgo.
+  ModoDemo:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Entorno académico - el Agente de Riesgo ignora la marca de agua DOCUMENTO FICTICIO de los comprobantes de prueba.
   UmbralUsd:
     Type: Number
     Default: 10000
@@ -395,6 +400,7 @@ Resources:
           GROQ_API_KEY: !Ref GroqApiKey
           GROQ_MODELO_TEXTO: !Ref GroqModeloTexto
           UMBRAL_USD: !Ref UmbralUsd
+          MODO_DEMO: !Ref ModoDemo
 
   # =========================================================== NEXOGUARD (Step Functions)
   TemaNexoGuard:

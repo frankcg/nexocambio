@@ -115,6 +115,21 @@ La colección `postman/NexoCambio.postman_collection.json` incluye la carpeta **
 
 Antes de cada corrida se ejecuta `python postman/generar_nexoguard.py`, que regenera los comprobantes con la fecha de hoy y números de operación nuevos, para que la corrida no choque con la detección de duplicados. La espera del resultado usa el Collection Runner.
 
+### 3.4 Prueba de punta a punta en AWS (31-oct-2026)
+
+El script `python scripts/probar_nexoguard.py <ApiUrl>` recorre los mismos escenarios que la carpeta 6 de Postman contra la API desplegada:
+
+| Escenario | Operación | Resultado en AWS | Tiempo |
+|---|---|---|---|
+| Aprobación automática | NX-M6SJ6BSB | **En proceso**, decidido por el agente | 13 s |
+| Rechazo: monto distinto | NX-LDMA7X4A | **Rechazada** · «El comprobante indica 850.00 y la operación es por 1,000.00.» | 8 s |
+| Rechazo: duplicado | NX-ML9VYRGG | **Rechazada** · «El número de operación 11814066 ya se usó en la operación NX-M6SJ6BSB.» | 5 s |
+| Revisión humana: monto alto | NX-6H7Q3QFV | Semáforo **amarillo** y alerta de cumplimiento en 25 s; tras la decisión del operador, **En proceso**, decidido por el operador | 25 s + decisión |
+
+Las 5 ejecuciones de Step Functions terminaron en `SUCCEEDED`.
+
+**Hallazgo durante la primera prueba (el agente funcionó como debía).** En la primera corrida, el comprobante correcto cumplió las 7 reglas, pero el Agente de Riesgo lo escaló a amarillo con la justificación «el comprobante presenta una marca de agua que indica DOCUMENTO FICTICIO, lo cual es sospechoso». La barrera de diseño (el agente puede escalar, no aprobar) actuó correctamente: con un comprobante real que dijera eso, enviarlo a revisión es lo deseable. Para el entorno académico se agregó el parámetro `ModoDemo` (por defecto `true` en este stack), que le indica al agente que esa marca es propia de los comprobantes de prueba. En producción se despliega con `ModoDemo=false`.
+
 **[PENDIENTE: captura del Collection Runner con las carpetas 2 y 6 en verde contra la API de AWS.]**
 
 ## 4. FrontEnd conectado a las APIs y al workflow
@@ -137,13 +152,16 @@ ALERT_EMAIL=frank.laura@utec.edu.pe ./scripts/deploy.sh
 # 3. Confirmar en el correo la suscripción al tema SNS «nexo-dev-nexoguard»
 ```
 
+Desplegado el 31-oct-2026 sobre el stack del Proyecto Parcial (actualización in-place, conservando el secreto JWT y la clave de back-office). La máquina de estados funciona con el rol **LabRole** de AWS Academy.
+
 `deploy.sh` empaqueta las Lambdas, la capa y la definición del workflow; despliega el stack `nexocambio-dev` (lee la clave de Groq de `.secrets/groq_api_key`); compila el frontend y lo publica en S3.
 
 | Recurso | Valor |
 |---|---|
-| Sitio web (HTTPS) | **[PENDIENTE: salida SitioWebHttpsUrl]** |
-| API base | **[PENDIENTE: salida ApiUrl]** |
-| Workflow | **[PENDIENTE: salida MaquinaNexoGuard]** |
+| Sitio web (HTTPS) | https://nexo-dev-web-899678635044-us-east-1.s3.us-east-1.amazonaws.com/index.html |
+| Back-office | https://nexo-dev-web-899678635044-us-east-1.s3.us-east-1.amazonaws.com/index.html#/admin |
+| API base | https://ryipifjwef.execute-api.us-east-1.amazonaws.com/v1 |
+| Workflow | arn:aws:states:us-east-1:899678635044:stateMachine:nexo-dev-nexoguard |
 | Región | us-east-1 |
 
 **[PENDIENTE: captura de los recursos del stack en CloudFormation y del correo de NexoGuard recibido.]**

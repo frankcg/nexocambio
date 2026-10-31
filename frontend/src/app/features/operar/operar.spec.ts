@@ -108,5 +108,14 @@ describe('Operar', () => {
     fixture.detectChanges();
     expect(component['paso']()).toBe(4);
     expect(component['resultado']()?.estado).toBe('Pendiente de validación');
+
+    // NexoGuard: la pantalla final consulta la validación automática y refleja su resultado
+    httpMock.expectOne((r) => r.url.endsWith('/validaciones/NX-TEST0001') && r.method === 'GET').flush({
+      id_operacion: 'NX-TEST0001', estado: 'finalizada', fecha_inicio: new Date().toISOString(),
+      estado_final: 'En proceso', decidido_por: 'agente', motivo: null,
+    });
+    fixture.detectChanges();
+    expect(component['resultado']()?.estado).toBe('En proceso');
+    expect(fixture.nativeElement.textContent).toContain('Comprobante validado');
   });
 });

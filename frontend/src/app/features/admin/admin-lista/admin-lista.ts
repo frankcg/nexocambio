@@ -5,9 +5,11 @@ import { AdminOperacionesService } from '../../../core/services/admin-operacione
 import { AdminAuthService } from '../../../core/admin-auth/admin-auth.service';
 import { EstadoOperacion, Operacion } from '../../../core/models/operacion.model';
 import { ErrorApi } from '../../../core/models/error-api.model';
+import { ValidacionesService } from '../../../core/services/validaciones.service';
+import { Validacion } from '../../../core/models/validacion.model';
 import { formatearFechaHora, formatearMoney } from '../../../shared/utils/moneda';
 
-type Filtro = 'Todas' | EstadoOperacion;
+type Filtro = 'Todas' | 'NexoGuard' | EstadoOperacion;
 
 const ESTADOS: EstadoOperacion[] = ['Pendiente de validación', 'En proceso', 'Procesada', 'Rechazada'];
 
@@ -21,8 +23,11 @@ export class AdminLista {
   private readonly admin = inject(AdminOperacionesService);
   private readonly adminAuth = inject(AdminAuthService);
   private readonly router = inject(Router);
+  private readonly validacionesSvc = inject(ValidacionesService);
 
   protected readonly ESTADOS = ESTADOS;
+  /** NexoGuard: operaciones que el workflow envió a revisión humana (cola de la API Validaciones). */
+  protected readonly enRevision = signal<Validacion[]>([]);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly operaciones = signal<Operacion[]>([]);
@@ -45,6 +50,10 @@ export class AdminLista {
   protected cargar(): void {
     this.cargando.set(true);
     this.error.set(null);
+    this.validacionesSvc.listarAdmin('en_revision').subscribe({
+      next: (r) => this.enRevision.set(r.validaciones),
+      error: () => this.enRevision.set([]), // si NexoGuard no responde, la cola manual sigue disponible
+    });
     this.admin.listar().subscribe({
       next: (r) => {
         this.operaciones.set(r.operaciones);

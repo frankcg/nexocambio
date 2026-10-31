@@ -14,6 +14,7 @@
           Recibimos tu comprobante. Validaremos la transferencia de <b>{{ textoMonto() }}</b> y te enviaremos
           <b>{{ textoMontoDestino() }}</b>. Puedes seguir el estado en Mis operaciones.
         </p>
+        <app-estado-nexoguard [idOperacion]="r.id_operacion" (terminada)="onValidacionTerminada($event)" />
         <div class="actions" style="width: 100%">
           <a class="btn btn-ghost" routerLink="/">Nueva operación</a>
           <a class="btn btn-solid" [routerLink]="['/operaciones', r.id_operacion]">Ver mi operación</a>

@@ -6,6 +6,7 @@ import { EstadoOperacion, Operacion } from '../../../core/models/operacion.model
 import { ErrorApi } from '../../../core/models/error-api.model';
 import { formatearFechaHora, formatearMoney } from '../../../shared/utils/moneda';
 import { MONEDAS_CASA } from '../../../core/models/catalogos.model';
+import { EstadoNexoguard } from '../../../shared/components/estado-nexoguard/estado-nexoguard';
 
 const FIAT = MONEDAS_CASA as readonly string[];
 
@@ -17,7 +18,7 @@ const DESCRIPCION_ESTADO: Record<string, string> = {
 
 @Component({
   selector: 'app-detalle',
-  imports: [RouterLink],
+  imports: [RouterLink, EstadoNexoguard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './detalle.html',
 })
@@ -35,9 +36,26 @@ export class Detalle {
     this.rechazada() ? ['Pendiente de validación', 'Rechazada'] : ['Pendiente de validación', 'En proceso', 'Procesada']
   );
 
+  private readonly id = this.ruta.snapshot.paramMap.get('id')!;
+
   constructor() {
-    const id = this.ruta.snapshot.paramMap.get('id')!;
-    this.operacionesSvc.obtener(id).subscribe({
+    this.cargar();
+  }
+
+  /** NexoGuard terminó: recarga la operación para mostrar su nuevo estado e historial. */
+  protected onValidacionTerminada(): void {
+    this.cargar();
+  }
+
+  protected actorHito(estado: EstadoOperacion): string | null {
+    const hito = this.operacion()?.historial.find((h) => h.estado === estado);
+    if (hito?.actor === 'agente') return 'Validado automáticamente por NexoGuard';
+    if (hito?.actor === 'operador' && hito.origen === 'nexoguard') return 'Revisado por un especialista';
+    return null;
+  }
+
+  private cargar(): void {
+    this.operacionesSvc.obtener(this.id).subscribe({
       next: (o) => {
         this.operacion.set(o);
         this.cargando.set(false);

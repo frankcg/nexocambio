@@ -539,3 +539,33 @@ section.block.faq-wrap{display:grid}
 .ph-save{font-size:11px; font-weight:700; color:var(--ok); background:var(--ok-soft); border-radius:8px; padding:7px 9px}
 .ph-banks{display:flex; flex-direction:column; gap:2px; font-size:11px; font-weight:600}
 .ph-banks small{color:var(--muted); font-weight:500}
+
+/* ---------------------------------------------------------------- NexoGuard */
+.guard{display:flex; flex-direction:column; gap:6px; padding:16px 18px; border-radius:14px; border:1px solid var(--line); background:var(--surface-2); text-align:left; width:100%}
+.guard b{font-size:16px}
+.guard small{color:var(--muted); font-size:13px}
+.guard.g-curso{border-color:var(--info); background:var(--info-soft)}
+.guard.g-revision{border-color:var(--warn); background:var(--warn-soft)}
+.guard.g-ok{border-color:var(--ok); background:var(--ok-soft)}
+.guard.g-bad{border-color:var(--bad); background:var(--bad-soft)}
+.guard-pasos{list-style:none; margin:4px 0; padding:0; display:flex; flex-direction:column; gap:6px; font-size:14px}
+.guard-pasos li{display:flex; align-items:center; gap:8px; color:var(--muted)}
+.guard-pasos li::before{content:""; width:10px; height:10px; border-radius:50%; border:2px solid currentColor; flex:none}
+.guard-pasos li.hecho{color:var(--ok)}
+.guard-pasos li.hecho::before{background:currentColor}
+.guard-pasos li.activo{color:var(--ink); font-weight:600}
+.guard-pasos li.activo::before{border-color:var(--info); animation:guard-pulso 1s ease-in-out infinite alternate}
+@keyframes guard-pulso{from{transform:scale(.8); opacity:.5} to{transform:scale(1.15); opacity:1}}
+.semaforo{display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; padding:4px 10px; border-radius:99px; white-space:nowrap; text-transform:capitalize}
+.semaforo::before{content:""; width:9px; height:9px; border-radius:50%; background:currentColor}
+.semaforo.verde{background:var(--ok-soft); color:var(--ok)}
+.semaforo.amarillo{background:var(--warn-soft); color:var(--warn)}
+.semaforo.rojo{background:var(--bad-soft); color:var(--bad)}
+.cmp{width:100%; border-collapse:collapse; font-size:14px}
+.cmp th, .cmp td{padding:8px 6px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top}
+.cmp th{color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.06em}
+.cmp td.r{text-align:center; font-weight:700}
+.cmp .si{color:var(--ok)} .cmp .no{color:var(--bad)} .cmp .nc{color:var(--warn)}
+.reglas{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; font-size:13.5px}
+.reglas li{display:grid; grid-template-columns:20px 1fr; gap:6px}
+.justif{margin:0; padding:12px 14px; border-left:3px solid var(--line); background:var(--surface-2); border-radius:0 10px 10px 0; font-size:14px}

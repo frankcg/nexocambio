@@ -43,6 +43,9 @@ export interface HitoHistorial {
   estado: EstadoOperacion;
   fecha: string;
   motivo_rechazo?: string;
+  /** NexoGuard: quién tomó la decisión y si vino del workflow. */
+  actor?: 'agente' | 'operador';
+  origen?: 'nexoguard';
 }
 
 export interface Operacion {

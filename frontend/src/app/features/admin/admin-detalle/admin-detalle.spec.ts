@@ -4,6 +4,23 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { AdminDetalle } from './admin-detalle';
 import { AdminAuthService } from '../../../core/admin-auth/admin-auth.service';
 import { Operacion } from '../../../core/models/operacion.model';
+import { Validacion } from '../../../core/models/validacion.model';
+
+const VALIDACION: Validacion = {
+  id_operacion: 'NX-0001',
+  fecha_inicio: new Date().toISOString(),
+  id_cliente: 'CLI-1',
+  estado: 'en_revision',
+  monto_origen: 1000,
+  moneda_origen: 'PEN',
+  semaforo: 'amarillo',
+  justificacion: 'La imagen es borrosa.',
+  motivo_sugerido: null,
+  verificaciones: [{ regla: 'monto', resultado: 'no_cumple', gravedad: 'rechazo', detalle: 'El comprobante indica 850.00.' }],
+  extraccion: { es_comprobante: true, legible: false, banco_origen: 'BCP', monto: 850, moneda: 'PEN', fecha: null, hora: null,
+                numero_operacion: '123', destinatario: 'NexoCambio S.A.C.', cuenta_destino: '0-39', banco_destino: 'BCP',
+                confianza: 0.4, observaciones: '' },
+};
 
 const OPERACION: Operacion = {
   id_operacion: 'NX-0001',
@@ -47,7 +64,10 @@ describe('AdminDetalle', () => {
 
   afterEach(() => httpMock.verify());
 
-  function cargar(estadoInicial: Operacion = OPERACION) {
+  function cargar(estadoInicial: Operacion = OPERACION, validacion: Validacion | null = null) {
+    const v = httpMock.expectOne((r) => r.url.endsWith('/validaciones/NX-0001/admin'));
+    if (validacion) v.flush({ id_operacion: 'NX-0001', validaciones: [validacion], total: 1 });
+    else v.flush({ mensaje: 'Sin validación', codigo: 'sin_validacion' }, { status: 404, statusText: 'Not Found' });
     httpMock.expectOne((r) => r.url.endsWith('/operaciones/NX-0001/admin') && r.method === 'GET').flush(estadoInicial);
     fixture.detectChanges();
   }
@@ -90,6 +110,31 @@ describe('AdminDetalle', () => {
 
   it('no ofrece acciones cuando la operación ya está en un estado final', () => {
     cargar({ ...OPERACION, estado: 'Procesada' });
+    expect(component['puedeAccionar']()).toBe(false);
+  });
+
+  it('con NexoGuard en revisión, aprobar() reanuda el workflow en lugar del PATCH', () => {
+    cargar(OPERACION, VALIDACION);
+    expect(component['comparativa']()[0]).toEqual(expect.objectContaining({ campo: 'Monto', resultado: 'no_cumple' }));
+    component['aprobar']();
+    const solicitud = httpMock.expectOne((r) => r.url.endsWith('/validaciones/NX-0001/decision') && r.method === 'POST');
+    expect(solicitud.request.headers.get('x-admin-key')).toBe('clave-admin-pruebas');
+    expect(solicitud.request.body).toEqual({ decision: 'aprobar' });
+    solicitud.flush({ mensaje: 'Decisión registrada.' });
+  });
+
+  it('con NexoGuard en revisión, el rechazo propone el motivo del agente', () => {
+    cargar(OPERACION, VALIDACION);
+    component['mostrarFormularioRechazo']();
+    expect(component['motivo']()).toBe('El comprobante indica 850.00.');
+    component['confirmarRechazo']();
+    const solicitud = httpMock.expectOne((r) => r.url.endsWith('/validaciones/NX-0001/decision'));
+    expect(solicitud.request.body).toEqual({ decision: 'rechazar', motivo: 'El comprobante indica 850.00.' });
+    solicitud.flush({ mensaje: 'Decisión registrada.' });
+  });
+
+  it('bloquea las acciones mientras NexoGuard está validando', () => {
+    cargar(OPERACION, { ...VALIDACION, estado: 'en_curso' });
     expect(component['puedeAccionar']()).toBe(false);
   });
 });

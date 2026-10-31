@@ -66,6 +66,69 @@
             <dd>{{ o.comprobante_nombre || '—' }}</dd>
           </dl>
         </section>
+
+        @if (validacion(); as v) {
+          <section class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
+              <h2 style="margin: 0">Análisis NexoGuard</h2>
+              @if (v.semaforo) {
+                <span class="semaforo" [class]="v.semaforo">{{ v.semaforo }}</span>
+              } @else {
+                <span class="pill s-proc">Validando…</span>
+              }
+            </div>
+            @if (v.justificacion) {
+              <p class="justif">{{ v.justificacion }}</p>
+            }
+            @if (v.alerta_cumplimiento) {
+              <p class="form-err">Alerta de cumplimiento: el monto (≈ US$ {{ v.monto_usd }}) supera el umbral de registro.</p>
+            }
+            @if (comparativa().length) {
+              <table class="cmp">
+                <thead><tr><th>Dato</th><th>Declarado en la operación</th><th>Leído por el agente</th><th></th></tr></thead>
+                <tbody>
+                  @for (f of comparativa(); track f.campo) {
+                    <tr>
+                      <td>{{ f.campo }}</td>
+                      <td>{{ f.declarado }}</td>
+                      <td class="mono" style="font-size: 13px">{{ f.leido }}</td>
+                      <td class="r" [class.si]="f.resultado === 'cumple'" [class.no]="f.resultado === 'no_cumple'" [class.nc]="f.resultado === 'no_concluyente'">
+                        {{ f.resultado === 'cumple' ? '✓' : f.resultado === 'no_cumple' ? '✗' : '?' }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+            @if (v.verificaciones?.length) {
+              <h3>Verificaciones</h3>
+              <ul class="reglas">
+                @for (r of v.verificaciones; track r.regla) {
+                  <li>
+                    <span [class]="r.resultado === 'cumple' ? 'si' : r.resultado === 'no_cumple' ? 'no' : 'nc'" [style.color]="r.resultado === 'cumple' ? 'var(--ok)' : r.resultado === 'no_cumple' ? 'var(--bad)' : 'var(--warn)'">
+                      {{ r.resultado === 'cumple' ? '✓' : r.resultado === 'no_cumple' ? '✗' : '?' }}
+                    </span>
+                    <span>{{ r.detalle }}</span>
+                  </li>
+                }
+              </ul>
+            }
+            <dl class="kv">
+              @if (v.extraccion) {
+                <dt>Confianza de lectura</dt>
+                <dd>{{ (v.extraccion.confianza * 100).toFixed(0) }}%</dd>
+              }
+              @if (v.decision; as d) {
+                <dt>Decisión</dt>
+                <dd>{{ d.decision === 'aprobar' ? 'Aprobada' : 'Rechazada' }} por {{ d.decidido_por === 'agente' ? 'el agente' : 'un operador' }}</dd>
+              }
+              @if (v.modelos?.vision) {
+                <dt>Modelos</dt>
+                <dd class="mono" style="font-size: 12px">{{ v.modelos?.vision }} · {{ v.modelos?.texto }}</dd>
+              }
+            </dl>
+          </section>
+        }
       </div>
 
       <section class="panel">
@@ -73,6 +136,13 @@
 
         @if (errorAccion()) {
           <p class="form-err" role="alert">{{ errorAccion() }}</p>
+        }
+        @if (guardEnRevision()) {
+          <p class="muted" style="margin: 0">NexoGuard envió esta operación a revisión. Tu decisión reanudará el workflow.</p>
+        }
+        @if (guardEnCurso()) {
+          <p class="muted" style="margin: 0">NexoGuard está validando el comprobante. Actualiza en unos segundos.</p>
+          <button class="btn btn-ghost" type="button" (click)="cargar()" style="align-self: flex-start">Actualizar</button>
         }
 
         @if (puedeAccionar()) {

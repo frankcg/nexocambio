@@ -76,6 +76,9 @@
       </div>
       <section class="panel">
         <h2>Estado</h2>
+        @if (o.comprobante_nombre) {
+          <app-estado-nexoguard [idOperacion]="o.id_operacion" (terminada)="onValidacionTerminada()" />
+        }
         <ol class="timeline">
           @for (e of flujo(); track e) {
             <li [class.done]="estaHecho(e) && e !== 'Rechazada'" [class.bad]="estaHecho(e) && e === 'Rechazada'" [class.todo]="!estaHecho(e)">
@@ -84,6 +87,9 @@
                 <small>
                   @if (estaHecho(e)) {
                     {{ descripcionEstado(e) }}
+                    @if (actorHito(e); as actor) {
+                      · {{ actor }}
+                    }
                     @if (fechaHito(e); as f) {
                       · {{ fechaHora(f) }}
                     }

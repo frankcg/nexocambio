@@ -20,6 +20,9 @@
   } @else {
     <div style="display: flex; flex-direction: column; gap: 16px">
       <div class="filters" role="group" aria-label="Filtrar por estado">
+        <button type="button" [attr.aria-pressed]="filtro() === 'NexoGuard'" (click)="elegirFiltro('NexoGuard')">
+          <span class="dot s-pend" aria-hidden="true"></span>En revisión · NexoGuard<span class="n">{{ enRevision().length }}</span>
+        </button>
         <button type="button" [attr.aria-pressed]="filtro() === 'Todas'" (click)="elegirFiltro('Todas')">
           <span class="dot dot-todas" aria-hidden="true"></span>Todas<span class="n">{{ operaciones().length }}</span>
         </button>
@@ -30,7 +33,30 @@
         }
       </div>
 
-      @if (filtradas().length) {
+      @if (filtro() === 'NexoGuard') {
+        @if (enRevision().length) {
+          <ul class="oplist">
+            <li class="hdr" aria-hidden="true"><span>En revisión desde</span><span>Semáforo</span><span>Monto</span><span>Motivo</span><span></span></li>
+            @for (v of enRevision(); track v.id_operacion + v.fecha_inicio) {
+              <li>
+                <a [routerLink]="['/admin/operaciones', v.id_operacion]">
+                  <span class="date">{{ fechaHora(v.fecha_revision || v.fecha_inicio) }}<small>{{ v.id_operacion }}</small></span>
+                  <span class="mod"><span class="semaforo" [class]="v.semaforo">{{ v.semaforo }}</span></span>
+                  <span class="amt">{{ monto(v.monto_origen, v.moneda_origen) }}@if (v.alerta_cumplimiento) {<small>Alerta de cumplimiento</small>}</span>
+                  <span class="st" style="white-space: normal; font-size: 13px">{{ v.justificacion }}</span>
+                  <svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6" /></svg>
+                </a>
+              </li>
+            }
+          </ul>
+        } @else {
+          <div class="empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M20 6 9 17l-5-5" /></svg>
+            <h2>No hay operaciones esperando revisión</h2>
+            <p>NexoGuard valida automáticamente los comprobantes; aquí aparecen solo los casos dudosos.</p>
+          </div>
+        }
+      } @else if (filtradas().length) {
         <ul class="oplist">
           <li class="hdr" aria-hidden="true"><span>Fecha</span><span>Cliente</span><span>Monto</span><span>Estado</span><span></span></li>
           @for (o of filtradas(); track o.id_operacion) {

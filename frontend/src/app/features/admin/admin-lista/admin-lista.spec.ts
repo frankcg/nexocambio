@@ -66,7 +66,15 @@ describe('AdminLista', () => {
 
   afterEach(() => httpMock.verify());
 
+  function colaNexoguard(validaciones: unknown[] = []) {
+    const solicitud = httpMock.expectOne((r) => r.url.endsWith('/validaciones/admin'));
+    expect(solicitud.request.params.get('estado')).toBe('en_revision');
+    expect(solicitud.request.headers.get('x-admin-key')).toBe('clave-admin-pruebas');
+    solicitud.flush({ validaciones, total: validaciones.length });
+  }
+
   it('adjunta x-admin-key y filtra por "Pendiente de validación" por defecto', () => {
+    colaNexoguard();
     const solicitud = httpMock.expectOne((r) => r.url.endsWith('/operaciones/admin'));
     expect(solicitud.request.headers.get('x-admin-key')).toBe('clave-admin-pruebas');
     solicitud.flush(RESPUESTA);
@@ -81,6 +89,7 @@ describe('AdminLista', () => {
     const navigateSpy = vi.spyOn(router, 'navigateByUrl');
     const adminAuth = TestBed.inject(AdminAuthService);
 
+    colaNexoguard();
     httpMock.expectOne((r) => r.url.endsWith('/operaciones/admin')).flush(
       { mensaje: 'Acceso restringido al back-office.', codigo: 'prohibido' },
       { status: 403, statusText: 'Forbidden' }
@@ -89,5 +98,15 @@ describe('AdminLista', () => {
 
     expect(adminAuth.autenticado()).toBe(false);
     expect(navigateSpy).toHaveBeenCalledWith('/admin/login');
+  });
+
+  it('muestra la cola de NexoGuard con su semáforo', () => {
+    colaNexoguard([{ id_operacion: 'NX-0002', fecha_inicio: new Date().toISOString(), id_cliente: 'CLI-1', estado: 'en_revision',
+                     monto_origen: 40800, moneda_origen: 'PEN', semaforo: 'amarillo', justificacion: 'Monto alto.', alerta_cumplimiento: true }]);
+    httpMock.expectOne((r) => r.url.endsWith('/operaciones/admin')).flush(RESPUESTA);
+    component['elegirFiltro']('NexoGuard');
+    fixture.detectChanges();
+    expect(component['enRevision']().length).toBe(1);
+    expect(fixture.nativeElement.textContent).toContain('Alerta de cumplimiento');
   });
 });

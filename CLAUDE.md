@@ -1,11 +1,15 @@
 # NexoCambio
 
 Casa de cambio de divisas y cripto (proyecto de Cloud Computing, UTEC Posgrado).
-Backend serverless en AWS: API Gateway (HTTP API) + 3 Lambdas Python 3.12 + DynamoDB + S3.
+Backend serverless en AWS: API Gateway (HTTP API) + 4 Lambdas Python 3.12 + DynamoDB + S3.
+Proyecto final: NexoGuard, workflow agéntico (Step Functions + agentes Groq + revisión humana) que
+valida los comprobantes. Diseño en docs/final/ (parte_a/parte_b), workflow en statemachine/nexoguard.asl.json.
 
 ## Estructura
-- services/{cotizaciones,clientes,operaciones}/app.py: microservicios (cada uno con su BD)
-- layer/python/nexo_common.py: código compartido (JWT, hash, respuestas)
+- services/{cotizaciones,clientes,operaciones,validaciones}/app.py: microservicios (cada uno con su BD)
+- services/guard_{extraer,verificar,riesgo}/app.py: pasos del workflow NexoGuard (Lambdas sin API)
+- layer/python/nexo_common.py: código compartido (JWT, hash, respuestas); nexo_groq.py: cliente Groq
+- Clave de Groq en .secrets/groq_api_key (deploy.sh la pasa como parámetro NoEcho)
 - template.yaml: CloudFormation. scripts/: deploy.sh, destroy.sh, servidor_local.py, configurar_front.py
 - tests/: pytest con moto. postman/: colección de la API
 - frontend-legacy/index.html: prototipo original (referencia de pantallas y diseño, ya no se despliega)
@@ -58,3 +62,14 @@ x-admin-key en sessionStorage, sin JWT ni cuentas individuales) y su propio head
 (`AdminHeader`, sin nav de cliente). Rutas: `/admin/login`, `/admin/operaciones` (cola con
 filtro por estado), `/admin/operaciones/:id` (detalle + aprobar/rechazar). Un usuario de
 back-office solo puede llegar a este flujo; nunca ve las pantallas de cliente.
+## NexoGuard (proyecto final)
+POST /operaciones/{id}/comprobante inicia el workflow (StartExecution, env STATE_MACHINE_ARN). Pasos:
+RegistrarInicio → ExtraerComprobante (Groq visión) → VerificarCoincidencia (reglas) → EvaluarRiesgo
+(Groq texto + barreras) → aprobar | revisión humana (waitForTaskToken) | rechazar → AplicarDecision
+(acción interna de Operaciones `aplicar_decision`, hito con actor agente|operador) → GuardarValidacion → SNS.
+Regla de diseño: la IA lee y explica, las reglas deciden; el agente solo escala a revisión.
+La operación conserva sus 4 estados; los subestados vienen de la API Validaciones:
+- GET /validaciones/{id} [JWT dueño] -> {estado: en_curso|en_revision|finalizada, estado_final, decidido_por, motivo}
+- GET /validaciones/{id}/admin, GET /validaciones/admin?estado=en_revision [x-admin-key]
+- POST /validaciones/{id}/decision [x-admin-key] {decision: aprobar|rechazar, motivo?} -> 202 (SendTaskSuccess)
+Comprobantes de prueba: `python scripts/generar_comprobantes.py` (fecha de hoy; regenerar el día de la demo).

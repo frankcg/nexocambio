@@ -1,0 +1,37 @@
+@if (validacion(); as v) {
+  <div class="guard" [class.g-curso]="v.estado === 'en_curso'" [class.g-revision]="v.estado === 'en_revision'"
+       [class.g-ok]="v.estado === 'finalizada' && v.estado_final !== 'Rechazada'" [class.g-bad]="v.estado_final === 'Rechazada'"
+       role="status" aria-live="polite">
+    <span class="eyebrow">Validación automática · NexoGuard</span>
+    @switch (v.estado) {
+      @case ('en_curso') {
+        <b>Validando tu comprobante…</b>
+        <ol class="guard-pasos">
+          @for (p of PASOS; track p; let i = $index) {
+            <li [class.hecho]="i < pasoAnimado()" [class.activo]="i === pasoAnimado()">{{ p }}</li>
+          }
+        </ol>
+        <small>
+          @if (agotado()) {
+            Está tomando más de lo habitual. Te mostraremos el resultado en Mis operaciones.
+          } @else {
+            Normalmente toma menos de un minuto.
+          }
+        </small>
+      }
+      @case ('en_revision') {
+        <b>Un especialista está revisando tu operación</b>
+        <small>Nuestro sistema pidió una revisión adicional. Te avisaremos apenas termine.</small>
+      }
+      @default {
+        @if (v.estado_final === 'Rechazada') {
+          <b>No pudimos validar tu comprobante</b>
+          <small>{{ v.motivo || 'El comprobante no corresponde a la operación registrada.' }}</small>
+        } @else {
+          <b>¡Comprobante validado! Tu operación está en proceso.</b>
+          <small>{{ v.decidido_por === 'operador' ? 'Revisado por un especialista.' : 'Validado automáticamente en segundos.' }}</small>
+        }
+      }
+    }
+  </div>
+}

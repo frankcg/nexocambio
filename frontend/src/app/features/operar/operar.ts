@@ -11,6 +11,8 @@ import { ToastService } from '../../shared/components/toast/toast.service';
 import { CampoError } from '../../shared/components/campo-error/campo-error';
 import { Stepper } from '../../shared/components/stepper/stepper';
 import { BotonCopiar } from '../../shared/components/boton-copiar/boton-copiar';
+import { EstadoNexoguard } from '../../shared/components/estado-nexoguard/estado-nexoguard';
+import { ValidacionCliente } from '../../core/models/validacion.model';
 import { BANCOS, Banco, CriptoActivo, MONEDAS_CASA, REDES_POR_CRIPTO, TIPOS_CUENTA, TipoCuenta } from '../../core/models/catalogos.model';
 import { Cotizacion } from '../../core/models/cotizacion.model';
 import { ContentTypeComprobante, Destino, EstadoOperacion, Origen } from '../../core/models/operacion.model';
@@ -28,7 +30,7 @@ const MAX_COMPROBANTE_BYTES = 4 * 1048576;
 
 @Component({
   selector: 'app-operar',
-  imports: [ReactiveFormsModule, RouterLink, CampoError, Stepper, BotonCopiar],
+  imports: [ReactiveFormsModule, RouterLink, CampoError, Stepper, BotonCopiar, EstadoNexoguard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './operar.html',
 })
@@ -317,6 +319,11 @@ export class Operar {
         this.errorGeneral.set((error.error as ErrorApi | undefined)?.mensaje ?? MENSAJE_ERROR_RED);
       },
     });
+  }
+
+  protected onValidacionTerminada(v: ValidacionCliente): void {
+    const r = this.resultado();
+    if (r && v.estado_final) this.resultado.set({ ...r, estado: v.estado_final });
   }
 
   protected formatearMontoOrigenExacto(): string {

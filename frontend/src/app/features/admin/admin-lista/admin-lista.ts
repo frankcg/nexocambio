@@ -27,7 +27,12 @@ export class AdminLista {
 
   protected readonly ESTADOS = ESTADOS;
   /** NexoGuard: operaciones que el workflow envió a revisión humana (cola de la API Validaciones). */
-  protected readonly enRevision = signal<Validacion[]>([]);
+  private readonly colaNexoguard = signal<Validacion[]>([]);
+  /** Solo las que siguen pendientes: si un operador resolvió la operación con el PATCH manual, sale de la cola. */
+  protected readonly enRevision = computed(() => {
+    const pendientes = new Set(this.operaciones().filter((o) => o.estado === 'Pendiente de validación').map((o) => o.id_operacion));
+    return this.colaNexoguard().filter((v) => pendientes.has(v.id_operacion));
+  });
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly operaciones = signal<Operacion[]>([]);
@@ -51,8 +56,8 @@ export class AdminLista {
     this.cargando.set(true);
     this.error.set(null);
     this.validacionesSvc.listarAdmin('en_revision').subscribe({
-      next: (r) => this.enRevision.set(r.validaciones),
-      error: () => this.enRevision.set([]), // si NexoGuard no responde, la cola manual sigue disponible
+      next: (r) => this.colaNexoguard.set(r.validaciones),
+      error: () => this.colaNexoguard.set([]), // si NexoGuard no responde, la cola manual sigue disponible
     });
     this.admin.listar().subscribe({
       next: (r) => {

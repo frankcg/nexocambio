@@ -2,75 +2,75 @@
  "Demo académica": {
   "validaciones": 1000,
   "aws": {
-   "AWS Step Functions (Standard)": 0.16,
-   "AWS Lambda (3 agentes + API Validaciones)": 0.04,
-   "API Gateway (rutas /validaciones)": 0.01,
-   "DynamoDB nexo-validaciones": 0.0,
+   "AWS Step Functions (Standard)": 0.29,
+   "AWS Lambda (4 pasos + Validaciones + banco)": 0.04,
+   "API Gateway (/validaciones + /banco)": 0.01,
+   "DynamoDB (validaciones + banco simulado)": 0.0,
    "SNS (correos NexoGuard)": 0.0,
    "CloudWatch (logs + 1 alarma)": 0.1
   },
-  "total_aws": 0.32,
+  "total_aws": 0.45,
   "groq": {
    "Groq qwen3.8-27b (Agente Extractor)": 2.92,
    "Groq gpt-oss-20b (Agente de Riesgo)": 0.25
   },
   "total_groq": 3.17,
-  "por_validacion": 0.0035,
+  "por_validacion": 0.0036,
   "base_nexocambio": 0.5,
   "metricas": {
-   "transiciones": 10500.0,
-   "lambda_invocaciones": 7000,
-   "lambda_gbs": 2200.0,
+   "transiciones": 15400.0,
+   "lambda_invocaciones": 10600.0,
+   "lambda_gbs": 2416.2,
    "correos": 350.0
   }
  },
  "Piloto (≈2 mil clientes)": {
   "validaciones": 15000,
   "aws": {
-   "AWS Step Functions (Standard)": 3.84,
-   "AWS Lambda (3 agentes + API Validaciones)": 0.57,
-   "API Gateway (rutas /validaciones)": 0.15,
-   "DynamoDB nexo-validaciones": 0.06,
+   "AWS Step Functions (Standard)": 5.68,
+   "AWS Lambda (4 pasos + Validaciones + banco)": 0.64,
+   "API Gateway (/validaciones + /banco)": 0.18,
+   "DynamoDB (validaciones + banco simulado)": 0.07,
    "SNS (correos NexoGuard)": 0.09,
    "CloudWatch (logs + 1 alarma)": 0.14
   },
-  "total_aws": 4.85,
+  "total_aws": 6.8,
   "groq": {
    "Groq qwen3.8-27b (Agente Extractor)": 43.8,
    "Groq gpt-oss-20b (Agente de Riesgo)": 3.71
   },
   "total_groq": 47.51,
-  "por_validacion": 0.0035,
+  "por_validacion": 0.0036,
   "base_nexocambio": 1.7,
   "metricas": {
-   "transiciones": 157500.0,
-   "lambda_invocaciones": 105000,
-   "lambda_gbs": 33000.0,
+   "transiciones": 231000.0,
+   "lambda_invocaciones": 159000.0,
+   "lambda_gbs": 36243.8,
    "correos": 5250.0
   }
  },
  "Crecimiento": {
   "validaciones": 150000,
   "aws": {
-   "AWS Step Functions (Standard)": 39.27,
-   "AWS Lambda (3 agentes + API Validaciones)": 5.71,
-   "API Gateway (rutas /validaciones)": 1.5,
-   "DynamoDB nexo-validaciones": 0.62,
+   "AWS Step Functions (Standard)": 57.65,
+   "AWS Lambda (4 pasos + Validaciones + banco)": 6.36,
+   "API Gateway (/validaciones + /banco)": 1.84,
+   "DynamoDB (validaciones + banco simulado)": 0.74,
    "SNS (correos NexoGuard)": 1.03,
    "CloudWatch (logs + 1 alarma)": 0.53
   },
-  "total_aws": 48.66,
+  "total_aws": 68.15,
   "groq": {
    "Groq qwen3.8-27b (Agente Extractor)": 438.0,
    "Groq gpt-oss-20b (Agente de Riesgo)": 37.12
   },
   "total_groq": 475.13,
-  "por_validacion": 0.0035,
+  "por_validacion": 0.0036,
   "base_nexocambio": 13.29,
   "metricas": {
-   "transiciones": 1575000.0,
-   "lambda_invocaciones": 1050000,
-   "lambda_gbs": 330000.0,
+   "transiciones": 2310000.0,
+   "lambda_invocaciones": 1590000.0,
+   "lambda_gbs": 362437.5,
    "correos": 52500.0
   }
  }

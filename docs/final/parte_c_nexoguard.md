@@ -7,7 +7,7 @@
 
 | Componente | Implementación | Archivos |
 |---|---|---|
-| Workflow agéntico | AWS Step Functions **Standard**, 17 estados: ruta predefinida, `Retry`/`Catch` por estado, revisión humana con `waitForTaskToken` e integraciones directas con SNS | `statemachine/nexoguard.asl.json` |
+| Workflow agéntico | AWS Step Functions **Standard**, 23 estados: ruta predefinida, conciliación con el banco (`Wait` + reintentos), `Retry`/`Catch` por estado, revisión humana con `waitForTaskToken` e integraciones directas con SNS | `statemachine/nexoguard.asl.json` |
 | Agente Extractor | Lambda Python 3.12 + Groq `qwen/qwen3.8-27b` (visión, sin memoria) | `services/guard_extraer/app.py` |
 | Verificación | Lambda Python 3.12 con 8 reglas deterministas (incluido el contraste con el número declarado por el cliente) y detección de duplicados (GSI) | `services/guard_verificar/app.py` |
 | Agente de Riesgo | Lambda Python 3.12 + Groq `openai/gpt-oss-20b` (texto, sin memoria) con barreras de decisión | `services/guard_riesgo/app.py` |
@@ -16,8 +16,8 @@
 | Cliente Groq | Cliente HTTP sin dependencias en la Lambda Layer; errores `GroqLimite`/`GroqError` que el `Retry` de Step Functions reconoce | `layer/python/nexo_groq.py` |
 | Infraestructura como código | CloudFormation: 1 tabla, 4 Lambdas, máquina de estados, SNS, 4 rutas, alarma | `template.yaml`, `scripts/deploy.sh` |
 | Frontend | Angular 22: validación en vivo para el cliente; cola y revisión asistida en el back-office | `frontend/src/app/…` (ver sección 4) |
-| Pruebas | 74 pruebas de backend (pytest + moto) y 65 de frontend (Vitest) | `tests/`, `*.spec.ts` |
-| Evidencia API | Colección Postman con la carpeta «6. NexoGuard» (48 requests) | `postman/` |
+| Pruebas | 94 pruebas de backend (pytest + moto) y 68 de frontend (Vitest) | `tests/`, `*.spec.ts` |
+| Evidencia API | Colección Postman con la carpeta «6. NexoGuard» (69 requests) | `postman/` |
 
 Todo el código se escribió con asistencia de IA (Claude) a partir del diseño de la Parte B, tal como permite el enunciado.
 
@@ -83,8 +83,8 @@ PK `id_operacion`, SK `fecha_inicio`, con dos GSI: `numero-operacion-index` (dis
 
 | Suite | Resultado | Qué cubre de NexoGuard |
 |---|---|---|
-| Backend: `python -m pytest` | **74 aprobadas** (57 del parcial + 17 nuevas) | Reglas (monto, moneda, cuenta/CCI de NexoCambio, duplicado, fecha, lectura no confiable), barreras del agente de riesgo, normalización del extractor y PDF, API Validaciones (cola, decisión, 400/403/409, token oculto, aislamiento entre clientes), `StartExecution` y `aplicar_decision` en Operaciones, tolerancia a fallos de Step Functions |
-| Frontend: `npx ng test` | **65 aprobadas** (5 nuevas) | Pantalla final con validación en vivo, cola NexoGuard, decisión por la API Validaciones, motivo sugerido, bloqueo mientras se valida |
+| Backend: `python -m pytest` | **94 aprobadas** (57 del parcial + 37 nuevas) | Reglas (monto, moneda, cuenta/CCI de NexoCambio, duplicado, fecha, lectura no confiable), barreras del agente de riesgo, normalización del extractor y PDF, API Validaciones (cola, decisión, 400/403/409, token oculto, aislamiento entre clientes), `StartExecution` y `aplicar_decision` en Operaciones, tolerancia a fallos de Step Functions, banco simulado, conciliación (total, parcial, sin depósito), reinicio de datos de prueba |
+| Frontend: `npx ng test` | **68 aprobadas** (8 nuevas) | Pantalla final con validación en vivo, cola NexoGuard, decisión por la API Validaciones, motivo sugerido, bloqueo mientras se valida, actualización automática, depósito en el banco, botón de reinicio |
 
 Groq y Step Functions se simulan en estas pruebas; no necesitan credenciales ni internet.
 
@@ -212,7 +212,7 @@ Desplegado el 31-oct-2026 sobre el stack del Proyecto Parcial (actualización in
 | 1 | Benchmark y por qué AWS | A | [Integrante] |
 | 1 | Historias de usuario y MVP | A | [Integrante] |
 | 2 | Arquitectura, workflow y barreras «la IA lee, las reglas deciden» | B | [Integrante] |
-| 1 | Costos (el 90% es IA) y región | B | [Integrante] |
+| 1 | Costos (≈ 87% es IA) y región | B | [Integrante] |
 | 3 | **Demo en vivo:** comprobante correcto (grafo verde), cuenta ajena (rechazo automático) y monto distinto (cola, revisión asistida con motivo sugerido, decisión del operador y correo) | C | [Integrante] |
 | 1 | Postman, pruebas y repositorio | C | [Integrante] |
 

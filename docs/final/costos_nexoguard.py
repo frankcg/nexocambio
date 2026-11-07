@@ -10,14 +10,19 @@ P = dict(sfn_transicion=0.025 / 1000, sfn_gratis=4000, lambda_req=0.20 / 1e6, la
          sns_email=2.00 / 100_000, sns_email_gratis=1000, cw_alarm=0.10, cw_ingest_gb=0.50,
          groq_qwen_in=0.80 / 1e6, groq_qwen_out=4.00 / 1e6, groq_oss_in=0.075 / 1e6, groq_oss_out=0.30 / 1e6)
 
-# Lambdas por validación: (invocaciones, memoria MB, duración ms) — duraciones medidas en la prueba de Groq
+CONSULTAS_BANCO = 1.3       # consultas al banco por validación: la mayoría lo encuentra a la 1.ª; algunas esperan (Wait)
+# Lambdas por validación: (invocaciones, memoria MB, duración ms) — duraciones medidas en las pruebas en AWS
 LAMBDAS = {"guard-extraer": (1, 256, 5000), "guard-verificar": (1, 256, 300), "guard-riesgo": (1, 256, 2500),
+           "guard-conciliar": (CONSULTAS_BANCO, 256, 400), "banco-simulado (consulta + depósito)": (CONSULTAS_BANCO + 1, 256, 150),
            "validaciones (iniciar/guardar)": (2, 256, 200), "operaciones (aplicar_decision)": (1, 512, 300)}
-TRANSICIONES = 10            # ruta típica; la de revisión suma 2 (NotificarRevision + EsperarRevision)
+# ruta típica: 10 + 4 de la conciliación (Preparar, ¿Consultar?, Conciliar, ¿Encontrado?) + 3 por cada reintento
+# (Wait, Conciliar, ¿Encontrado?); la de revisión suma 2 (NotificarRevision + EsperarRevision)
+TRANSICIONES = 10 + 4 + 3 * (CONSULTAS_BANCO - 1)
 FRAC_REVISION = 0.25         # 🟡 van a revisión humana
 FRAC_ALERTA = 0.10           # 🔴 o monto ≥ umbral → correo a cumplimiento
 POLLING_GET = 8              # GET /validaciones/{id} que hace el front mientras espera (cada 3 s)
 WRU, RRU = 6, 3              # iniciar + espera + guardar (~2 KB c/u) · consulta duplicados + lecturas
+BANCO_WRU, BANCO_RRU = 1, CONSULTAS_BANCO   # depósito registrado (simulación) · consultas por GSI
 TOKENS = {"extraer": (2400, 250), "riesgo": (900, 600)}   # (entrada, salida) por llamada
 
 ESCENARIOS = {"Demo académica": 1_000, "Piloto (≈2 mil clientes)": 15_000, "Crecimiento": 150_000}
@@ -32,9 +37,9 @@ def costo(n):
     groq_rie = n * (TOKENS["riesgo"][0] * P["groq_oss_in"] + TOKENS["riesgo"][1] * P["groq_oss_out"])
     aws = {
         "AWS Step Functions (Standard)": max(0, trans - P["sfn_gratis"]) * P["sfn_transicion"],
-        "AWS Lambda (3 agentes + API Validaciones)": inv * P["lambda_req"] + gbs * P["lambda_gbs"],
-        "API Gateway (rutas /validaciones)": n * (POLLING_GET + 2) * P["apigw_http"],
-        "DynamoDB nexo-validaciones": n * (WRU * P["ddb_wru"] + RRU * P["ddb_rru"]),
+        "AWS Lambda (4 pasos + Validaciones + banco)": inv * P["lambda_req"] + gbs * P["lambda_gbs"],
+        "API Gateway (/validaciones + /banco)": n * (POLLING_GET + 2 + CONSULTAS_BANCO + 1) * P["apigw_http"],
+        "DynamoDB (validaciones + banco simulado)": n * ((WRU + BANCO_WRU) * P["ddb_wru"] + (RRU + BANCO_RRU) * P["ddb_rru"]),
         "SNS (correos NexoGuard)": max(0, correos - P["sns_email_gratis"]) * P["sns_email"],
         "CloudWatch (logs + 1 alarma)": n * 6 * 1.0 / 1024 / 1024 * P["cw_ingest_gb"] + P["cw_alarm"],
     }

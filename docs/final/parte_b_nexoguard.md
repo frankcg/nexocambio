@@ -203,38 +203,40 @@ Para una operación real en Perú convendría evaluar **sa-east-1 (São Paulo)**
 
 ## 5. Costos mensuales en AWS
 
-Estimación **incremental** de NexoGuard sobre el costo base de NexoCambio (Proyecto Parcial). Calculada con `docs/final/costos_nexoguard.py`: precios de lista de us-east-1 y de Groq a octubre de 2026, y duraciones medidas en la prueba de Groq. Supuestos: ~10 transiciones por ejecución, 25% de casos a revisión humana y 10% con alerta a cumplimiento.
+Estimación **incremental** de NexoGuard sobre el costo base de NexoCambio (Proyecto Parcial). Calculada con `docs/final/costos_nexoguard.py`: precios de lista de us-east-1 y de Groq a octubre de 2026, y duraciones medidas en las pruebas en AWS. Supuestos: ~15 transiciones por ejecución (incluida la conciliación con el banco, con 1.3 consultas en promedio), 25% de casos a revisión humana y 10% con alerta a cumplimiento.
 
 | Componente | Demo (1,000 validaciones/mes) | Piloto (15,000/mes) | Crecimiento (150,000/mes) |
 |---|---:|---:|---:|
-| AWS Step Functions (Standard) | US$ 0.16 | US$ 3.84 | US$ 39.27 |
-| AWS Lambda (3 agentes + API Validaciones) | 0.04 | 0.57 | 5.71 |
-| API Gateway (rutas /validaciones) | 0.01 | 0.15 | 1.50 |
-| DynamoDB `nexo-validaciones` | 0.00 | 0.06 | 0.62 |
+| AWS Step Functions (Standard) | US$ 0.29 | US$ 5.68 | US$ 57.65 |
+| AWS Lambda (4 pasos + Validaciones + banco simulado) | 0.04 | 0.64 | 6.36 |
+| API Gateway (/validaciones + /banco) | 0.01 | 0.18 | 1.84 |
+| DynamoDB (`nexo-validaciones` + `nexo-banco-movimientos`) | 0.00 | 0.07 | 0.74 |
 | SNS (correos) | 0.00 | 0.09 | 1.03 |
 | CloudWatch (logs + 1 alarma) | 0.10 | 0.14 | 0.53 |
-| **Subtotal AWS NexoGuard** | **US$ 0.32** | **US$ 4.85** | **US$ 48.66** |
+| **Subtotal AWS NexoGuard** | **US$ 0.45** | **US$ 6.80** | **US$ 68.15** |
 | Groq — Agente Extractor (qwen3.8-27b) | 2.92 | 43.80 | 438.00 |
 | Groq — Agente de Riesgo (gpt-oss-20b) | 0.25 | 3.71 | 37.12 |
 | **Subtotal Groq (externo)** | **US$ 3.17** | **US$ 47.51** | **US$ 475.13** |
 | Costo base NexoCambio (parcial) | 0.50 | 1.70 | 13.29 |
-| **Total mensual** | **≈ US$ 4.0** | **≈ US$ 54.1** | **≈ US$ 537.1** |
-| Costo por validación | US$ 0.0035 | US$ 0.0035 | US$ 0.0035 |
+| **Total mensual** | **≈ US$ 4.1** | **≈ US$ 56.0** | **≈ US$ 556.6** |
+| Costo por validación | US$ 0.0036 | US$ 0.0036 | US$ 0.0036 |
 
 **Lectura de los resultados:**
 
-- **La infraestructura AWS es muy barata:** menos de US$ 5 al mes en el piloto. El costo lo domina **la IA (≈ 90%)**, en particular la lectura de imágenes.
-- Validar un comprobante cuesta **≈ US$ 0.0035**, frente a varios minutos de un operador. Con 15,000 operaciones al mes y un 75% aprobado automáticamente, se evitan ~11,000 revisiones manuales.
+- **La infraestructura AWS es muy barata:** menos de US$ 7 al mes en el piloto. El costo lo domina **la IA (≈ 87%)**, en particular la lectura de imágenes.
+- **La conciliación con el banco cuesta poco:** suma unos US$ 2 al mes en el piloto, casi todo en transiciones de Step Functions (cada consulta adicional al banco son 3 transiciones: Wait, ConciliarConBanco y la decisión).
+- Validar un comprobante cuesta **≈ US$ 0.0036**, frente a varios minutos de un operador. Con 15,000 operaciones al mes y un 75% aprobado automáticamente, se evitan ~11,000 revisiones manuales.
 - **Optimizaciones posibles:** reducir la resolución de la imagen antes de enviarla (menos tokens), acortar `observaciones`, usar un modelo de visión más económico cuando Groq lo ofrezca o una ruta Express para la parte síncrona. En la demo académica, la capa gratuita de Groq deja ese costo en **US$ 0**.
+- En producción, el banco simulado se reemplaza por la API del banco o de un agregador, con su propio costo (fuera de AWS).
 
 **Datos para la calculadora de AWS (escenario Piloto, us-east-1)** — para generar el enlace oficial de calculator.aws:
 
 | Servicio en calculator.aws | Valores a ingresar |
 |---|---|
-| AWS Step Functions — Standard Workflows | 15,000 ejecuciones/mes · 10.5 transiciones por ejecución |
-| AWS Lambda | 75,000 solicitudes/mes · 256 MB · duración media 1,640 ms (y 15,000 adicionales de 512 MB · 300 ms para Operaciones) |
-| Amazon API Gateway — HTTP API | 150,000 solicitudes/mes |
-| Amazon DynamoDB — On-Demand | 90,000 escrituras · 45,000 lecturas/mes · 0.1 GB |
+| AWS Step Functions — Standard Workflows | 15,000 ejecuciones/mes · 15.4 transiciones por ejecución |
+| AWS Lambda | 129,000 solicitudes/mes · 256 MB · duración media 1,050 ms (y 15,000 adicionales de 512 MB · 300 ms para Operaciones) |
+| Amazon API Gateway — HTTP API | 184,500 solicitudes/mes |
+| Amazon DynamoDB — On-Demand | 105,000 escrituras · 64,500 lecturas/mes · 0.2 GB |
 | Amazon SNS | 5,250 notificaciones por correo/mes |
 | Amazon CloudWatch | 1 alarma estándar · 0.1 GB de logs |
 

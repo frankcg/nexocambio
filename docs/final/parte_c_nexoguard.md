@@ -83,7 +83,7 @@ PK `id_operacion`, SK `fecha_inicio`, con dos GSI: `numero-operacion-index` (dis
 
 | Suite | Resultado | Qué cubre de NexoGuard |
 |---|---|---|
-| Backend: `python -m pytest` | **94 aprobadas** (57 del parcial + 37 nuevas) | Reglas (monto, moneda, cuenta/CCI de NexoCambio, duplicado, fecha, lectura no confiable), barreras del agente de riesgo, normalización del extractor y PDF, API Validaciones (cola, decisión, 400/403/409, token oculto, aislamiento entre clientes), `StartExecution` y `aplicar_decision` en Operaciones, tolerancia a fallos de Step Functions, banco simulado, conciliación (total, parcial, sin depósito), reinicio de datos de prueba |
+| Backend: `python -m pytest` | **95 aprobadas** (57 del parcial + 38 nuevas) | Reglas (monto, moneda, cuenta/CCI de NexoCambio, duplicado, fecha, lectura no confiable), barreras del agente de riesgo, normalización del extractor y PDF, API Validaciones (cola, decisión, 400/403/409, token oculto, aislamiento entre clientes), `StartExecution` y `aplicar_decision` en Operaciones, tolerancia a fallos de Step Functions, banco simulado, conciliación (total, parcial, sin depósito), reinicio de datos de prueba |
 | Frontend: `npx ng test` | **68 aprobadas** (8 nuevas) | Pantalla final con validación en vivo, cola NexoGuard, decisión por la API Validaciones, motivo sugerido, bloqueo mientras se valida, actualización automática, depósito en el banco, botón de reinicio |
 
 Groq y Step Functions se simulan en estas pruebas; no necesitan credenciales ni internet.
@@ -126,7 +126,8 @@ Antes de cada corrida se ejecuta `python postman/generar_nexoguard.py`, que rege
 
 | Herramienta | Uso |
 |---|---|
-| `POST /demo/reiniciar` y botón «Reiniciar datos de prueba» del back-office | Detiene ejecuciones, vacía validaciones, reinicia el banco simulado y (opcional) borra operaciones y comprobantes. Permite reutilizar los mismos comprobantes. |
+| `POST /demo/reiniciar` y botón «Reiniciar datos de prueba» del back-office | Detiene ejecuciones, vacía validaciones, reinicia el banco simulado (conserva los depósitos de la demo web) y (opcional) borra operaciones y comprobantes. Permite reutilizar los mismos comprobantes. |
+| `python scripts/preparar_exposicion.py --ensayo` | Deja todo listo para exponer: reinicia (incluidos los depósitos de la demo), regenera los comprobantes del día, registra y comprueba sus depósitos, ensaya el caso verde y regenera la carpeta 6 de Postman. |
 | `python scripts/cargar_demo.py <ApiUrl>` | Reinicia y deja con el cliente `demo@nexocambio.pe` 2 operaciones 🟢 aprobadas, 2 🔴 rechazadas y 4 🟡 en revisión (monto alto, monto distinto, sin depósito, imagen borrosa). Verificado en AWS el 31-oct-2026: las 8 con el resultado esperado. |
 | `python scripts/generar_comprobantes.py --semilla N --registrar-banco <ApiUrl>` | Comprobantes para la demo en vivo, con sus depósitos registrados en el banco simulado. `--deposito-tardio` registra después el del comprobante 10. |
 
@@ -206,21 +207,20 @@ Desplegado el 31-oct-2026 sobre el stack del Proyecto Parcial (actualización in
 | Cuentas de NexoCambio duplicadas en el front y en `guard-verificar` | Simplificación del MVP | Servicio de configuración único (Parameter Store) |
 | Detección de duplicados por N° de operación | Suficiente para el MVP | Agregar el hash del archivo (detecta la misma imagen reenviada) |
 
-## 8. Guion sugerido para la exposición (10 min)
+## 8. Exposición (20 min, 5 integrantes)
 
-| Min. | Tema | Parte | Responsable |
+El guion completo, minuto a minuto y con las preguntas probables de cada parte, está en `docs/final/guion_exposicion.md`.
+
+| Min. | Tema | Parte | Expone |
 |---|---|---|---|
-| 1 | Problema de NexoCambio y nivel elegido (Nivel 4) | A | [Integrante] |
-| 1 | Benchmark y por qué AWS | A | [Integrante] |
-| 1 | Historias de usuario y MVP | A | [Integrante] |
-| 2 | Arquitectura, workflow y barreras «la IA lee, las reglas deciden» | B | [Integrante] |
-| 1 | Costos (≈ 87% es IA) y región | B | [Integrante] |
-| 3 | **Demo en vivo:** comprobante correcto (grafo verde), cuenta ajena (rechazo automático) y monto distinto (cola, revisión asistida con motivo sugerido, decisión del operador y correo) | C | [Integrante] |
-| 1 | Postman, pruebas y repositorio | C | [Integrante] |
+| 0:00 – 4:00 | Problema, solución NexoGuard (Nivel 4) y benchmark | A | Josue Aron Campos Quiroz |
+| 4:00 – 8:00 | Usuarios, historias de usuario, MVP y propuesta de valor | A | Mauricio Elias Vallejos García |
+| 8:00 – 12:00 | Arquitectura, workflow, barreras «la IA lee, las reglas deciden» y agentes | B | Axel Fuentes Pacheco |
+| 12:00 – 16:00 | **Demo en vivo:** comprobante correcto (grafo verde), cuenta ajena (rechazo automático) y monto distinto (cola, revisión asistida, decisión del operador y correo) | C | Frank Laura Borja |
+| 16:00 – 20:00 | Pruebas, costos (≈ 87 % es IA), región, límites y cierre | B y C | Sebastian Tadeo Gallegos Mostajo |
 
 Recomendaciones para la demo:
 
-- Iniciar el lab 15 minutos antes.
-- Regenerar los comprobantes (`python scripts/generar_comprobantes.py`) y la colección.
-- Ejecutar un caso de prueba previo, para que las Lambdas no arranquen en frío durante la exposición.
-- Procesar los casos de uno en uno, para no topar el límite de Groq.
+- Iniciar el lab 30 minutos antes y ejecutar `python scripts/preparar_exposicion.py --ensayo`: deja los comprobantes del día con sus depósitos y ensaya el caso verde, así las Lambdas no arrancan en frío durante la exposición.
+- Procesar los casos de uno en uno (unos 20 s entre cada uno), para no topar el límite de Groq.
+- Si hay que repetir la demo, «Reiniciar datos de prueba» conserva los depósitos de los comprobantes.

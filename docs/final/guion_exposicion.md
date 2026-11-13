@@ -5,25 +5,25 @@ Demo web: `docs/final/guion_demo.md`. Preparación del entorno: README, «Exposi
 
 | Parte | Expone | Tiempo | Diapositivas |
 |---|---|---|---|
-| 1. Problema, solución y benchmark | [Integrante 1] | 0:00 – 4:00 | 1 a 5 |
-| 2. Usuarios, MVP y propuesta de valor | [Integrante 2] | 4:00 – 8:00 | 6 a 8 |
-| 3. Arquitectura, workflow, reglas y agentes | [Integrante 3] | 8:00 – 12:00 | 9 a 12 |
-| 4. Demo en vivo (verde, rojo, amarillo) | [Integrante 4] | 12:00 – 16:00 | 13 y 14 (respaldo) |
-| 5. Pruebas, costos, límites y cierre | [Integrante 5] | 16:00 – 20:00 | 15 a 18 |
+| 1. Problema, solución y benchmark | Josue Aron Campos Quiroz | 0:00 – 4:00 | 1 a 5 |
+| 2. Usuarios, MVP y propuesta de valor | Mauricio Elias Vallejos García | 4:00 – 8:00 | 6 a 8 |
+| 3. Arquitectura, workflow, reglas y agentes | Axel Fuentes Pacheco | 8:00 – 12:00 | 9 a 12 |
+| 4. Demo en vivo (verde, rojo, amarillo) | Frank Laura Borja | 12:00 – 16:00 | 13 y 14 (respaldo) |
+| 5. Pruebas, costos, límites y cierre | Sebastian Tadeo Gallegos Mostajo | 16:00 – 20:00 | 15 a 18 |
 
 ## Antes de empezar (todo el equipo, 30 min antes)
 
-1. [Integrante 4] inicia el Learner Lab, actualiza `~/.aws/credentials` y ejecuta
+1. Frank Laura Borja inicia el Learner Lab, actualiza `~/.aws/credentials` y ejecuta
    `python scripts/preparar_exposicion.py --ensayo`. Debe terminar con «Listo para exponer».
-2. Después de eso **nadie** usa «Reiniciar datos de prueba» ni la 6.0 de Postman: borran los depósitos del banco
-   y el caso verde iría a revisión.
+2. Si hay que repetir la demo, «Reiniciar datos de prueba» (back-office) o la 6.0 de Postman la dejan lista otra vez:
+   conservan los depósitos de los comprobantes de la demo, así que el caso verde vuelve a salir verde.
 3. Pestañas abiertas en la laptop de la demo: web como cliente (`demo@nexocambio.pe` / `Demo1234`), back-office
    (`#/admin`), consola de Step Functions (`nexo-dev-nexoguard`) y el correo suscrito al tema SNS.
 4. Ensayar el cronómetro: cada integrante tiene 4 minutos. Si alguien se pasa, el siguiente recorta, nunca la demo.
 
 ---
 
-## Parte 1 · [Integrante 1] · 0:00 – 4:00
+## Parte 1 · Josue Aron Campos Quiroz · 0:00 – 4:00
 
 **Objetivo:** que se entienda el problema y por qué la solución es un workflow agéntico en AWS.
 
@@ -35,7 +35,7 @@ Demo web: `docs/final/guion_demo.md`. Preparación del entorno: README, «Exposi
 | 1:30 | 4. Solución | El flujo: adjunta → extrae (IA) → verifica (reglas) → concilia con el banco → riesgo (IA) → decide. Tres salidas: verde, amarillo y rojo. Nivel 4: ruta predefinida y los dudosos siempre pasan por una persona. |
 | 2:40 | 5. Benchmark | n8n no es serverless; Azure y Google obligan a mover datos. Step Functions: aprobación humana nativa (`waitForTaskToken`), Retry/Catch por estado y grafo visual como auditoría. Groq porque Bedrock no está en AWS Academy. |
 
-**Transición:** «Ya vimos el qué; [Integrante 2] nos cuenta para quién y qué entra en el MVP».
+**Transición:** «Ya vimos el qué; Mauricio Elias Vallejos García nos cuenta para quién y qué entra en el MVP».
 
 **Preguntas probables:**
 - *¿Por qué nivel 4 y no 5?* Porque la ruta está predefinida y los agentes no deciden solos los casos dudosos; un
@@ -43,7 +43,7 @@ Demo web: `docs/final/guion_demo.md`. Preparación del entorno: README, «Exposi
 - *¿Por qué no Bedrock?* No está habilitado en AWS Academy; Groq se consume por HTTPS desde Lambda y el modelo es un
   parámetro del template.
 
-## Parte 2 · [Integrante 2] · 4:00 – 8:00
+## Parte 2 · Mauricio Elias Vallejos García · 4:00 – 8:00
 
 **Objetivo:** mostrar a los usuarios, el alcance del MVP y el valor para cada uno.
 
@@ -53,14 +53,14 @@ Demo web: `docs/final/guion_demo.md`. Preparación del entorno: README, «Exposi
 | 5:10 | 7. MVP | Historias HU10 a HU17 en Gherkin, todas implementadas: disparo automático, extracción, verificación, semáforo, ruta, revisión humana, correo y registro auditable. Fuera: correo al cliente (SES restringido) y panel de métricas. |
 | 6:40 | 8. Propuesta de valor | Qué gana cada actor. El 75 % es un **supuesto** del estudio de costos: ~11,000 revisiones manuales menos al mes en el piloto. |
 
-**Transición:** «¿Cómo está construido? Le paso la palabra a [Integrante 3]».
+**Transición:** «¿Cómo está construido? Le paso la palabra a Axel Fuentes Pacheco».
 
 **Preguntas probables:**
 - *¿Cómo se eligió el MVP?* Por el flujo completo de punta a punta, demostrable con las tres rutas; quedó fuera lo que
   depende de servicios restringidos en Academy o no hace falta para demostrar el workflow.
 - *¿El 75 % está medido?* No: es el supuesto del escenario piloto del estudio de costos.
 
-## Parte 3 · [Integrante 3] · 8:00 – 12:00
+## Parte 3 · Axel Fuentes Pacheco · 8:00 – 12:00
 
 **Objetivo:** explicar la arquitectura, el workflow y la decisión clave: la IA no decide sola.
 
@@ -71,7 +71,7 @@ Demo web: `docs/final/guion_demo.md`. Preparación del entorno: README, «Exposi
 | 10:00 | 11. Reglas | La IA lee y explica; las reglas deciden. Solo dos reglas rechazan (cuenta ajena y duplicado). Barreras: el agente sube el semáforo, nunca lo baja, y no rechaza sin una regla incumplida. |
 | 11:10 | 12. Agentes | Extractor (`qwen3.8-27b`, visión) y Riesgo (`gpt-oss-20b`, texto), sin memoria, temperatura 0, JSON. Retry ante 429. Sin datos personales a la IA. |
 
-**Transición:** «Ahora [Integrante 4] lo muestra funcionando en AWS».
+**Transición:** «Ahora Frank Laura Borja lo muestra funcionando en AWS».
 
 **Preguntas probables:**
 - *¿Qué pasa si Groq se cae?* El estado reintenta (20, 40 y 80 s) y, si sigue fallando, el Catch manda la operación a
@@ -80,7 +80,7 @@ Demo web: `docs/final/guion_demo.md`. Preparación del entorno: README, «Exposi
   ejecución.
 - *¿Dónde está el token?* Se guarda en DynamoDB y nunca sale al navegador; el operador decide por la API.
 
-## Parte 4 · [Integrante 4] · 12:00 – 16:00 (demo en vivo)
+## Parte 4 · Frank Laura Borja · 12:00 – 16:00 (demo en vivo)
 
 **Objetivo:** ver las tres rutas en la web, el back-office, Step Functions y el correo.
 
@@ -97,7 +97,7 @@ Datos fijos de los tres casos: Casa de Cambio, envía PEN 1,000, recibe USD en *
 
 **Plan B:** si falla la red, las credenciales o Groq, pasar a la diapositiva 14 (capturas reales) y narrarla.
 
-**Transición:** «[Integrante 5] nos cuenta cómo lo probamos y cuánto cuesta».
+**Transición:** «Sebastian Tadeo Gallegos Mostajo nos cuenta cómo lo probamos y cuánto cuesta».
 
 **Preguntas probables:**
 - *¿El banco es real?* Es una API simulada por HTTPS con su propia clave, que hace de sistema externo; en producción
@@ -105,13 +105,13 @@ Datos fijos de los tres casos: Casa de Cambio, envía PEN 1,000, recibe USD en *
 - *¿Y si el depósito llega tarde?* El workflow espera y reintenta; si llega durante la espera, se aprueba solo
   (caso 9 del guion de la demo).
 
-## Parte 5 · [Integrante 5] · 16:00 – 20:00
+## Parte 5 · Sebastian Tadeo Gallegos Mostajo · 16:00 – 20:00
 
 **Objetivo:** dar evidencia, costos y límites con honestidad, y cerrar.
 
 | Min. | Diapositiva | Qué decir |
 |---|---|---|
-| 16:00 | 15. Pruebas | 94 pruebas de backend y 68 de frontend. En AWS con Groq real, 8 de 8 escenarios. La carpeta 6 de Postman pasó completa dos veces seguidas tras reiniciar. El borroso y el ticket terminaron en revisión. |
+| 16:00 | 15. Pruebas | 95 pruebas de backend y 68 de frontend. En AWS con Groq real, 8 de 8 escenarios. La carpeta 6 de Postman pasó completa dos veces seguidas tras reiniciar. El borroso y el ticket terminaron en revisión. |
 | 17:00 | 16. Costos | US$ 0.0036 por validación; 87 % del costo es Groq; piloto ≈ US$ 56/mes (AWS solo US$ 6.80). Región us-east-1 por el Learner Lab; en Perú, evaluar sa-east-1 y la Ley 29733. |
 | 18:20 | 17. Límites | PDF a revisión, ~3 comprobantes por minuto, modelo en Preview, sin correo al cliente, duplicados por número, banco simulado; y la mejora de cada uno. |
 | 19:20 | 18. Cierre | «La IA lee, las reglas deciden y las personas resuelven lo dudoso». Gracias y preguntas. |

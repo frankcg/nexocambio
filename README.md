@@ -36,24 +36,58 @@ Postman: importar `postman/NexoCambio.postman_collection.json`, definir `baseUrl
 Catálogo de la API (OpenAPI 3.0): `docs/openapi.json` (spec) y `docs/openapi.html` (ábrelo en el navegador, Swagger UI con el spec embebido). Es solo documentación: describe el contrato real, pero el API Gateway sigue definido con eventos SAM en `template.yaml`, no con este spec.
 Regenerar: `python scripts/generar_postman.py` · `python docs/generar_openapi.py` · `python docs/costos.py` · `python docs/generar_diagrama.py`.
 
-## Exposición: NexoGuard con Postman (carpeta 6)
+## Exposición: preparar datos e imágenes limpios
+Hacerlo **el mismo día de la exposición**, desde la raíz del repo. Los comprobantes llevan la fecha del día en que se
+generan, y NexoGuard manda a revisión un comprobante con más de 1 día de diferencia respecto a la fecha **UTC** de la
+operación (en Lima, desde las 19:00 ya es el día siguiente en UTC).
+
+**1. Credenciales.** En el Learner Lab: *AWS Details* → *AWS CLI* → copiar el bloque completo en
+`C:\Users\<usuario>\.aws\credentials` (con `[default]` y `aws_session_token`).
+
+**2. Preparar todo con un comando:**
+```bash
+python scripts/preparar_exposicion.py --ensayo
+```
+El script lee la `ApiUrl` del stack `nexocambio-dev` y, en orden:
+- reinicia los datos de prueba: validaciones (el control de duplicados), banco simulado, operaciones y comprobantes
+  en S3. Los clientes se conservan, incluido `demo@nexocambio.pe`;
+- regenera las imágenes de `tests/fixtures/comprobantes/` con la fecha de hoy (semilla 101);
+- registra en el banco simulado los depósitos del 01, 02, 03, 06 y 07, y **comprueba que el banco los tenga**;
+- con `--ensayo`, ejecuta el caso 1 por la API, confirma que sale verde y vuelve a reiniciar y registrar los depósitos;
+- regenera la carpeta 6 de Postman con comprobantes de hoy (se omite con `--sin-postman`);
+- comprueba que el tema SNS tenga una suscripción confirmada.
+
+Si algo falla (credenciales vencidas, stack inexistente, depósito no registrado, caso 1 no verde), se detiene con un
+mensaje ✗. Al final imprime el comando del caso 9 (depósito tardío) con la URL correcta.
+
+**3. En Postman**, borrar la colección anterior y **volver a importar** `postman/NexoCambio.postman_collection.json`.
+No usar `scripts/generar_postman.py` para esto: rehace la colección **sin** la carpeta 6.
+
+### Primera prueba en verde (caso 1 de `docs/final/guion_demo.md`)
+En la web, como `demo@nexocambio.pe` / `Demo1234`: **Casa de Cambio**, envías **PEN 1,000**, recibes USD, banco de
+origen **BCP**, cuenta de destino **Interbank · Ahorros · 8983141592653**, N° de operación **vacío**, y subir
+`01_ok_bcp_pen_1000.png`. En ~10 s la tarjeta pasa de «Validando…» a «¡Comprobante validado!».
+
+Sale en verde solo si se cumplen tres condiciones: su depósito está en el banco, su número no se usó antes y la fecha
+es de hoy. `preparar_exposicion.py` deja las tres listas.
+- **Después del script y antes de la demo web, no usar el botón «Reiniciar datos de prueba» ni la 6.0 de Postman**:
+  ambos borran los depósitos del banco y el caso verde pasaría a revisión por «sin depósito». Si hay que reiniciar,
+  volver a ejecutar `python scripts/preparar_exposicion.py`.
+- Si también se mostrará Postman, hacerlo **después** de la demo web.
+- Esperar ~20 s entre casos: Groq gratuito admite ~3 comprobantes por minuto. Si responde 429, el workflow reintenta
+  solo, pero el resultado tarda más.
+
+### NexoGuard con Postman (carpeta 6)
 Verificado el 12-nov-2026 contra AWS: con la 6.0 al inicio, la carpeta 6 pasó completa dos veces seguidas con los
-mismos comprobantes (rutas verde, roja y amarilla). El guion de la demo web está en `docs/final/guion_demo.md`.
-- **Regenerar los comprobantes el día de la exposición.** Van incrustados con fecha fija y NexoGuard manda a revisión
-  un comprobante con más de 1 día de antigüedad respecto a la fecha **UTC** de la operación (en Lima, a partir de las
-  19:00 ya es el día siguiente). La 6.0 no lo corrige: ejecutar `python postman/generar_nexoguard.py`, hacer commit y
-  **volver a importar** la colección en Postman (una copia vieja sigue con los comprobantes anteriores).
-- **Variables de la colección:** `baseUrl` = `ApiUrl` del despliegue, `adminKey` y `bancoKey` (de `.secrets/`).
+mismos comprobantes (rutas verde, roja y amarilla).
+- **Variables de la colección:** `baseUrl` = `ApiUrl`, `adminKey` y `bancoKey` (de `.secrets/`).
 - **Orden:** carpeta 2 (deja `{{token}}`) y luego la 6, empezando por **6.0 Reiniciar datos de prueba**. La 6.0 vacía
-  las validaciones (el control de duplicados), reinicia el banco simulado y detiene las ejecuciones en curso; los pasos
-  «2b» vuelven a registrar los depósitos. Así se puede repetir la carpeta sin el rechazo por «número ya usado».
+  las validaciones y el banco; los pasos «2b» vuelven a registrar sus propios depósitos. Así la carpeta se puede repetir
+  sin el rechazo por «número ya usado».
 - **Duración:** unos 5-6 min. La 6.7 (sin depósito) tarda ~2 min porque el workflow consulta 4 veces al banco antes de
-  pasar a revisión. Groq gratuito admite ~3 comprobantes por minuto: si responde 429, el workflow reintenta solo.
-- **Al terminar:** la 6.0 usa `incluir_operaciones: false`, así que las operaciones de corridas anteriores quedan en
-  la lista. Para limpiarlas, usar «Reiniciar datos de prueba» en el back-office con operaciones incluidas.
-- **Credenciales:** las del Learner Lab expiran; actualizarlas en `~/.aws/credentials` antes de empezar.
-- **Correo de NexoGuard:** el tema SNS `nexo-<stage>-nexoguard` necesita una suscripción confirmada para que lleguen
-  los avisos de revisión.
+  pasar a revisión.
+- **Al terminar:** la 6.0 usa `incluir_operaciones: false`, así que las operaciones quedan en la lista, y además borró
+  los depósitos de la demo web. Para dejar todo listo otra vez, ejecutar de nuevo `preparar_exposicion.py`.
 
 ## Frontend
 `frontend/` es la app Angular (standalone components, signals, formularios reactivos, rutas con hash) que consume los 3 microservicios. La URL de la API se lee en runtime de `frontend/public/config.json`; `deploy.sh` compila la app (`ng build`) y genera ese archivo con la URL real antes de publicar en S3. `frontend-legacy/index.html` es el prototipo original, mantenido solo como referencia de diseño y textos.

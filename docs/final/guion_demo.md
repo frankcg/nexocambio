@@ -3,13 +3,14 @@
 ## Preparación (antes de la exposición)
 
 1. Iniciar el Learner Lab y actualizar las credenciales en `~/.aws/credentials` (incluye `aws_session_token`).
-2. Back-office (`…/index.html#/admin`) → **«Reiniciar datos de prueba»**.
-3. Generar los comprobantes del día y registrar sus depósitos en el banco simulado:
+2. Reiniciar los datos, generar los comprobantes del día y registrar sus depósitos en el banco simulado, todo con un
+   comando (ver el README, «Exposición»):
    ```bash
-   python scripts/generar_comprobantes.py --semilla 101 --registrar-banco https://ryipifjwef.execute-api.us-east-1.amazonaws.com/v1
+   python scripts/preparar_exposicion.py --ensayo
    ```
-   Los comprobantes quedan en `tests/fixtures/comprobantes/`. Si se reinicia otra vez, repetir este paso con **otra semilla**.
-4. Entrar a la web como cliente: `demo@nexocambio.pe` / `Demo1234`.
+   Los comprobantes quedan en `tests/fixtures/comprobantes/`. **Después no usar «Reiniciar datos de prueba»**: borra
+   los depósitos del banco. Si hay que reiniciar, volver a ejecutar el script.
+3. Entrar a la web como cliente: `demo@nexocambio.pe` / `Demo1234`.
 
 ## Datos fijos de todos los casos
 

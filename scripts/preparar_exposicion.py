@@ -4,9 +4,11 @@
 Uso:  python scripts/preparar_exposicion.py [--stack nexocambio-dev] [--semilla 101] [--ensayo] [--sin-postman]
 
 1. Lee la ApiUrl y el tema SNS de las salidas del stack (y comprueba las credenciales del Learner Lab).
-2. Reinicia los datos de prueba: validaciones, banco simulado, operaciones y comprobantes en S3 (los clientes quedan).
+2. Reinicia TODO: validaciones, banco simulado (incluidos los depósitos de la demo de días anteriores), operaciones
+   y comprobantes en S3 (los clientes quedan).
 3. Regenera los comprobantes de tests/fixtures/comprobantes/ con la fecha de hoy.
-4. Registra en el banco simulado los depósitos de los comprobantes legítimos y comprueba que el banco los tenga.
+4. Registra en el banco simulado los depósitos de los comprobantes legítimos, marcados como "demo" (el botón
+   «Reiniciar datos de prueba» y la 6.0 de Postman los conservan), y comprueba que el banco los tenga.
 5. Regenera la carpeta 6 de la colección de Postman con comprobantes de hoy.
 6. Comprueba que el tema SNS tenga una suscripción confirmada.
 --ensayo: además ejecuta el caso 1 (verde) por la API, confirma que se aprueba solo y vuelve a dejar todo limpio
@@ -71,7 +73,8 @@ def salidas_stack():
 
 
 def reiniciar(api):
-    s, r = llamar(api, "POST", "/demo/reiniciar", {"incluir_operaciones": True}, cabeceras={"x-admin-key": ADMIN})
+    s, r = llamar(api, "POST", "/demo/reiniciar", {"incluir_operaciones": True, "conservar_demo": False},
+                  cabeceras={"x-admin-key": ADMIN})
     if s != 200 or "error" in r.get("banco", {}):
         fallar(f"El reinicio respondió {s}: {r}")
     ops = r.get("operaciones", {})
@@ -80,7 +83,7 @@ def reiniciar(api):
 
 
 def registrar_y_comprobar(api):
-    for k, numero, estado in gc.registrar_depositos(api, BANCO_KEY):
+    for k, numero, estado in gc.registrar_depositos(api, BANCO_KEY, origen_datos="demo"):
         if estado not in (201, 409):
             fallar(f"El depósito del comprobante {k} respondió HTTP {estado}")
     for k, (_, monto, moneda, numero, *_resto) in gc.depositos().items():
@@ -163,8 +166,7 @@ def main():
 
     print(f"""
 Listo para exponer. El caso 1 (01_ok_bcp_pen_1000.png) saldrá en verde.
-  · No usar «Reiniciar datos de prueba» ni la 6.0 de Postman antes de la demo web: borran los depósitos.
-    Si hace falta reiniciar, volver a ejecutar este script.
+  · «Reiniciar datos de prueba» y la 6.0 de Postman conservan estos depósitos: se puede reiniciar y repetir la demo.
   · Caso 9 (depósito tardío), dentro de los 2 min siguientes a subir el comprobante:
     python scripts/generar_comprobantes.py --semilla {SEMILLA} --deposito-tardio {api}""")
 

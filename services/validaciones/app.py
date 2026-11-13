@@ -19,9 +19,10 @@ Rutas HTTP:
   POST /validaciones/{id_operacion}/decision   [x-admin-key] {decision: aprobar|rechazar, motivo?}
                                                → SendTaskSuccess (reanuda Step Functions)
 
-  POST /demo/reiniciar                         [x-admin-key] {incluir_operaciones?} reinicia los datos de prueba:
-                                               detiene ejecuciones en curso, vacía nexo-validaciones,
-                                               reinicia el banco simulado y (opcional) las operaciones
+  POST /demo/reiniciar                         [x-admin-key] {incluir_operaciones?, conservar_demo?} reinicia los
+                                               datos de prueba: detiene ejecuciones en curso, vacía nexo-validaciones,
+                                               reinicia el banco simulado (conserva los depósitos de la demo web salvo
+                                               conservar_demo: false) y (opcional) las operaciones
 
 Acciones internas (invocadas por Step Functions, no expuestas en internet):
   {"accion": "iniciar" | "registrar_espera" | "guardar", ...}
@@ -240,10 +241,11 @@ def _vaciar_validaciones() -> int:
     return borradas
 
 
-def _reiniciar_banco() -> dict:
+def _reiniciar_banco(conservar_demo: bool = True) -> dict:
     """El banco es un sistema externo: se reinicia por su propia API, con su propia clave."""
     url = os.environ.get("BANCO_API_URL", "").rstrip("/") + "/reiniciar"
-    req = urllib.request.Request(url, data=b"{}", method="POST", headers={
+    cuerpo = json.dumps({"conservar_demo": conservar_demo}).encode()
+    req = urllib.request.Request(url, data=cuerpo, method="POST", headers={
         "x-banco-key": os.environ.get("BANCO_KEY", ""), "Content-Type": "application/json", "User-Agent": "nexoguard/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
@@ -265,7 +267,7 @@ def reiniciar_demo(event):
     _exigir_admin(event)
     d = cuerpo_json(event) if event.get("body") else {}
     res = {"ejecuciones_detenidas": _detener_ejecuciones(), "validaciones_borradas": _vaciar_validaciones(),
-           "banco": _reiniciar_banco()}
+           "banco": _reiniciar_banco(d.get("conservar_demo", True) is not False)}
     if d.get("incluir_operaciones"):
         res["operaciones"] = _reiniciar_operaciones()
     log("demo_reiniciada", **{k: v for k, v in res.items() if not isinstance(v, dict)})

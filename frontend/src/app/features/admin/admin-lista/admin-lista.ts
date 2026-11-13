@@ -80,7 +80,8 @@ export class AdminLista {
 
   /** Entorno académico: deja la demo lista para repetirse con los mismos comprobantes. */
   protected reiniciarDemo(): void {
-    const mensaje = 'Se borrarán TODAS las operaciones, validaciones y depósitos de prueba (los clientes se conservan). ¿Continuar?';
+    const mensaje =
+      'Se borrarán TODAS las operaciones, validaciones y depósitos de prueba (se conservan los clientes y los depósitos de los comprobantes de la demo). ¿Continuar?';
     if (!window.confirm(mensaje)) return;
     this.reiniciando.set(true);
     this.validacionesSvc.reiniciarDemo(true).subscribe({

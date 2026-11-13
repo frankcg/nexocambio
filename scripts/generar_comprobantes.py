@@ -161,8 +161,9 @@ def depositos():
     }
 
 
-def registrar_depositos(api_url, clave, claves=None, incluir_tardio=False):
-    """Registra en el banco simulado los depósitos de los comprobantes generados ("el cliente transfirió")."""
+def registrar_depositos(api_url, clave, claves=None, incluir_tardio=False, origen_datos="prueba"):
+    """Registra en el banco simulado los depósitos de los comprobantes generados ("el cliente transfirió").
+    origen_datos "demo": los de la demo web, que el reinicio del banco conserva (salvo conservar_demo: false)."""
     import json
     import urllib.error
     import urllib.request
@@ -171,7 +172,7 @@ def registrar_depositos(api_url, clave, claves=None, incluir_tardio=False):
         if (claves and k not in claves) or (tardio and not incluir_tardio and not claves):
             continue
         cuerpo = {"cuenta_destino": cuenta, "monto": monto, "moneda": moneda, "numero_operacion": numero,
-                  "banco_origen": banco, "ordenante": ordenante, "fecha": DIA.isoformat(), "origen_datos": "prueba"}
+                  "banco_origen": banco, "ordenante": ordenante, "fecha": DIA.isoformat(), "origen_datos": origen_datos}
         req = urllib.request.Request(api_url.rstrip("/") + "/banco/depositos", data=json.dumps(cuerpo).encode(),
                                      method="POST", headers={"Content-Type": "application/json", "x-banco-key": clave})
         try:
@@ -225,7 +226,7 @@ def main():
     generar(SALIDA, date.fromisoformat(fechas[0]) if fechas else None, semilla)
     print(f"10 comprobantes en {SALIDA} (semilla {semilla})")
     if "--registrar-banco" in args:
-        for k, numero, estado in registrar_depositos(args[args.index("--registrar-banco") + 1], clave()):
+        for k, numero, estado in registrar_depositos(args[args.index("--registrar-banco") + 1], clave(), origen_datos="demo"):
             print(f"  depósito del comprobante {k} · N° {numero} → HTTP {estado}")
         print("  (sin depósito: 04 cuenta ajena, 05 duplicado, 08 ticket, 09 falsificado; el 10 se registra después con --deposito-tardio)")
 

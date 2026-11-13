@@ -75,6 +75,8 @@ La operación conserva sus 4 estados; los subestados vienen de la API Validacion
 Comprobantes de prueba: `python scripts/generar_comprobantes.py` (fecha de hoy; regenerar el día de la demo).
 Conciliación: paso ConciliarConBanco (guard-conciliar) consulta por HTTPS al banco simulado
 (services/banco_simulado, rutas /banco/*, clave x-banco-key en .secrets/banco_key); si no hay depósito espera
-(Wait) y reintenta. POST /demo/reiniciar [x-admin-key] {incluir_operaciones?} reinicia los datos de prueba.
+(Wait) y reintenta. POST /demo/reiniciar [x-admin-key] {incluir_operaciones?, conservar_demo?} reinicia los datos de prueba
+(conserva los depósitos con origen_datos "demo" salvo conservar_demo: false). Preparar la exposición:
+`python scripts/preparar_exposicion.py --ensayo`.
 Datos demo: `python scripts/cargar_demo.py <ApiUrl>`; E2E: `python scripts/probar_nexoguard.py <ApiUrl> --reiniciar`.
 Cuentas de NexoCambio (ficticias) en layer/python/nexo_cuentas.py.

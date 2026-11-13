@@ -162,7 +162,7 @@ Groq solo ve la imagen: no puede saber si el dinero llegó, y un comprobante fal
 
 ### 2.5c Reinicio de los datos de prueba
 
-`POST /demo/reiniciar` (x-admin-key, también disponible como botón en el back-office): detiene las ejecuciones en curso, vacía `nexo-validaciones`, reinicia el banco simulado y, con `incluir_operaciones: true`, borra las operaciones y sus comprobantes (los clientes se conservan). Permite repetir la demo con los mismos comprobantes sin que la detección de duplicados los rechace.
+`POST /demo/reiniciar` (x-admin-key, también disponible como botón en el back-office): detiene las ejecuciones en curso, vacía `nexo-validaciones`, reinicia el banco simulado y, con `incluir_operaciones: true`, borra las operaciones y sus comprobantes (los clientes se conservan). Permite repetir la demo con los mismos comprobantes sin que la detección de duplicados los rechace. El banco conserva los depósitos de los comprobantes de la demo web (`origen_datos: "demo"`), así que después de reiniciar el caso verde vuelve a aprobarse solo; `conservar_demo: false` los borra también.
 
 ### 2.6 Seguridad y decisiones de diseño
 

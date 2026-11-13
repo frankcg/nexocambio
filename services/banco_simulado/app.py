@@ -15,7 +15,8 @@ Base de datos propia: DynamoDB nexo-<stage>-banco-movimientos
 Rutas (todas con x-banco-key):
   POST /banco/depositos     registra un depósito ("el cliente transfirió")       → 201 · 409 si ya existe
   GET  /banco/depositos     ?numero_operacion=…  |  ?cuenta=…&fecha=AAAA-MM-DD   → {depositos}
-  POST /banco/reiniciar     borra los depósitos de prueba y recarga los datos semilla
+  POST /banco/reiniciar     {conservar_demo?} borra los depósitos de prueba y recarga los datos semilla.
+                            Conserva los de la demo web (origen_datos "demo") salvo conservar_demo: false
 """
 import hmac
 import os
@@ -121,12 +122,16 @@ def consultar(event):
 
 def reiniciar(event):
     _exigir_clave(event)
+    conservar_demo = (cuerpo_json(event) if event.get("body") else {}).get("conservar_demo", True) is not False
     tabla = _tabla()
-    borrados, kwargs = 0, {"ProjectionExpression": "cuenta, mov"}
+    borrados, conservados, kwargs = 0, 0, {"ProjectionExpression": "cuenta, mov, origen_datos"}
     with tabla.batch_writer() as lote:
         while True:
             r = tabla.scan(**kwargs)
             for i in r["Items"]:
+                if conservar_demo and i.get("origen_datos") == "demo":   # los comprobantes de la demo web siguen válidos
+                    conservados += 1
+                    continue
                 lote.delete_item(Key={"cuenta": i["cuenta"], "mov": i["mov"]})
                 borrados += 1
             if "LastEvaluatedKey" not in r:
@@ -138,8 +143,8 @@ def reiniciar(event):
             cuenta = nexo_cuentas.digitos(nexo_cuentas.CUENTAS[moneda][banco][0])
             lote.put_item(Item=_item(cuenta, (hoy - timedelta(days=dias)).isoformat(), numero, monto, moneda,
                                      banco_origen, ordenante, "semilla"))
-    log("banco_reiniciado", borrados=borrados, semilla=len(SEMILLA))
-    return 200, {"borrados": borrados, "semilla": len(SEMILLA)}
+    log("banco_reiniciado", borrados=borrados, conservados=conservados, semilla=len(SEMILLA))
+    return 200, {"borrados": borrados, "conservados": conservados, "semilla": len(SEMILLA)}
 
 
 handler = manejar({

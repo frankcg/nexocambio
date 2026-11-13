@@ -57,9 +57,20 @@ def test_banco_registra_y_consulta_depositos(banco):
 def test_banco_reiniciar_borra_pruebas_y_carga_semilla(banco):
     depositar(banco)
     r = cuerpo(banco.handler(evento("POST /banco/reiniciar", {}, headers=BANCO)))
-    assert r == {"borrados": 1, "semilla": 20}
+    assert r == {"borrados": 1, "conservados": 0, "semilla": 20}
     items = boto3.resource("dynamodb").Table("nexo-test-banco").scan()["Items"]
     assert len(items) == 20 and {i["origen_datos"] for i in items} == {"semilla"}
+
+
+def test_banco_reiniciar_conserva_los_depositos_de_la_demo(banco):
+    depositar(banco, origen_datos="demo")                      # comprobante de la demo web
+    depositar(banco, numero_operacion="05550001")              # depósito de una prueba (Postman, E2E)
+    r = cuerpo(banco.handler(evento("POST /banco/reiniciar", {}, headers=BANCO)))
+    assert (r["borrados"], r["conservados"]) == (1, 1)
+    q = banco.handler({**evento("GET /banco/depositos", headers=BANCO), "queryStringParameters": {"numero_operacion": "04417382"}})
+    assert cuerpo(q)["total"] == 1                             # el caso verde de la demo sigue teniendo su depósito
+    r = cuerpo(banco.handler(evento("POST /banco/reiniciar", {"conservar_demo": False}, headers=BANCO)))
+    assert (r["borrados"], r["conservados"]) == (21, 0)        # preparar_exposicion.py: borra la demo y la semilla
 
 
 # --------------------------------------------------------------------------- conciliación
@@ -122,7 +133,8 @@ def test_reiniciar_demo(monkeypatch):
 
     monkeypatch.setenv("STATE_MACHINE_ARN", "arn:aws:states:us-east-1:1:stateMachine:x")
     monkeypatch.setattr(val, "_sfn", lambda: SfnFalso())
-    monkeypatch.setattr(val, "_reiniciar_banco", lambda: {"borrados": 3, "semilla": 20})
+    pedidos = []
+    monkeypatch.setattr(val, "_reiniciar_banco", lambda conservar_demo=True: pedidos.append(conservar_demo) or {"borrados": 3, "semilla": 20})
     monkeypatch.setattr(val, "_reiniciar_operaciones", lambda: {"operaciones_borradas": 2})
 
     assert val.handler(evento("POST /demo/reiniciar", {}))["statusCode"] == 403
@@ -130,6 +142,8 @@ def test_reiniciar_demo(monkeypatch):
     assert r["ejecuciones_detenidas"] == 1 and r["validaciones_borradas"] == 1 and detenidas == ["arn:exec:1"]
     assert r["banco"]["semilla"] == 20 and r["operaciones"]["operaciones_borradas"] == 2
     assert boto3.resource("dynamodb").Table("nexo-test-validaciones").scan()["Count"] == 0
+    val.handler(evento("POST /demo/reiniciar", {"conservar_demo": False}, headers=ADMIN))
+    assert pedidos == [True, False]                            # por defecto conserva los depósitos de la demo
 
 
 def test_operaciones_reiniciar_pruebas(cli, cot, ops):

@@ -70,9 +70,10 @@ origen **BCP**, cuenta de destino **Interbank · Ahorros · 8983141592653**, N°
 
 Sale en verde solo si se cumplen tres condiciones: su depósito está en el banco, su número no se usó antes y la fecha
 es de hoy. `preparar_exposicion.py` deja las tres listas.
-- **Después del script y antes de la demo web, no usar el botón «Reiniciar datos de prueba» ni la 6.0 de Postman**:
-  ambos borran los depósitos del banco y el caso verde pasaría a revisión por «sin depósito». Si hay que reiniciar,
-  volver a ejecutar `python scripts/preparar_exposicion.py`.
+- Los depósitos de la demo se registran marcados como `demo`, y el botón «Reiniciar datos de prueba» y la 6.0 de
+  Postman los **conservan**: después de reiniciar, el caso 1 vuelve a salir verde. Solo `preparar_exposicion.py`
+  los borra (`conservar_demo: false`) antes de registrar los del día. El depósito tardío del caso 9 no se conserva,
+  para que la espera se pueda volver a mostrar.
 - Si también se mostrará Postman, hacerlo **después** de la demo web.
 - Esperar ~20 s entre casos: Groq gratuito admite ~3 comprobantes por minuto. Si responde 429, el workflow reintenta
   solo, pero el resultado tarda más.

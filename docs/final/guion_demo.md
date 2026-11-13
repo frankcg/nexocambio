@@ -8,8 +8,8 @@
    ```bash
    python scripts/preparar_exposicion.py --ensayo
    ```
-   Los comprobantes quedan en `tests/fixtures/comprobantes/`. **Después no usar «Reiniciar datos de prueba»**: borra
-   los depósitos del banco. Si hay que reiniciar, volver a ejecutar el script.
+   Los comprobantes quedan en `tests/fixtures/comprobantes/`. Para repetir la demo basta con «Reiniciar datos de
+   prueba»: conserva los depósitos de estos comprobantes (solo borra los de pruebas y el del caso 9).
 3. Entrar a la web como cliente: `demo@nexocambio.pe` / `Demo1234`.
 
 ## Datos fijos de todos los casos

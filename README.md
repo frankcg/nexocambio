@@ -36,6 +36,25 @@ Postman: importar `postman/NexoCambio.postman_collection.json`, definir `baseUrl
 Catálogo de la API (OpenAPI 3.0): `docs/openapi.json` (spec) y `docs/openapi.html` (ábrelo en el navegador, Swagger UI con el spec embebido). Es solo documentación: describe el contrato real, pero el API Gateway sigue definido con eventos SAM en `template.yaml`, no con este spec.
 Regenerar: `python scripts/generar_postman.py` · `python docs/generar_openapi.py` · `python docs/costos.py` · `python docs/generar_diagrama.py`.
 
+## Exposición: NexoGuard con Postman (carpeta 6)
+Verificado el 12-nov-2026 contra AWS: con la 6.0 al inicio, la carpeta 6 pasó completa dos veces seguidas con los
+mismos comprobantes (rutas verde, roja y amarilla). El guion de la demo web está en `docs/final/guion_demo.md`.
+- **Regenerar los comprobantes el día de la exposición.** Van incrustados con fecha fija y NexoGuard manda a revisión
+  un comprobante con más de 1 día de antigüedad respecto a la fecha **UTC** de la operación (en Lima, a partir de las
+  19:00 ya es el día siguiente). La 6.0 no lo corrige: ejecutar `python postman/generar_nexoguard.py`, hacer commit y
+  **volver a importar** la colección en Postman (una copia vieja sigue con los comprobantes anteriores).
+- **Variables de la colección:** `baseUrl` = `ApiUrl` del despliegue, `adminKey` y `bancoKey` (de `.secrets/`).
+- **Orden:** carpeta 2 (deja `{{token}}`) y luego la 6, empezando por **6.0 Reiniciar datos de prueba**. La 6.0 vacía
+  las validaciones (el control de duplicados), reinicia el banco simulado y detiene las ejecuciones en curso; los pasos
+  «2b» vuelven a registrar los depósitos. Así se puede repetir la carpeta sin el rechazo por «número ya usado».
+- **Duración:** unos 5-6 min. La 6.7 (sin depósito) tarda ~2 min porque el workflow consulta 4 veces al banco antes de
+  pasar a revisión. Groq gratuito admite ~3 comprobantes por minuto: si responde 429, el workflow reintenta solo.
+- **Al terminar:** la 6.0 usa `incluir_operaciones: false`, así que las operaciones de corridas anteriores quedan en
+  la lista. Para limpiarlas, usar «Reiniciar datos de prueba» en el back-office con operaciones incluidas.
+- **Credenciales:** las del Learner Lab expiran; actualizarlas en `~/.aws/credentials` antes de empezar.
+- **Correo de NexoGuard:** el tema SNS `nexo-<stage>-nexoguard` necesita una suscripción confirmada para que lleguen
+  los avisos de revisión.
+
 ## Frontend
 `frontend/` es la app Angular (standalone components, signals, formularios reactivos, rutas con hash) que consume los 3 microservicios. La URL de la API se lee en runtime de `frontend/public/config.json`; `deploy.sh` compila la app (`ng build`) y genera ese archivo con la URL real antes de publicar en S3. `frontend-legacy/index.html` es el prototipo original, mantenido solo como referencia de diseño y textos.
 

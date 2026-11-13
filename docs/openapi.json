@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "NexoCambio API",
-    "version": "1.0.0",
-    "description": "Casa de cambio de divisas y cripto — API serverless (API Gateway HTTP API + 3 Lambdas + DynamoDB + S3).\n\nFormato JSON. Los errores siempre devuelven `{mensaje, codigo}`. Las rutas de cliente van con `Authorization: Bearer <token>` (JWT HS256, ver POST /login); las de back-office simulado van con la cabecera `x-admin-key` en vez de JWT. Si una ruta protegida responde 401, el front limpia la sesión y redirige a login.\n\nEste documento es solo de referencia (generado por docs/generar_openapi.py a partir del contrato real); el API Gateway sigue definido con eventos SAM en template.yaml, no con este spec."
+    "version": "2.0.0",
+    "description": "Casa de cambio de divisas y cripto — API serverless (API Gateway HTTP API + Lambdas + DynamoDB + S3).\n\nMicroservicios: Cotizaciones, Clientes, Operaciones y **Validaciones (NexoGuard)**, más el **banco simulado**, un sistema externo con su propia clave. NexoGuard es el workflow agéntico de Step Functions que valida cada comprobante: se inicia al adjuntarlo (POST /operaciones/{id}/comprobante) y su resultado se consulta en /validaciones.\n\nFormato JSON. Los errores siempre devuelven `{mensaje, codigo}`. Las rutas de cliente van con `Authorization: Bearer <token>` (JWT HS256, ver POST /login); las de back-office simulado van con la cabecera `x-admin-key` en vez de JWT; las del banco simulado, con `x-banco-key`. Si una ruta protegida responde 401, el front limpia la sesión y redirige a login.\n\nEste documento es solo de referencia (generado por docs/generar_openapi.py a partir del contrato real); el API Gateway sigue definido con eventos SAM en template.yaml, no con este spec."
   },
   "servers": [
     {
@@ -35,6 +35,18 @@
     },
     {
       "name": "Back-office (admin)"
+    },
+    {
+      "name": "NexoGuard · Validaciones",
+      "description": "Subestado de la validación automática, para el cliente."
+    },
+    {
+      "name": "NexoGuard · Back-office",
+      "description": "Cola de revisión, análisis del agente, decisión del operador y reinicio de datos de prueba."
+    },
+    {
+      "name": "Banco simulado (externo)",
+      "description": "API bancaria simulada que NexoGuard consulta para conciliar depósitos."
     }
   ],
   "components": {
@@ -48,6 +60,11 @@
         "type": "apiKey",
         "in": "header",
         "name": "x-admin-key"
+      },
+      "bancoKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-banco-key"
       }
     },
     "schemas": {
@@ -796,6 +813,557 @@
             "description": "Obligatorio cuando estado es 'Rechazada'."
           }
         }
+      },
+      "ValidacionCliente": {
+        "type": "object",
+        "description": "Vista del cliente: solo el estado y el resultado, sin el análisis de la IA.",
+        "properties": {
+          "id_operacion": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "en_curso",
+              "en_revision",
+              "finalizada"
+            ]
+          },
+          "fecha_inicio": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fecha_fin": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "estado_final": {
+            "type": "string",
+            "enum": [
+              "En proceso",
+              "Rechazada"
+            ],
+            "nullable": true
+          },
+          "decidido_por": {
+            "type": "string",
+            "enum": [
+              "agente",
+              "operador"
+            ],
+            "nullable": true
+          },
+          "motivo": {
+            "type": "string",
+            "nullable": true,
+            "description": "Solo cuando la operación se rechazó."
+          }
+        }
+      },
+      "Extraccion": {
+        "type": "object",
+        "description": "Salida del Agente Extractor (Groq, visión).",
+        "properties": {
+          "es_comprobante": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "legible": {
+            "type": "boolean"
+          },
+          "banco_origen": {
+            "type": "string",
+            "nullable": true
+          },
+          "monto": {
+            "type": "number",
+            "nullable": true
+          },
+          "moneda": {
+            "type": "string",
+            "nullable": true
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "hora": {
+            "type": "string",
+            "nullable": true
+          },
+          "numero_operacion": {
+            "type": "string",
+            "nullable": true
+          },
+          "destinatario": {
+            "type": "string",
+            "nullable": true
+          },
+          "cuenta_destino": {
+            "type": "string",
+            "nullable": true
+          },
+          "banco_destino": {
+            "type": "string",
+            "nullable": true
+          },
+          "confianza": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "observaciones": {
+            "type": "string"
+          },
+          "modelo": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ReglaVerificacion": {
+        "type": "object",
+        "description": "Resultado de una regla determinista (guard-verificar o la conciliación).",
+        "properties": {
+          "regla": {
+            "type": "string",
+            "example": "monto"
+          },
+          "resultado": {
+            "type": "string",
+            "enum": [
+              "cumple",
+              "no_cumple",
+              "no_concluyente"
+            ]
+          },
+          "gravedad": {
+            "type": "string",
+            "enum": [
+              "rechazo",
+              "revision",
+              "informativa"
+            ],
+            "description": "Qué pasa si no cumple: rechazo automático, revisión humana o nada."
+          },
+          "detalle": {
+            "type": "string"
+          }
+        }
+      },
+      "Validacion": {
+        "type": "object",
+        "description": "Registro auditable completo (back-office). El task token de Step Functions nunca se expone.",
+        "properties": {
+          "id_operacion": {
+            "type": "string"
+          },
+          "fecha_inicio": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id_cliente": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "en_curso",
+              "en_revision",
+              "finalizada"
+            ]
+          },
+          "monto_origen": {
+            "type": "number"
+          },
+          "moneda_origen": {
+            "type": "string"
+          },
+          "comprobante": {
+            "type": "string"
+          },
+          "ejecucion_arn": {
+            "type": "string",
+            "description": "Ejecución de Step Functions."
+          },
+          "extraccion": {
+            "$ref": "#/components/schemas/Extraccion"
+          },
+          "verificaciones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReglaVerificacion"
+            }
+          },
+          "conciliacion": {
+            "type": "object",
+            "properties": {
+              "coincidencia": {
+                "type": "string",
+                "enum": [
+                  "total",
+                  "parcial",
+                  "ninguna",
+                  "error",
+                  "no_aplica",
+                  "no_consultado"
+                ],
+                "nullable": true
+              },
+              "detalle": {
+                "type": "string",
+                "nullable": true
+              },
+              "intento": {
+                "type": "integer",
+                "nullable": true
+              },
+              "deposito": {
+                "$ref": "#/components/schemas/Deposito"
+              }
+            }
+          },
+          "semaforo": {
+            "type": "string",
+            "enum": [
+              "verde",
+              "amarillo",
+              "rojo"
+            ]
+          },
+          "justificacion": {
+            "type": "string",
+            "description": "Agente de Riesgo; si no es verde, empieza con el motivo determinista."
+          },
+          "ruta": {
+            "type": "string",
+            "enum": [
+              "aprobar",
+              "revision",
+              "rechazar"
+            ]
+          },
+          "alerta_cumplimiento": {
+            "type": "boolean",
+            "description": "Monto ≥ umbral de registro UIF (referencial US$ 10,000)."
+          },
+          "monto_usd": {
+            "type": "number"
+          },
+          "motivo_sugerido": {
+            "type": "string",
+            "nullable": true
+          },
+          "numero_operacion": {
+            "type": "string",
+            "description": "N° leído del comprobante (detección de duplicados)."
+          },
+          "fecha_revision": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fecha_fin": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "estado_final": {
+            "type": "string",
+            "enum": [
+              "En proceso",
+              "Rechazada"
+            ]
+          },
+          "decision": {
+            "type": "object",
+            "properties": {
+              "decision": {
+                "type": "string",
+                "enum": [
+                  "aprobar",
+                  "rechazar"
+                ]
+              },
+              "decidido_por": {
+                "type": "string",
+                "enum": [
+                  "agente",
+                  "operador"
+                ]
+              },
+              "motivo": {
+                "type": "string",
+                "nullable": true
+              },
+              "fecha": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "modelos": {
+            "type": "object",
+            "properties": {
+              "vision": {
+                "type": "string",
+                "nullable": true
+              },
+              "texto": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          }
+        }
+      },
+      "ValidacionesOperacionResponse": {
+        "type": "object",
+        "properties": {
+          "id_operacion": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "validaciones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Validacion"
+            }
+          }
+        }
+      },
+      "ValidacionesListResponse": {
+        "type": "object",
+        "properties": {
+          "validaciones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Validacion"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "DecisionRequest": {
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "aprobar",
+              "rechazar"
+            ]
+          },
+          "motivo": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 300,
+            "description": "Obligatorio al rechazar."
+          }
+        }
+      },
+      "DecisionResponse": {
+        "type": "object",
+        "properties": {
+          "mensaje": {
+            "type": "string"
+          },
+          "id_operacion": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "aprobar",
+              "rechazar"
+            ]
+          }
+        }
+      },
+      "ReiniciarDemoRequest": {
+        "type": "object",
+        "properties": {
+          "incluir_operaciones": {
+            "type": "boolean",
+            "default": false,
+            "description": "También borra todas las operaciones y sus comprobantes en S3 (los clientes se conservan)."
+          },
+          "conservar_demo": {
+            "type": "boolean",
+            "default": true,
+            "description": "El banco conserva los depósitos de los comprobantes de la demo web (origen_datos \"demo\"). false los borra también."
+          }
+        }
+      },
+      "ReiniciarDemoResponse": {
+        "type": "object",
+        "properties": {
+          "mensaje": {
+            "type": "string"
+          },
+          "ejecuciones_detenidas": {
+            "type": "integer"
+          },
+          "validaciones_borradas": {
+            "type": "integer"
+          },
+          "banco": {
+            "$ref": "#/components/schemas/ReiniciarBancoResponse"
+          },
+          "operaciones": {
+            "type": "object",
+            "description": "Solo con incluir_operaciones.",
+            "properties": {
+              "operaciones_borradas": {
+                "type": "integer"
+              },
+              "comprobantes_borrados": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "Deposito": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "cuenta": {
+            "type": "string",
+            "description": "Cuenta de NexoCambio (solo dígitos)."
+          },
+          "mov": {
+            "type": "string",
+            "description": "<fecha>#<numero_operacion>"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date"
+          },
+          "numero_operacion": {
+            "type": "string"
+          },
+          "monto": {
+            "type": "number"
+          },
+          "moneda": {
+            "type": "string",
+            "enum": [
+              "PEN",
+              "USD",
+              "EUR"
+            ]
+          },
+          "banco_origen": {
+            "type": "string"
+          },
+          "ordenante": {
+            "type": "string"
+          },
+          "origen_datos": {
+            "type": "string",
+            "enum": [
+              "semilla",
+              "prueba",
+              "demo"
+            ]
+          },
+          "registrado": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DepositoRequest": {
+        "type": "object",
+        "required": [
+          "cuenta_destino",
+          "monto",
+          "moneda",
+          "numero_operacion"
+        ],
+        "properties": {
+          "cuenta_destino": {
+            "type": "string",
+            "description": "Cuenta o CCI de NexoCambio tal como aparece en el comprobante (p. ej. «**** 0-39» o «CCI ****0039-14»)."
+          },
+          "monto": {
+            "type": "number",
+            "exclusiveMinimum": true,
+            "minimum": 0
+          },
+          "moneda": {
+            "type": "string",
+            "enum": [
+              "PEN",
+              "USD",
+              "EUR"
+            ]
+          },
+          "numero_operacion": {
+            "type": "string",
+            "description": "Entre 4 y 20 dígitos."
+          },
+          "banco_origen": {
+            "type": "string",
+            "default": "BCP"
+          },
+          "ordenante": {
+            "type": "string",
+            "default": "Cliente"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "description": "Por defecto, hoy."
+          },
+          "origen_datos": {
+            "type": "string",
+            "enum": [
+              "prueba",
+              "demo"
+            ],
+            "default": "prueba",
+            "description": "\"demo\": depósito de un comprobante de la demo web; el reinicio lo conserva."
+          }
+        }
+      },
+      "DepositosListResponse": {
+        "type": "object",
+        "properties": {
+          "depositos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Deposito"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "ReiniciarBancoResponse": {
+        "type": "object",
+        "properties": {
+          "borrados": {
+            "type": "integer"
+          },
+          "conservados": {
+            "type": "integer",
+            "description": "Depósitos de la demo conservados."
+          },
+          "semilla": {
+            "type": "integer",
+            "description": "Depósitos históricos recargados (20)."
+          }
+        }
       }
     }
   },
@@ -1360,7 +1928,7 @@
           "Operaciones"
         ],
         "summary": "Adjuntar el comprobante de transferencia",
-        "description": "Requiere JWT. JPG/PNG/WEBP/PDF, máx. 4 MB; el contenido real debe coincidir con el content_type declarado. Pasa el estado a 'Pendiente de validación'.",
+        "description": "Requiere JWT. JPG/PNG/WEBP/PDF, máx. 4 MB; el contenido real debe coincidir con el content_type declarado. Pasa el estado a 'Pendiente de validación' e inicia el workflow NexoGuard (StartExecution); el resultado se consulta en GET /validaciones/{id_operacion}.",
         "security": [
           {
             "bearerAuth": []
@@ -1687,6 +2255,645 @@
                 "example": {
                   "mensaje": "La transición no está permitida desde el estado actual, o cambió en paralelo.",
                   "codigo": "transicion_invalida"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/validaciones/{id_operacion}": {
+      "get": {
+        "tags": [
+          "NexoGuard · Validaciones"
+        ],
+        "summary": "Estado de la validación automática (vista del cliente)",
+        "description": "Requiere JWT del dueño. El front la consulta cada 3 s mientras está en_curso y cada 10 s en revisión. La operación conserva sus 4 estados; este es el subestado de NexoGuard.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_operacion",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Última validación de la operación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidacionCliente"
+                },
+                "example": {
+                  "id_operacion": "NX-A1B2C3D4",
+                  "estado": "finalizada",
+                  "fecha_inicio": "2026-11-12T20:09:18.326Z",
+                  "fecha_fin": "2026-11-12T20:09:27.900Z",
+                  "estado_final": "En proceso",
+                  "decidido_por": "agente",
+                  "motivo": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta o es inválido el token. Valores posibles de `codigo`: `no_autenticado`, `token_invalido`, `sesion_expirada`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Falta o es inválido el token.",
+                  "codigo": "no_autenticado"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La operación no tiene validaciones, o no te pertenece. Valores posibles de `codigo`: `sin_validacion`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "La operación no tiene validaciones, o no te pertenece.",
+                  "codigo": "sin_validacion"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/validaciones/{id_operacion}/admin": {
+      "get": {
+        "tags": [
+          "NexoGuard · Back-office"
+        ],
+        "summary": "Análisis completo de una operación (revisión asistida)",
+        "description": "x-admin-key. Todas las validaciones de la operación, la más reciente primero: datos leídos por la IA, verificaciones, conciliación con el banco, semáforo, justificación y decisión.",
+        "security": [
+          {
+            "adminKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_operacion",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validaciones de la operación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidacionesOperacionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Falta o es incorrecta la cabecera x-admin-key. Valores posibles de `codigo`: `prohibido`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Falta o es incorrecta la cabecera x-admin-key.",
+                  "codigo": "prohibido"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La operación no tiene validaciones registradas. Valores posibles de `codigo`: `sin_validacion`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "La operación no tiene validaciones registradas.",
+                  "codigo": "sin_validacion"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/validaciones/admin": {
+      "get": {
+        "tags": [
+          "NexoGuard · Back-office"
+        ],
+        "summary": "Cola de revisión de NexoGuard",
+        "description": "x-admin-key. Por defecto los casos en_revision, el más antiguo primero (máx. 200); finalizada, el más reciente primero.",
+        "security": [
+          {
+            "adminKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en_curso",
+                "en_revision",
+                "finalizada"
+              ],
+              "default": "en_revision"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validaciones en ese estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidacionesListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Estado no válido. Valores posibles de `codigo`: `estado_invalido`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Estado no válido.",
+                  "codigo": "estado_invalido"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Falta o es incorrecta la cabecera x-admin-key. Valores posibles de `codigo`: `prohibido`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Falta o es incorrecta la cabecera x-admin-key.",
+                  "codigo": "prohibido"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/validaciones/{id_operacion}/decision": {
+      "post": {
+        "tags": [
+          "NexoGuard · Back-office"
+        ],
+        "summary": "Decisión del operador (reanuda el workflow)",
+        "description": "x-admin-key. Solo si la validación está en_revision. Llama a SendTaskSuccess con el token guardado; el workflow aplica la decisión y la operación cambia de estado en unos segundos.",
+        "security": [
+          {
+            "adminKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_operacion",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequest"
+              },
+              "example": {
+                "decision": "rechazar",
+                "motivo": "El monto transferido no coincide con la operación."
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Decisión registrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Decisión inválida, o falta el motivo al rechazar. Valores posibles de `codigo`: `decision_invalida`, `longitud_invalida`, `cuerpo_vacio`, `json_invalido`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Decisión inválida, o falta el motivo al rechazar.",
+                  "codigo": "decision_invalida"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Falta o es incorrecta la cabecera x-admin-key. Valores posibles de `codigo`: `prohibido`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Falta o es incorrecta la cabecera x-admin-key.",
+                  "codigo": "prohibido"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La operación no espera revisión, u otro operador ya decidió. Valores posibles de `codigo`: `sin_revision_pendiente`, `ya_decidida`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "La operación no espera revisión, u otro operador ya decidió.",
+                  "codigo": "sin_revision_pendiente"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "La revisión venció (72 h). Valores posibles de `codigo`: `revision_vencida`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "La revisión venció (72 h).",
+                  "codigo": "revision_vencida"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Step Functions no respondió; se puede reintentar. Valores posibles de `codigo`: `servicio_no_disponible`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Step Functions no respondió; se puede reintentar.",
+                  "codigo": "servicio_no_disponible"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/reiniciar": {
+      "post": {
+        "tags": [
+          "NexoGuard · Back-office"
+        ],
+        "summary": "Reiniciar los datos de prueba",
+        "description": "x-admin-key. Entorno académico: detiene las ejecuciones en curso, vacía nexo-validaciones (el control de duplicados), reinicia el banco simulado y, con incluir_operaciones, borra operaciones y comprobantes. Por defecto conserva los depósitos de la demo web. También disponible como botón en el back-office.",
+        "security": [
+          {
+            "adminKey": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReiniciarDemoRequest"
+              },
+              "example": {
+                "incluir_operaciones": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Datos reiniciados.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReiniciarDemoResponse"
+                },
+                "example": {
+                  "mensaje": "Datos de prueba reiniciados.",
+                  "ejecuciones_detenidas": 0,
+                  "validaciones_borradas": 9,
+                  "banco": {
+                    "borrados": 20,
+                    "conservados": 5,
+                    "semilla": 20
+                  },
+                  "operaciones": {
+                    "operaciones_borradas": 3,
+                    "comprobantes_borrados": 3
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Falta o es incorrecta la cabecera x-admin-key. Valores posibles de `codigo`: `prohibido`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Falta o es incorrecta la cabecera x-admin-key.",
+                  "codigo": "prohibido"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/banco/depositos": {
+      "post": {
+        "tags": [
+          "Banco simulado (externo)"
+        ],
+        "summary": "Registrar un depósito («el cliente transfirió»)",
+        "description": "x-banco-key. Simula la API de movimientos de un banco; NexoGuard la consulta por HTTPS para conciliar.",
+        "security": [
+          {
+            "bancoKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepositoRequest"
+              },
+              "example": {
+                "cuenta_destino": "**** 0-39",
+                "monto": 1000,
+                "moneda": "PEN",
+                "numero_operacion": "04417483",
+                "banco_origen": "BCP",
+                "ordenante": "Lucía Ramírez Torres",
+                "fecha": "2026-11-12",
+                "origen_datos": "demo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Depósito registrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deposito"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo inválido. Valores posibles de `codigo`: `cuerpo_vacio`, `json_invalido`, `longitud_invalida`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Cuerpo inválido.",
+                  "codigo": "cuerpo_vacio"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Falta o es incorrecta la cabecera x-banco-key (la clave del back-office no sirve). Valores posibles de `codigo`: `prohibido`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Falta o es incorrecta la cabecera x-banco-key (la clave del back-office no sirve).",
+                  "codigo": "prohibido"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ese depósito ya está registrado. Valores posibles de `codigo`: `duplicado`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Ese depósito ya está registrado.",
+                  "codigo": "duplicado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dato fuera de regla. Valores posibles de `codigo`: `moneda_invalida`, `cuenta_invalida`, `numero_invalido`, `monto_invalido`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Dato fuera de regla.",
+                  "codigo": "moneda_invalida"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Banco simulado (externo)"
+        ],
+        "summary": "Consultar depósitos",
+        "description": "x-banco-key. Por número de operación, o por cuenta y fecha.",
+        "security": [
+          {
+            "bancoKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "numero_operacion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cuenta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fecha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Depósitos encontrados (lista vacía si no hay).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepositosListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Indica numero_operacion, o cuenta y fecha. Valores posibles de `codigo`: `parametros_faltantes`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Indica numero_operacion, o cuenta y fecha.",
+                  "codigo": "parametros_faltantes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Falta o es incorrecta la cabecera x-banco-key (la clave del back-office no sirve). Valores posibles de `codigo`: `prohibido`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Falta o es incorrecta la cabecera x-banco-key (la clave del back-office no sirve).",
+                  "codigo": "prohibido"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/banco/reiniciar": {
+      "post": {
+        "tags": [
+          "Banco simulado (externo)"
+        ],
+        "summary": "Reiniciar el banco simulado",
+        "description": "x-banco-key. Borra los depósitos de prueba y recarga 20 depósitos históricos (semilla). Conserva los de la demo web salvo conservar_demo: false. Lo invoca POST /demo/reiniciar.",
+        "security": [
+          {
+            "bancoKey": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "conservar_demo": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              },
+              "example": {
+                "conservar_demo": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Banco reiniciado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReiniciarBancoResponse"
+                },
+                "example": {
+                  "borrados": 20,
+                  "conservados": 5,
+                  "semilla": 20
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Falta o es incorrecta la cabecera x-banco-key (la clave del back-office no sirve). Valores posibles de `codigo`: `prohibido`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "mensaje": "Falta o es incorrecta la cabecera x-banco-key (la clave del back-office no sirve).",
+                  "codigo": "prohibido"
                 }
               }
             }

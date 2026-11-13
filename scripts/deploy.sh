@@ -50,6 +50,7 @@ fi
 echo "==> Compilando frontend Angular"
 ( cd frontend && npm ci && npx ng build )
 python3 scripts/configurar_front.py frontend/dist/frontend/browser/config.json "$API_URL"
+cp docs/openapi.html frontend/dist/frontend/browser/api.html   # catálogo de la API (Swagger UI) junto al sitio
 
 echo "==> Publicando frontend en s3://${WEB_BUCKET}"
 aws s3 sync frontend/dist/frontend/browser/ "s3://${WEB_BUCKET}/" --delete --region "$REGION"
@@ -61,6 +62,7 @@ API (usar en Postman):   ${API_URL}
 MSG
 if [ -n "$WEB_HTTPS_URL" ]; then
   echo "Sitio web (HTTPS):       ${WEB_HTTPS_URL}"
+  echo "Catálogo de la API:      ${WEB_HTTPS_URL%index.html}api.html   (Swagger UI)"
   echo "Sitio web (HTTP, sin cifrar; solo referencia): ${WEB_URL}"
 else
   echo "Sitio web (frontend):    ${WEB_URL}"

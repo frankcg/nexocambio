@@ -33,7 +33,7 @@ python scripts/servidor_local.py       # API en http://localhost:8787 con client
 cd frontend && npm ci && npx ng serve  # app Angular en http://localhost:4200 (lee la API de public/config.json)
 ```
 Postman: importar `postman/NexoCambio.postman_collection.json`, definir `baseUrl` (`ApiUrl` del despliegue) y `adminKey`, y ejecutar en el Runner (33 requests, 62 verificaciones; incluye el flujo de back-office: listar, detalle, aprobar y rechazar).
-Catálogo de la API (OpenAPI 3.0): `docs/openapi.json` (spec) y `docs/openapi.html` (ábrelo en el navegador, Swagger UI con el spec embebido). Es solo documentación: describe el contrato real, pero el API Gateway sigue definido con eventos SAM en `template.yaml`, no con este spec.
+Catálogo de la API (OpenAPI 3.0, 17 rutas: los 4 microservicios, el back-office, NexoGuard y el banco simulado): `docs/openapi.json` (spec) y `docs/openapi.html` (ábrelo en el navegador, Swagger UI con el spec embebido). `deploy.sh` lo publica junto al sitio como `api.html` (p. ej. `https://<bucket>.s3.<región>.amazonaws.com/api.html`); en «Servers», poner el `apiId` del despliegue para usar *Try it out*. Es solo documentación: describe el contrato real, pero el API Gateway sigue definido con eventos SAM en `template.yaml`, no con este spec.
 Regenerar: `python scripts/generar_postman.py` · `python docs/generar_openapi.py` · `python docs/costos.py` · `python docs/generar_diagrama.py`.
 
 ## Exposición: preparar datos e imágenes limpios

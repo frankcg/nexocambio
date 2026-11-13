@@ -151,7 +151,9 @@ Todas las ejecuciones de Step Functions terminaron en `SUCCEEDED`. En una corrid
 
 **Hallazgo durante la primera prueba (el agente funcionó como debía).** En la primera corrida, el comprobante correcto cumplió las 7 reglas, pero el Agente de Riesgo lo escaló a amarillo con la justificación «el comprobante presenta una marca de agua que indica DOCUMENTO FICTICIO, lo cual es sospechoso». La barrera de diseño (el agente puede escalar, no aprobar) actuó correctamente: con un comprobante real que dijera eso, enviarlo a revisión es lo deseable. Para el entorno académico se agregó el parámetro `ModoDemo` (por defecto `true` en este stack), que le indica al agente que esa marca es propia de los comprobantes de prueba. En producción se despliega con `ModoDemo=false`.
 
-**[PENDIENTE: captura del Collection Runner con las carpetas 2 y 6 en verde contra la API de AWS.]**
+La carpeta 2 de Postman (registro, login y perfil) pasó completa contra la API de AWS. Los escenarios de NexoGuard, los mismos de la carpeta 6, se validaron con `scripts/probar_nexoguard.py`, que en la corrida del 12-nov-2026 pasó los 8 escenarios.
+
+**[PENDIENTE: captura del Collection Runner con la carpeta 2 en verde contra la API de AWS.]**
 
 ## 4. FrontEnd conectado a las APIs y al workflow
 
